@@ -68,7 +68,7 @@ public class InputSystem : BaseSystem
             // Process movement if not currently moving and we have buffered input
             if (!movement.IsMoving && input.InputBufferTime > 0 && input.PressedDirection != Direction.None)
             {
-                StartMovement(ref position, ref movement, input.PressedDirection);
+                StartMovement(world, ref position, ref movement, input.PressedDirection);
                 input.InputBufferTime = 0f; // Consume buffered input
             }
         });
@@ -100,7 +100,7 @@ public class InputSystem : BaseSystem
         return Direction.None;
     }
 
-    private static void StartMovement(ref Position position, ref GridMovement movement, Direction direction)
+    private static void StartMovement(World world, ref Position position, ref GridMovement movement, Direction direction)
     {
         // Calculate target grid position
         int targetX = position.X;
@@ -122,8 +122,11 @@ public class InputSystem : BaseSystem
                 break;
         }
 
-        // TODO: Add collision detection here in future
-        // For now, allow all movement
+        // Check collision before allowing movement
+        if (!CollisionSystem.IsPositionWalkable(world, targetX, targetY))
+        {
+            return; // Position is blocked, don't start movement
+        }
 
         // Start the grid movement
         var startPixels = new Vector2(position.PixelX, position.PixelY);

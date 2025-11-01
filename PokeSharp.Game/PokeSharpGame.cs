@@ -86,8 +86,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
         // Create and register systems in priority order
         _systemManager.RegisterSystem(new InputSystem());
 
-        // TODO: Register CollisionSystem here (Priority: 150) when it's created
-        // _systemManager.RegisterSystem(new CollisionSystem());
+        // Register CollisionSystem (Priority: 200, provides tile collision checking)
+        _systemManager.RegisterSystem(new CollisionSystem());
 
         _systemManager.RegisterSystem(new MovementSystem());
 
