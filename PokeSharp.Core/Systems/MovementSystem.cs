@@ -7,7 +7,7 @@ namespace PokeSharp.Core.Systems;
 
 /// <summary>
 /// System that handles grid-based movement with smooth interpolation.
-/// Implements Pokemon-style tile-by-tile movement.
+/// Implements Pokemon-style tile-by-tile movement and updates animations based on movement state.
 /// </summary>
 public class MovementSystem : BaseSystem
 {
@@ -24,7 +24,7 @@ public class MovementSystem : BaseSystem
         // Query all entities with Position and GridMovement components
         var query = new QueryDescription().WithAll<Position, GridMovement>();
 
-        world.Query(in query, (ref Position position, ref GridMovement movement) =>
+        world.Query(in query, (Entity entity, ref Position position, ref GridMovement movement) =>
         {
             if (movement.IsMoving)
             {
@@ -43,6 +43,13 @@ public class MovementSystem : BaseSystem
                     position.Y = (int)(movement.TargetPosition.Y / TileSize);
 
                     movement.CompleteMovement();
+
+                    // Switch to idle animation if entity has Animation component
+                    if (entity.Has<Animation>())
+                    {
+                        ref var animation = ref entity.Get<Animation>();
+                        animation.ChangeAnimation(movement.FacingDirection.ToIdleAnimation());
+                    }
                 }
                 else
                 {
@@ -56,13 +63,38 @@ public class MovementSystem : BaseSystem
                         movement.StartPosition.Y,
                         movement.TargetPosition.Y,
                         movement.MovementProgress);
+
+                    // Ensure walk animation is playing if entity has Animation component
+                    if (entity.Has<Animation>())
+                    {
+                        ref var animation = ref entity.Get<Animation>();
+                        var expectedAnimation = movement.FacingDirection.ToWalkAnimation();
+
+                        if (animation.CurrentAnimation != expectedAnimation)
+                        {
+                            animation.ChangeAnimation(expectedAnimation);
+                        }
+                    }
                 }
             }
             else
             {
                 // Ensure pixel position matches grid position when not moving
                 position.SyncPixelsToGrid();
+
+                // Ensure idle animation is playing if entity has Animation component
+                if (entity.Has<Animation>())
+                {
+                    ref var animation = ref entity.Get<Animation>();
+                    var expectedAnimation = movement.FacingDirection.ToIdleAnimation();
+
+                    if (animation.CurrentAnimation != expectedAnimation)
+                    {
+                        animation.ChangeAnimation(expectedAnimation);
+                    }
+                }
             }
         });
     }
 }
+

@@ -16,29 +16,11 @@ public struct Velocity
     public float VelocityY { get; set; }
 
     /// <summary>
-    /// Gets or sets the current facing direction.
-    /// </summary>
-    public Direction CurrentDirection { get; set; }
-
-    /// <summary>
     /// Initializes a new instance of the Velocity struct.
     /// </summary>
-    public Velocity(float velocityX, float velocityY, Direction direction = Direction.Down)
+    public Velocity(float velocityX, float velocityY)
     {
         VelocityX = velocityX;
         VelocityY = velocityY;
-        CurrentDirection = direction;
     }
-}
-
-/// <summary>
-/// Enumeration of movement directions.
-/// </summary>
-public enum Direction
-{
-    Up,
-    Down,
-    Left,
-    Right,
-    None
 }

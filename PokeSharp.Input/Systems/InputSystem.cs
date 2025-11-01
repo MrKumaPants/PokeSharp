@@ -28,11 +28,11 @@ public class InputSystem : BaseSystem
         var keyboardState = Keyboard.GetState();
         var gamepadState = GamePad.GetState(PlayerIndex.One);
 
-        // Query player entities with input state
+        // Query player entities with input state and direction component
         var query = new QueryDescription()
-            .WithAll<Player, Position, GridMovement, InputState>();
+            .WithAll<Player, Position, GridMovement, InputState, Direction>();
 
-        world.Query(in query, (ref Position position, ref GridMovement movement, ref InputState input) =>
+        world.Query(in query, (Entity entity, ref Position position, ref GridMovement movement, ref InputState input) =>
         {
             if (!input.InputEnabled)
             {
@@ -53,6 +53,10 @@ public class InputSystem : BaseSystem
             {
                 input.PressedDirection = currentDirection;
                 input.InputBufferTime = InputBufferDuration;
+
+                // Synchronize Direction component with input direction
+                ref var direction = ref entity.Get<Direction>();
+                direction = currentDirection;
             }
 
             // Check for action button

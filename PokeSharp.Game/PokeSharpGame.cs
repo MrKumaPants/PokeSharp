@@ -9,6 +9,7 @@ using PokeSharp.Input.Systems;
 using PokeSharp.Rendering.Assets;
 using PokeSharp.Rendering.Loaders;
 using PokeSharp.Rendering.Systems;
+using PokeSharp.Rendering.Animation;
 using PokeSharp.Game.Diagnostics;
 
 namespace PokeSharp.Game;
@@ -24,6 +25,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
     private SystemManager _systemManager = null!;
     private AssetManager _assetManager = null!;
     private MapLoader _mapLoader = null!;
+    private AnimationLibrary _animationLibrary = null!;
     private RenderSystem _renderSystem = null!;
 
     /// <summary>
@@ -77,9 +79,20 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
         // Create map loader
         _mapLoader = new MapLoader(_assetManager);
 
+        // Create animation library with default player animations
+        _animationLibrary = new AnimationLibrary(logger: null);
+        System.Console.WriteLine($"✅ AnimationLibrary initialized with {_animationLibrary.Count} animations");
+
         // Create and register systems in priority order
         _systemManager.RegisterSystem(new InputSystem());
+
+        // TODO: Register CollisionSystem here (Priority: 150) when it's created
+        // _systemManager.RegisterSystem(new CollisionSystem());
+
         _systemManager.RegisterSystem(new MovementSystem());
+
+        // Register AnimationSystem (Priority: 800, after movement, before rendering)
+        _systemManager.RegisterSystem(new AnimationSystem(_animationLibrary, logger: null));
 
         // Register MapRenderSystem before RenderSystem (MapRender priority: 900, Render priority: 1000)
         _systemManager.RegisterSystem(new MapRenderSystem(GraphicsDevice, _assetManager));
@@ -167,16 +180,19 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
         var playerEntity = _world.Create(
             new Player(),
             new Position(10, 8), // Start at grid position (10, 8)
-            new Sprite("player")
+            new Sprite("player-spritesheet") // Use spritesheet for animations
             {
                 Tint = Color.White,
                 Scale = 1f
             },
             new GridMovement(4.0f), // 4 tiles per second movement speed
+            Direction.Down, // Initial facing direction
+            new PokeSharp.Core.Components.Animation("idle_down"), // Start with idle animation
             new InputState()
         );
 
         System.Console.WriteLine($"✅ Created player entity: {playerEntity}");
+        System.Console.WriteLine("   Components: Player, Position, Sprite, GridMovement, Direction, Animation, InputState");
         System.Console.WriteLine("🎮 Use WASD or Arrow Keys to move!");
     }
 
