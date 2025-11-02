@@ -143,7 +143,7 @@ public class TiledJsonTileset
 }
 
 /// <summary>
-/// Represents a tile definition with animation data.
+/// Represents a tile definition with animation data and custom properties.
 /// </summary>
 public class TiledJsonTileDefinition
 {
@@ -158,6 +158,18 @@ public class TiledJsonTileDefinition
     /// </summary>
     [JsonPropertyName("animation")]
     public List<TiledJsonAnimationFrame>? Animation { get; set; }
+
+    /// <summary>
+    /// Custom properties for this tile (fully data-driven).
+    /// </summary>
+    [JsonPropertyName("properties")]
+    public List<TiledJsonProperty>? Properties { get; set; }
+
+    /// <summary>
+    /// Tile type/class (optional, from Tiled object types).
+    /// </summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 }
 
 /// <summary>

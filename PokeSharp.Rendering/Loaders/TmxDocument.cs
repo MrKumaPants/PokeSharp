@@ -97,6 +97,13 @@ public class TmxTileset
     /// Key: local tile ID, Value: animation data.
     /// </summary>
     public Dictionary<int, TmxTileAnimation> Animations { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets custom properties for tiles in this tileset (data-driven).
+    /// Key: local tile ID, Value: properties dictionary.
+    /// Properties come from Tiled editor - no hardcoded tile types!
+    /// </summary>
+    public Dictionary<int, Dictionary<string, object>> TileProperties { get; set; } = new();
 }
 
 /// <summary>

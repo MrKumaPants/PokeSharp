@@ -5,17 +5,31 @@ using Microsoft.Xna.Framework.Input;
 using PokeSharp.Core.Components;
 using PokeSharp.Core.Systems;
 using PokeSharp.Input.Components;
+using PokeSharp.Input.Services;
 
 namespace PokeSharp.Input.Systems;
 
 /// <summary>
 /// System that processes keyboard and gamepad input and converts it to movement commands.
-/// Implements Pokemon-style grid-locked input with buffering for responsive controls.
+/// Implements Pokemon-style grid-locked input with queue-based buffering for responsive controls.
 /// </summary>
 public class InputSystem : BaseSystem
 {
     private const int TileSize = 16;
-    private const float InputBufferDuration = 0.1f; // 100ms input buffer
+    private readonly InputBuffer _inputBuffer;
+    private float _totalTime;
+    private Direction _lastBufferedDirection = Direction.None;
+    private float _lastBufferTime = -1f;
+
+    /// <summary>
+    /// Initializes a new instance of the InputSystem class.
+    /// </summary>
+    /// <param name="maxBufferSize">Maximum number of inputs to buffer (default: 5).</param>
+    /// <param name="bufferTimeout">How long inputs remain valid in seconds (default: 0.2s).</param>
+    public InputSystem(int maxBufferSize = 5, float bufferTimeout = 0.2f)
+    {
+        _inputBuffer = new InputBuffer(maxBufferSize, bufferTimeout);
+    }
 
     /// <inheritdoc/>
     public override int Priority => SystemPriority.Input;
@@ -24,6 +38,8 @@ public class InputSystem : BaseSystem
     public override void Update(World world, float deltaTime)
     {
         EnsureInitialized();
+
+        _totalTime += deltaTime;
 
         var keyboardState = Keyboard.GetState();
         var gamepadState = GamePad.GetState(PlayerIndex.One);
@@ -39,12 +55,6 @@ public class InputSystem : BaseSystem
                 return;
             }
 
-            // Decrease input buffer time
-            if (input.InputBufferTime > 0)
-            {
-                input.InputBufferTime -= deltaTime;
-            }
-
             // Get current input direction
             var currentDirection = GetInputDirection(keyboardState, gamepadState);
 
@@ -52,11 +62,30 @@ public class InputSystem : BaseSystem
             if (currentDirection != Direction.None)
             {
                 input.PressedDirection = currentDirection;
-                input.InputBufferTime = InputBufferDuration;
 
                 // Synchronize Direction component with input direction
                 ref var direction = ref entity.Get<Direction>();
                 direction = currentDirection;
+
+                // Buffer input if:
+                // 1. Not currently moving (allows holding keys for continuous movement), OR
+                // 2. Direction changed (allows queuing direction changes during movement)
+                // But only if we haven't buffered this exact direction very recently (prevents duplicates)
+                bool shouldBuffer = !movement.IsMoving || 
+                                   (currentDirection != _lastBufferedDirection);
+                
+                // Also prevent buffering the same direction multiple times per frame
+                bool isDifferentTiming = _totalTime != _lastBufferTime || 
+                                        currentDirection != _lastBufferedDirection;
+                
+                if (shouldBuffer && isDifferentTiming)
+                {
+                    if (_inputBuffer.AddInput(currentDirection, _totalTime))
+                    {
+                        _lastBufferedDirection = currentDirection;
+                        _lastBufferTime = _totalTime;
+                    }
+                }
             }
 
             // Check for action button
@@ -65,11 +94,11 @@ public class InputSystem : BaseSystem
                                  keyboardState.IsKeyDown(Keys.Z) ||
                                  gamepadState.Buttons.A == ButtonState.Pressed;
 
-            // Process movement if not currently moving and we have buffered input
-            if (!movement.IsMoving && input.InputBufferTime > 0 && input.PressedDirection != Direction.None)
+            // Try to consume buffered input if not currently moving
+            if (!movement.IsMoving && _inputBuffer.TryConsumeInput(_totalTime, out var bufferedDirection))
             {
-                StartMovement(world, ref position, ref movement, input.PressedDirection);
-                input.InputBufferTime = 0f; // Consume buffered input
+                StartMovement(world, ref position, ref movement, bufferedDirection);
+                _lastBufferedDirection = Direction.None; // Reset after consuming
             }
         });
     }

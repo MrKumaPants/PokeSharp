@@ -32,6 +32,12 @@ public static class SystemPriority
     public const int Logic = 300;
 
     /// <summary>
+    /// Tile property query system (Priority: 500).
+    /// Note: This system doesn't update - it provides query helpers for other systems.
+    /// </summary>
+    public const int TileProperties = 500;
+
+    /// <summary>
     /// Animation systems (Priority: 800).
     /// </summary>
     public const int Animation = 800;

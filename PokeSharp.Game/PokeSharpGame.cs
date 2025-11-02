@@ -99,7 +99,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
         System.Console.WriteLine($"✅ ViewportScaleManager initialized: {_viewportScaleManager.ViewportSize.X}x{_viewportScaleManager.ViewportSize.Y}, Zoom: {_viewportScaleManager.CurrentZoom}x");
 
         // Create and register systems in priority order
-        _systemManager.RegisterSystem(new InputSystem());
+        // InputSystem with Pokemon-style input buffering (5 inputs, 200ms timeout)
+        _systemManager.RegisterSystem(new InputSystem(maxBufferSize: 5, bufferTimeout: 0.2f));
 
         // Register CollisionSystem (Priority: 200, provides tile collision checking)
         _systemManager.RegisterSystem(new CollisionSystem());
@@ -186,16 +187,18 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
             var tileMap = _mapLoader.LoadMap("Assets/Maps/test-map.json");
             var tileCollider = _mapLoader.LoadCollision("Assets/Maps/test-map.json");
             var animatedTiles = _mapLoader.LoadAnimatedTiles("Assets/Maps/test-map.json");
+            var tileProperties = _mapLoader.LoadTileProperties("Assets/Maps/test-map.json");
 
             // Store animated tiles directly in TileMap component
             tileMap.AnimatedTiles = animatedTiles;
 
-            // Create map entity with TileMap and TileCollider components
-            var mapEntity = _world.Create(tileMap, tileCollider);
+            // Create map entity with TileMap, TileCollider, and TileProperties components
+            var mapEntity = _world.Create(tileMap, tileCollider, tileProperties);
 
             System.Console.WriteLine($"✅ Loaded test map: {tileMap.MapId} ({tileMap.Width}x{tileMap.Height} tiles)");
             System.Console.WriteLine($"   Map entity: {mapEntity}");
             System.Console.WriteLine($"   Animated tiles: {animatedTiles.Length}");
+            System.Console.WriteLine($"   Tiles with properties: {tileProperties.TileCount}");
 
             // Set camera bounds from map dimensions (will be applied to player camera after creation)
             SetCameraMapBounds(tileMap.Width, tileMap.Height);

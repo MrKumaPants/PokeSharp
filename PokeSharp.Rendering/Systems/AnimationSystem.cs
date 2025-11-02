@@ -44,9 +44,9 @@ public class AnimationSystem : BaseSystem
             // Query all entities with Animation + Sprite components
             var query = new QueryDescription().WithAll<AnimationComponent, Sprite>();
 
-            world.Query(in query, (ref AnimationComponent animation, ref Sprite sprite) =>
+            world.Query(in query, (Entity entity, ref AnimationComponent animation, ref Sprite sprite) =>
             {
-                UpdateAnimation(ref animation, ref sprite, deltaTime);
+                UpdateAnimation(entity, ref animation, ref sprite, deltaTime);
             });
         }
         catch (Exception ex)
@@ -59,7 +59,7 @@ public class AnimationSystem : BaseSystem
     /// <summary>
     /// Updates a single animation and its corresponding sprite.
     /// </summary>
-    private void UpdateAnimation(ref AnimationComponent animation, ref Sprite sprite, float deltaTime)
+    private void UpdateAnimation(Entity entity, ref AnimationComponent animation, ref Sprite sprite, float deltaTime)
     {
         // Skip if animation is not playing
         if (!animation.IsPlaying || animation.IsComplete)
@@ -81,6 +81,8 @@ public class AnimationSystem : BaseSystem
             return;
         }
 
+        int previousFrame = animation.CurrentFrame;
+
         // Update frame timer
         animation.FrameTimer += deltaTime;
 
@@ -98,8 +100,9 @@ public class AnimationSystem : BaseSystem
             {
                 if (animDef.Loop)
                 {
-                    // Loop back to first frame
+                    // Loop back to first frame - clear triggered events for new loop
                     animation.CurrentFrame = 0;
+                    animation.TriggeredEventFrames.Clear();
                 }
                 else
                 {
@@ -109,6 +112,12 @@ public class AnimationSystem : BaseSystem
                     animation.IsPlaying = false;
                 }
             }
+        }
+
+        // Trigger events for the current frame if it changed and hasn't been triggered yet
+        if (animation.CurrentFrame != previousFrame)
+        {
+            TriggerFrameEvents(entity, animation.CurrentFrame, animDef, ref animation);
         }
 
         // Update sprite source rectangle to current frame
@@ -123,7 +132,47 @@ public class AnimationSystem : BaseSystem
 
             // Reset to first frame to recover
             animation.CurrentFrame = 0;
+            animation.TriggeredEventFrames.Clear();
             sprite.SourceRect = animDef.GetFrame(0);
         }
+    }
+
+    /// <summary>
+    /// Triggers all events associated with a specific frame.
+    /// </summary>
+    /// <param name="entity">The entity that owns the animation.</param>
+    /// <param name="frameIndex">The frame index to check for events.</param>
+    /// <param name="animDef">The animation definition containing the events.</param>
+    /// <param name="animation">The animation component to track triggered events.</param>
+    private void TriggerFrameEvents(Entity entity, int frameIndex, AnimationDefinition animDef, ref AnimationComponent animation)
+    {
+        // Check if this frame has events and hasn't been triggered yet
+        if (!animDef.HasEventsOnFrame(frameIndex) || animation.TriggeredEventFrames.Contains(frameIndex))
+        {
+            return;
+        }
+
+        // Get events for this frame
+        var events = animDef.GetEventsForFrame(frameIndex);
+
+        // Trigger each event
+        foreach (var animEvent in events)
+        {
+            try
+            {
+                _logger?.LogDebug("Triggering animation event '{EventName}' at frame {FrameIndex} for animation '{AnimationName}'",
+                    animEvent.EventName, frameIndex, animation.CurrentAnimation);
+
+                animEvent.Trigger(entity);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error triggering animation event '{EventName}' at frame {FrameIndex} for animation '{AnimationName}'",
+                    animEvent.EventName, frameIndex, animation.CurrentAnimation);
+            }
+        }
+
+        // Mark this frame as triggered
+        animation.TriggeredEventFrames.Add(frameIndex);
     }
 }

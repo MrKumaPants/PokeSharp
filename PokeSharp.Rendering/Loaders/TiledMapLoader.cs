@@ -149,26 +149,39 @@ public static class TiledMapLoader
     {
         foreach (var tile in tiles)
         {
-            if (tile.Animation == null || tile.Animation.Count == 0)
+            // Parse animation frames
+            if (tile.Animation != null && tile.Animation.Count > 0)
             {
-                continue;
+                var frameTileIds = new int[tile.Animation.Count];
+                var frameDurations = new float[tile.Animation.Count];
+
+                for (int i = 0; i < tile.Animation.Count; i++)
+                {
+                    var frame = tile.Animation[i];
+                    frameTileIds[i] = frame.TileId;
+                    frameDurations[i] = frame.Duration / 1000f; // Convert milliseconds to seconds
+                }
+
+                tileset.Animations[tile.Id] = new TmxTileAnimation
+                {
+                    FrameTileIds = frameTileIds,
+                    FrameDurations = frameDurations
+                };
             }
 
-            var frameTileIds = new int[tile.Animation.Count];
-            var frameDurations = new float[tile.Animation.Count];
-
-            for (int i = 0; i < tile.Animation.Count; i++)
+            // Parse custom properties (data-driven!)
+            if (tile.Properties != null && tile.Properties.Count > 0)
             {
-                var frame = tile.Animation[i];
-                frameTileIds[i] = frame.TileId;
-                frameDurations[i] = frame.Duration / 1000f; // Convert milliseconds to seconds
+                var props = ConvertProperties(tile.Properties);
+                
+                // Add tile type if specified (optional, from Tiled object types)
+                if (!string.IsNullOrEmpty(tile.Type))
+                {
+                    props["tile_type"] = tile.Type;
+                }
+
+                tileset.TileProperties[tile.Id] = props;
             }
-
-            tileset.Animations[tile.Id] = new TmxTileAnimation
-            {
-                FrameTileIds = frameTileIds,
-                FrameDurations = frameDurations
-            };
         }
     }
 

@@ -1,3 +1,4 @@
+using Arch.Core;
 using Microsoft.Xna.Framework;
 
 namespace PokeSharp.Rendering.Animation;
@@ -27,6 +28,12 @@ public class AnimationDefinition
     /// Gets or sets whether the animation loops continuously.
     /// </summary>
     public bool Loop { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets the events that trigger at specific frames.
+    /// Key is the frame index (0-based), value is the list of events for that frame.
+    /// </summary>
+    public Dictionary<int, List<AnimationEvent>> Events { get; set; } = new();
 
     /// <summary>
     /// Gets the total number of frames in this animation.
@@ -85,6 +92,71 @@ public class AnimationDefinition
     public static AnimationDefinition CreateSingleFrame(string name, Rectangle frame)
     {
         return new AnimationDefinition(name, new[] { frame }, frameDuration: 1.0f, loop: true);
+    }
+
+    /// <summary>
+    /// Adds an event to trigger at a specific frame.
+    /// </summary>
+    /// <param name="frameIndex">The frame index (0-based) to trigger the event.</param>
+    /// <param name="animationEvent">The event to trigger.</param>
+    /// <returns>This AnimationDefinition for method chaining.</returns>
+    public AnimationDefinition AddEvent(int frameIndex, AnimationEvent animationEvent)
+    {
+        if (frameIndex < 0 || frameIndex >= FrameCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(frameIndex),
+                $"Frame index {frameIndex} is out of range. Valid range: 0-{FrameCount - 1}");
+        }
+
+        if (!Events.ContainsKey(frameIndex))
+        {
+            Events[frameIndex] = new List<AnimationEvent>();
+        }
+
+        Events[frameIndex].Add(animationEvent);
+        return this;
+    }
+
+    /// <summary>
+    /// Adds an event to trigger at a specific frame (convenience overload).
+    /// </summary>
+    /// <param name="frameIndex">The frame index (0-based) to trigger the event.</param>
+    /// <param name="eventName">The name of the event.</param>
+    /// <param name="callback">The callback to execute.</param>
+    /// <returns>This AnimationDefinition for method chaining.</returns>
+    public AnimationDefinition AddEvent(int frameIndex, string eventName, Action<Entity> callback)
+    {
+        return AddEvent(frameIndex, new AnimationEvent(eventName, callback));
+    }
+
+    /// <summary>
+    /// Gets all events for a specific frame.
+    /// </summary>
+    /// <param name="frameIndex">The frame index to query.</param>
+    /// <returns>List of events for that frame, or empty list if none.</returns>
+    public List<AnimationEvent> GetEventsForFrame(int frameIndex)
+    {
+        return Events.TryGetValue(frameIndex, out var events) ? events : new List<AnimationEvent>();
+    }
+
+    /// <summary>
+    /// Checks if a specific frame has any events.
+    /// </summary>
+    /// <param name="frameIndex">The frame index to check.</param>
+    /// <returns>True if the frame has events; otherwise, false.</returns>
+    public bool HasEventsOnFrame(int frameIndex)
+    {
+        return Events.ContainsKey(frameIndex) && Events[frameIndex].Count > 0;
+    }
+
+    /// <summary>
+    /// Clears all events from this animation.
+    /// </summary>
+    /// <returns>This AnimationDefinition for method chaining.</returns>
+    public AnimationDefinition ClearEvents()
+    {
+        Events.Clear();
+        return this;
     }
 
     /// <summary>

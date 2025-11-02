@@ -137,6 +137,38 @@ public class MapLoader
         return animatedTiles.ToArray();
     }
 
+    /// <summary>
+    /// Loads tile properties from a Tiled map (data-driven).
+    /// Properties are defined in Tiled editor - no hardcoded tile types!
+    /// Supports custom properties like "passable", "encounter_rate", "terrain_type", etc.
+    /// </summary>
+    /// <param name="mapPath">Path to the .json map file.</param>
+    /// <returns>TileProperties component with all tile properties from Tiled.</returns>
+    public TileProperties LoadTileProperties(string mapPath)
+    {
+        var tmxDoc = TiledMapLoader.Load(mapPath);
+        var tileProps = new TileProperties();
+
+        // Process each tileset
+        foreach (var tileset in tmxDoc.Tilesets)
+        {
+            // Convert local tile IDs to global IDs and store properties
+            foreach (var kvp in tileset.TileProperties)
+            {
+                int localTileId = kvp.Key;
+                var properties = kvp.Value;
+
+                // Convert to global tile ID
+                int globalTileId = tileset.FirstGid + localTileId;
+
+                // Store properties for this tile
+                tileProps.TilePropertyMap[globalTileId] = properties;
+            }
+        }
+
+        return tileProps;
+    }
+
     private static void MarkTilesAsSolid(TileCollider collider, TmxObject obj, int tileWidth, int tileHeight)
     {
         // Convert pixel coordinates to tile coordinates
