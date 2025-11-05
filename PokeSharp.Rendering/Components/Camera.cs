@@ -139,10 +139,16 @@ public struct Camera
     /// <summary>
     ///     Gets the transformation matrix for this camera.
     ///     Includes position, rotation, zoom, and viewport centering.
+    ///     Rounds the camera position to prevent sub-pixel rendering artifacts (texture bleeding between tiles).
     /// </summary>
     public readonly Matrix GetTransformMatrix()
     {
-        return Matrix.CreateTranslation(-Position.X, -Position.Y, 0)
+        // Round camera position to nearest pixel after zoom to prevent texture bleeding/seams
+        // This ensures tiles always render at integer screen coordinates
+        var roundedX = MathF.Round(Position.X * Zoom) / Zoom;
+        var roundedY = MathF.Round(Position.Y * Zoom) / Zoom;
+
+        return Matrix.CreateTranslation(-roundedX, -roundedY, 0)
             * Matrix.CreateRotationZ(Rotation)
             * Matrix.CreateScale(Zoom, Zoom, 1)
             * Matrix.CreateTranslation(Viewport.Width / 2f, Viewport.Height / 2f, 0);
