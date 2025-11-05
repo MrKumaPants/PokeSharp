@@ -1,6 +1,8 @@
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Extensions.Logging;
 using PokeSharp.Core.Components;
+using PokeSharp.Core.Logging;
 using PokeSharp.Core.Utilities;
 
 namespace PokeSharp.Core.Systems;
@@ -12,6 +14,7 @@ namespace PokeSharp.Core.Systems;
 /// </summary>
 public class SpatialHashSystem : BaseSystem
 {
+    private readonly ILogger<SpatialHashSystem>? _logger;
     private readonly SpatialHash _staticHash;   // For tiles (indexed once)
     private readonly SpatialHash _dynamicHash;  // For entities with Position (cleared each frame)
     private bool _staticTilesIndexed = false;
@@ -19,10 +22,13 @@ public class SpatialHashSystem : BaseSystem
     /// <summary>
     ///     Initializes a new instance of the SpatialHashSystem class.
     /// </summary>
-    public SpatialHashSystem()
+    /// <param name="logger">Optional logger for diagnostic output.</param>
+    public SpatialHashSystem(ILogger<SpatialHashSystem>? logger = null)
     {
+        _logger = logger;
         _staticHash = new SpatialHash();
         _dynamicHash = new SpatialHash();
+        _logger?.LogDebug("SpatialHashSystem initialized");
     }
 
     /// <inheritdoc />
@@ -37,6 +43,7 @@ public class SpatialHashSystem : BaseSystem
         if (!_staticTilesIndexed)
         {
             _staticHash.Clear();
+            int staticTileCount = 0;
 
             var tileQuery = new QueryDescription().WithAll<TilePosition>();
             world.Query(
@@ -44,10 +51,12 @@ public class SpatialHashSystem : BaseSystem
                 (Entity entity, ref TilePosition pos) =>
                 {
                     _staticHash.Add(entity, pos.MapId, pos.X, pos.Y);
+                    staticTileCount++;
                 }
             );
 
             _staticTilesIndexed = true;
+            _logger?.LogSpatialHashIndexed(staticTileCount);
         }
 
         // Clear and re-index all dynamic entities each frame
@@ -70,6 +79,7 @@ public class SpatialHashSystem : BaseSystem
     public void InvalidateStaticTiles()
     {
         _staticTilesIndexed = false;
+        _logger?.LogDebug("Static tiles invalidated, will rebuild spatial hash on next update");
     }
 
     /// <summary>

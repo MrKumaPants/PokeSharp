@@ -1,5 +1,6 @@
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using PokeSharp.Core.Components;
@@ -17,18 +18,41 @@ namespace PokeSharp.Input.Systems;
 public class InputSystem : BaseSystem
 {
     private readonly InputBuffer _inputBuffer;
+    private readonly ILogger<InputSystem>? _logger;
     private Direction _lastBufferedDirection = Direction.None;
     private float _lastBufferTime = -1f;
     private float _totalTime;
+    private int _inputEventsProcessed;
+    
+    // Cache query description to avoid allocation every frame
+    private readonly QueryDescription _playerQuery;
+    
+    // Cache input states to avoid redundant polling
+    private KeyboardState _keyboardState;
+    private GamePadState _gamepadState;
+    private KeyboardState _prevKeyboardState;
 
     /// <summary>
     ///     Initializes a new instance of the InputSystem class.
     /// </summary>
     /// <param name="maxBufferSize">Maximum number of inputs to buffer (default: 5).</param>
     /// <param name="bufferTimeout">How long inputs remain valid in seconds (default: 0.2s).</param>
-    public InputSystem(int maxBufferSize = 5, float bufferTimeout = 0.2f)
+    /// <param name="logger">Optional logger for diagnostic output.</param>
+    public InputSystem(int maxBufferSize = 5, float bufferTimeout = 0.2f, ILogger<InputSystem>? logger = null)
     {
         _inputBuffer = new InputBuffer(maxBufferSize, bufferTimeout);
+        _logger = logger;
+        _logger?.LogDebug("InputSystem initialized with buffer size {BufferSize} and timeout {Timeout}s", 
+            maxBufferSize, bufferTimeout);
+        
+        // Pre-build query description once
+        _playerQuery = new QueryDescription().WithAll<
+            Player,
+            Position,
+            GridMovement,
+            InputState,
+            Direction
+        >();
     }
 
     /// <inheritdoc />
@@ -41,20 +65,14 @@ public class InputSystem : BaseSystem
 
         _totalTime += deltaTime;
 
-        var keyboardState = Keyboard.GetState();
-        var gamepadState = GamePad.GetState(PlayerIndex.One);
+        // Poll input states once per frame (not per entity)
+        _prevKeyboardState = _keyboardState;
+        _keyboardState = Keyboard.GetState();
+        _gamepadState = GamePad.GetState(PlayerIndex.One);
 
-        // Query player entities with input state and direction component
-        var query = new QueryDescription().WithAll<
-            Player,
-            Position,
-            GridMovement,
-            InputState,
-            Direction
-        >();
-
+        // Process input for all players (cached query, cached input states)
         world.Query(
-            in query,
+            in _playerQuery,
             (
                 Entity entity,
                 ref Position position,
@@ -65,8 +83,8 @@ public class InputSystem : BaseSystem
                 if (!input.InputEnabled)
                     return;
 
-                // Get current input direction
-                var currentDirection = GetInputDirection(keyboardState, gamepadState);
+                // Get current input direction (uses cached input states)
+                var currentDirection = GetInputDirection(_keyboardState, _gamepadState);
 
                 // Update pressed direction if input detected
                 if (currentDirection != Direction.None)
@@ -93,23 +111,27 @@ public class InputSystem : BaseSystem
                         {
                             _lastBufferedDirection = currentDirection;
                             _lastBufferTime = _totalTime;
+                            _logger?.LogTrace("Buffered input direction: {Direction}", currentDirection);
                         }
                 }
 
-                // Check for action button
+                // Check for action button (uses cached input states)
                 input.ActionPressed =
-                    keyboardState.IsKeyDown(Keys.Space)
-                    || keyboardState.IsKeyDown(Keys.Enter)
-                    || keyboardState.IsKeyDown(Keys.Z)
-                    || gamepadState.Buttons.A == ButtonState.Pressed;
+                    _keyboardState.IsKeyDown(Keys.Space)
+                    || _keyboardState.IsKeyDown(Keys.Enter)
+                    || _keyboardState.IsKeyDown(Keys.Z)
+                    || _gamepadState.Buttons.A == ButtonState.Pressed;
 
                 // Try to consume buffered input if not currently moving
+                // For single player games, Has<> check is cheaper than running two queries
                 if (
                     !movement.IsMoving
                     && _inputBuffer.TryConsumeInput(_totalTime, out var bufferedDirection)
                     && !entity.Has<MovementRequest>()
                 )
                 {
+                    _inputEventsProcessed++;
+                    _logger?.LogTrace("Consumed buffered input: {Direction}", bufferedDirection);
                     world.Add(entity, new MovementRequest(bufferedDirection));
                     _lastBufferedDirection = Direction.None; // Reset after consuming
                 }

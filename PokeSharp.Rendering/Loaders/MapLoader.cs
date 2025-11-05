@@ -1,6 +1,8 @@
 using Arch.Core;
+using Microsoft.Extensions.Logging;
 using PokeSharp.Core.Components;
 using PokeSharp.Core.Factories;
+using PokeSharp.Core.Logging;
 using PokeSharp.Rendering.Assets;
 
 namespace PokeSharp.Rendering.Loaders;
@@ -13,6 +15,7 @@ public class MapLoader
 {
     private readonly AssetManager _assetManager;
     private readonly IEntityFactoryService? _entityFactory;
+    private readonly ILogger<MapLoader>? _logger;
     private readonly Dictionary<string, int> _mapNameToId = new();
     private int _nextMapId = 0;
 
@@ -21,10 +24,12 @@ public class MapLoader
     /// </summary>
     /// <param name="assetManager">Asset manager for texture loading.</param>
     /// <param name="entityFactory">Optional entity factory for template-based tile creation.</param>
-    public MapLoader(AssetManager assetManager, IEntityFactoryService? entityFactory = null)
+    /// <param name="logger">Optional logger for diagnostic output.</param>
+    public MapLoader(AssetManager assetManager, IEntityFactoryService? entityFactory = null, ILogger<MapLoader>? logger = null)
     {
         _assetManager = assetManager ?? throw new ArgumentNullException(nameof(assetManager));
         _entityFactory = entityFactory;
+        _logger = logger;
     }
 
     /// <summary>
@@ -36,6 +41,15 @@ public class MapLoader
     /// <param name="mapPath">Path to the Tiled JSON map file.</param>
     /// <returns>The MapInfo entity containing map metadata.</returns>
     public Entity LoadMapEntities(World world, string mapPath)
+    {
+        // Use scoped logging to group all map loading operations
+        using (_logger?.BeginScope($"Loading:{Path.GetFileNameWithoutExtension(mapPath)}"))
+        {
+            return LoadMapEntitiesInternal(world, mapPath);
+        }
+    }
+
+    private Entity LoadMapEntitiesInternal(World world, string mapPath)
     {
         var tmxDoc = TiledMapLoader.Load(mapPath);
         var mapId = GetMapId(mapPath);
@@ -96,16 +110,9 @@ public class MapLoader
         // Spawn entities from map objects (NPCs, items, etc.)
         var objectsCreated = SpawnMapObjects(world, tmxDoc, mapId, tmxDoc.TileHeight);
 
-        Console.WriteLine($"✅ Loaded map: {mapName} ({tmxDoc.Width}x{tmxDoc.Height} tiles)");
-        Console.WriteLine($"   MapId: {mapId}");
-        Console.WriteLine($"   Created {tilesCreated} tile entities");
-        Console.WriteLine($"   Created {animatedTilesCreated} animated tile entities");
-        Console.WriteLine($"   Created {objectsCreated} entities from map objects");
-        Console.WriteLine($"   MapInfo entity: {mapInfoEntity}");
-        Console.WriteLine($"   TilesetInfo entity: {tilesetEntity}");
-        Console.WriteLine(
-            $"   Tileset: {tilesetId} ({tilesetInfo.TilesPerRow}x{tilesetInfo.TilesPerColumn} tiles)"
-        );
+        _logger?.LogMapLoaded(mapName, tmxDoc.Width, tmxDoc.Height, tilesCreated, objectsCreated);
+        _logger?.LogDebug("[dim]MapId:[/] [grey]{MapId}[/] [dim]|[/] [dim]Animated:[/] [yellow]{AnimatedCount}[/] [dim]|[/] [dim]Tileset:[/] [cyan]{TilesetId}[/]",
+            mapId, animatedTilesCreated, tilesetId);
 
         return mapInfoEntity;
     }
@@ -489,14 +496,14 @@ public class MapLoader
 
                 if (string.IsNullOrEmpty(templateId))
                 {
-                    Console.WriteLine($"⚠️ Object '{obj.Name}' has no type/template, skipping");
+                    _logger?.LogOperationSkipped($"Object '{obj.Name}'", "no type/template");
                     continue;
                 }
 
                 // Check if template exists
                 if (!_entityFactory.HasTemplate(templateId))
                 {
-                    Console.WriteLine($"⚠️ Template '{templateId}' not found for object '{obj.Name}', skipping");
+                    _logger?.LogResourceNotFound("Template", $"{templateId} for '{obj.Name}'");
                     continue;
                 }
 
@@ -536,12 +543,12 @@ public class MapLoader
                         .GetAwaiter()
                         .GetResult();
 
-                    Console.WriteLine($"   Spawned '{obj.Name}' ({templateId}) at ({tileX}, {tileY})");
+                    _logger?.LogDebug("Spawned '{ObjectName}' ({TemplateId}) at ({X}, {Y})", obj.Name, templateId, tileX, tileY);
                     created++;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Failed to spawn '{obj.Name}' from template '{templateId}': {ex.Message}");
+                    _logger?.LogExceptionWithContext(ex, "Failed to spawn '{ObjectName}' from template '{TemplateId}'", obj.Name, templateId);
                 }
             }
         }

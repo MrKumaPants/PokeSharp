@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using PokeSharp.Core.Logging;
 using PokeSharp.Rendering.Assets;
 
 namespace PokeSharp.Game.Diagnostics;
@@ -7,37 +9,32 @@ namespace PokeSharp.Game.Diagnostics;
 /// </summary>
 public static class AssetDiagnostics
 {
-    public static void PrintAssetManagerStatus(AssetManager assetManager)
+    public static void PrintAssetManagerStatus(AssetManager assetManager, ILogger? logger = null)
     {
-        Console.WriteLine("╔══════════════════════════════════════════╗");
-        Console.WriteLine("║     ASSET MANAGER DIAGNOSTIC REPORT      ║");
-        Console.WriteLine("╚══════════════════════════════════════════╝");
-        Console.WriteLine();
+        if (logger == null)
+            return;
 
-        Console.WriteLine($"Total Loaded Textures: {assetManager.LoadedTextureCount}");
-        Console.WriteLine();
+        logger.LogDiagnosticHeader("ASSET MANAGER DIAGNOSTIC REPORT");
+
+        logger.LogDiagnosticInfo("Total Loaded Textures", assetManager.LoadedTextureCount);
 
         // Check for player texture
-        Console.WriteLine("🔍 Checking for 'player' texture:");
         var hasPlayer = assetManager.HasTexture("player");
-        Console.WriteLine($"   HasTexture('player'): {hasPlayer}");
-
         if (hasPlayer)
             try
             {
                 var playerTexture = assetManager.GetTexture("player");
-                Console.WriteLine("   ✅ Player texture loaded successfully!");
-                Console.WriteLine($"   Dimensions: {playerTexture.Width}x{playerTexture.Height}px");
-                Console.WriteLine($"   Format: {playerTexture.Format}");
+                logger.LogResourceLoaded("Texture", "player", 
+                    ("dimensions", $"{playerTexture.Width}x{playerTexture.Height}px"),
+                    ("format", playerTexture.Format.ToString()));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"   ❌ ERROR getting player texture: {ex.Message}");
+                logger.LogCriticalError(ex, "Get player texture");
             }
         else
-            Console.WriteLine("   ❌ Player texture NOT found in AssetManager!");
+            logger.LogResourceNotFound("Texture", "player");
 
-        Console.WriteLine();
-        Console.WriteLine("═══════════════════════════════════════════");
+        logger.LogDiagnosticSeparator();
     }
 }

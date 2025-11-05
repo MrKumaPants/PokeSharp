@@ -1,4 +1,5 @@
 using Arch.Core;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using PokeSharp.Core.Components;
 using PokeSharp.Core.Systems;
@@ -12,7 +13,18 @@ namespace PokeSharp.Rendering.Systems;
 /// </summary>
 public class CameraFollowSystem : BaseSystem
 {
+    private readonly ILogger<CameraFollowSystem>? _logger;
     private QueryDescription _playerQuery;
+
+    /// <summary>
+    ///     Initializes a new instance of the CameraFollowSystem class.
+    /// </summary>
+    /// <param name="logger">Optional logger for diagnostic output.</param>
+    public CameraFollowSystem(ILogger<CameraFollowSystem>? logger = null)
+    {
+        _logger = logger;
+        _logger?.LogDebug("CameraFollowSystem initialized");
+    }
 
     /// <inheritdoc />
     public override int Priority => SystemPriority.Camera;

@@ -1,5 +1,6 @@
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Extensions.Logging;
 using PokeSharp.Core.Components;
 
 namespace PokeSharp.Core.Systems;
@@ -10,7 +11,18 @@ namespace PokeSharp.Core.Systems;
 /// </summary>
 public class CollisionSystem : BaseSystem
 {
+    private readonly ILogger<CollisionSystem>? _logger;
     private SpatialHashSystem? _spatialHashSystem;
+
+    /// <summary>
+    ///     Initializes a new instance of the CollisionSystem class.
+    /// </summary>
+    /// <param name="logger">Optional logger for diagnostic output.</param>
+    public CollisionSystem(ILogger<CollisionSystem>? logger = null)
+    {
+        _logger = logger;
+        _logger?.LogDebug("CollisionSystem initialized");
+    }
 
     /// <inheritdoc />
     public override int Priority => SystemPriority.Collision;
@@ -31,6 +43,7 @@ public class CollisionSystem : BaseSystem
     public void SetSpatialHashSystem(SpatialHashSystem spatialHashSystem)
     {
         _spatialHashSystem = spatialHashSystem;
+        _logger?.LogDebug("SpatialHashSystem connected to CollisionSystem");
     }
 
     /// <summary>

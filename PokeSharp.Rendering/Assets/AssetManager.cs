@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
+using PokeSharp.Core.Logging;
 
 namespace PokeSharp.Rendering.Assets;
 
@@ -11,6 +13,7 @@ public class AssetManager : IDisposable
 {
     private readonly string _assetRoot;
     private readonly GraphicsDevice _graphicsDevice;
+    private readonly ILogger<AssetManager>? _logger;
     private readonly Dictionary<string, Texture2D> _textures;
     private bool _disposed;
     private AssetManifest? _manifest;
@@ -20,10 +23,12 @@ public class AssetManager : IDisposable
     /// </summary>
     /// <param name="graphicsDevice">The graphics device for creating textures.</param>
     /// <param name="assetRoot">Root directory for assets (default: "Assets").</param>
-    public AssetManager(GraphicsDevice graphicsDevice, string assetRoot = "Assets")
+    /// <param name="logger">Optional logger for diagnostic output.</param>
+    public AssetManager(GraphicsDevice graphicsDevice, string assetRoot = "Assets", ILogger<AssetManager>? logger = null)
     {
         _graphicsDevice = graphicsDevice ?? throw new ArgumentNullException(nameof(graphicsDevice));
         _assetRoot = assetRoot;
+        _logger = logger;
         _textures = new Dictionary<string, Texture2D>();
     }
 
@@ -55,11 +60,20 @@ public class AssetManager : IDisposable
     /// <param name="manifestPath">Path to the manifest JSON file.</param>
     public void LoadManifest(string manifestPath = "Assets/manifest.json")
     {
+        // Use scoped logging to group all manifest loading operations
+        using (_logger?.BeginScope("AssetManifest"))
+        {
+            LoadManifestInternal(manifestPath);
+        }
+    }
+
+    private void LoadManifestInternal(string manifestPath)
+    {
         if (!File.Exists(manifestPath))
             throw new FileNotFoundException($"Asset manifest not found: {manifestPath}");
 
         var json = File.ReadAllText(manifestPath);
-        Console.WriteLine($"📄 Manifest JSON content:\n{json}");
+        _logger?.LogDebug("Manifest JSON content:\n{Json}", json);
 
         // Use case-insensitive deserialization to match lowercase JSON keys with PascalCase C# properties
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
@@ -67,45 +81,57 @@ public class AssetManager : IDisposable
             JsonSerializer.Deserialize<AssetManifest>(json, options)
             ?? throw new InvalidOperationException("Failed to deserialize asset manifest");
 
-        Console.WriteLine("🔍 Deserialized manifest:");
-        Console.WriteLine($"   Tilesets: {_manifest.Tilesets?.Count ?? 0}");
-        Console.WriteLine($"   Sprites: {_manifest.Sprites?.Count ?? 0}");
-        Console.WriteLine($"   Maps: {_manifest.Maps?.Count ?? 0}");
+        _logger?.LogInformation("Deserialized manifest");
+        _logger?.LogInformation("Tilesets: {TilesetCount}", _manifest.Tilesets?.Count ?? 0);
+        _logger?.LogInformation("Sprites: {SpriteCount}", _manifest.Sprites?.Count ?? 0);
+        _logger?.LogInformation("Maps: {MapCount}", _manifest.Maps?.Count ?? 0);
 
         // Load all tilesets
         if (_manifest.Tilesets != null)
         {
-            Console.WriteLine($"📦 Loading {_manifest.Tilesets.Count} tileset(s)...");
+            _logger?.LogAssetLoadingStarted("tileset(s)", _manifest.Tilesets.Count);
+            var successful = 0;
+            var failed = 0;
+            
             foreach (var tileset in _manifest.Tilesets)
                 try
                 {
-                    Console.WriteLine(
-                        $"   → Loading tileset '{tileset.Id}' from '{tileset.Path}'..."
-                    );
                     LoadTexture(tileset.Id, tileset.Path);
-                    Console.WriteLine($"   ✅ Tileset '{tileset.Id}' loaded successfully");
+                    successful++;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"   ❌ Failed to load tileset '{tileset.Id}': {ex.Message}");
+                    failed++;
+                    _logger?.LogExceptionWithContext(ex, "Failed to load tileset '{TilesetId}'", tileset.Id);
                 }
+                
+            if (successful > 0)
+                _logger?.LogInformation("[green]✓[/] Loaded [cyan]{Count}[/] tilesets" + (failed > 0 ? " [dim]({Failed} failed)[/]" : ""), 
+                    successful, failed);
         }
 
         // Load all sprites
         if (_manifest.Sprites != null)
         {
-            Console.WriteLine($"🎨 Loading {_manifest.Sprites.Count} sprite(s)...");
+            _logger?.LogAssetLoadingStarted("sprite(s)", _manifest.Sprites.Count);
+            var successful = 0;
+            var failed = 0;
+            
             foreach (var sprite in _manifest.Sprites)
                 try
                 {
-                    Console.WriteLine($"   → Loading sprite '{sprite.Id}' from '{sprite.Path}'...");
                     LoadTexture(sprite.Id, sprite.Path);
-                    Console.WriteLine($"   ✅ Sprite '{sprite.Id}' loaded successfully");
+                    successful++;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"   ❌ Failed to load sprite '{sprite.Id}': {ex.Message}");
+                    failed++;
+                    _logger?.LogExceptionWithContext(ex, "Failed to load sprite '{SpriteId}'", sprite.Id);
                 }
+                
+            if (successful > 0)
+                _logger?.LogInformation("[green]✓[/] Loaded [cyan]{Count}[/] sprites" + (failed > 0 ? " [dim]({Failed} failed)[/]" : ""), 
+                    successful, failed);
         }
     }
 
@@ -124,10 +150,24 @@ public class AssetManager : IDisposable
         if (!File.Exists(fullPath))
             throw new FileNotFoundException($"Texture file not found: {fullPath}");
 
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        
         using var fileStream = File.OpenRead(fullPath);
         var texture = Texture2D.FromStream(_graphicsDevice, fileStream);
 
+        sw.Stop();
+        var elapsedMs = sw.Elapsed.TotalMilliseconds;
+
         _textures[id] = texture;
+
+        // Log texture loading with timing
+        _logger?.LogTextureLoaded(id, elapsedMs, texture.Width, texture.Height);
+        
+        // Warn about slow texture loads (>100ms)
+        if (elapsedMs > 100.0)
+        {
+            _logger?.LogSlowTextureLoad(id, elapsedMs);
+        }
     }
 
     /// <summary>

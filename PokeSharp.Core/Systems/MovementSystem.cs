@@ -1,7 +1,9 @@
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using PokeSharp.Core.Components;
+using PokeSharp.Core.Logging;
 
 namespace PokeSharp.Core.Systems;
 
@@ -13,7 +15,36 @@ namespace PokeSharp.Core.Systems;
 public class MovementSystem : BaseSystem
 {
     private const int TileSize = 16;
+    private readonly ILogger<MovementSystem>? _logger;
     private SpatialHashSystem? _spatialHashSystem;
+    
+    // Cache query descriptions to avoid allocation every frame
+    private readonly QueryDescription _movementQuery;
+    private readonly QueryDescription _movementQueryWithAnimation;
+    private readonly QueryDescription _mapInfoQuery;
+
+    // Cache query descriptions for movement requests
+    private readonly QueryDescription _requestQuery;
+    private readonly QueryDescription _removeQuery;
+
+    /// <summary>
+    ///     Initializes a new instance of the MovementSystem class.
+    /// </summary>
+    /// <param name="logger">Optional logger for diagnostic output.</param>
+    public MovementSystem(ILogger<MovementSystem>? logger = null)
+    {
+        _logger = logger;
+        _logger?.LogDebug("MovementSystem initialized");
+        
+        // Pre-build query descriptions once
+        _movementQuery = new QueryDescription().WithAll<Position, GridMovement>().WithNone<Animation>();
+        _movementQueryWithAnimation = new QueryDescription().WithAll<Position, GridMovement, Animation>();
+        _mapInfoQuery = new QueryDescription().WithAll<MapInfo>();
+        
+        // Initialize request queries
+        _requestQuery = new QueryDescription().WithAll<Position, GridMovement, MovementRequest>();
+        _removeQuery = new QueryDescription().WithAll<MovementRequest>();
+    }
 
     /// <summary>
     ///     Sets the spatial hash system for collision detection.
@@ -21,6 +52,7 @@ public class MovementSystem : BaseSystem
     public void SetSpatialHashSystem(SpatialHashSystem spatialHashSystem)
     {
         _spatialHashSystem = spatialHashSystem;
+        _logger?.LogDebug("SpatialHashSystem connected to MovementSystem");
     }
 
     /// <inheritdoc />
@@ -34,82 +66,132 @@ public class MovementSystem : BaseSystem
         // Process movement requests first (before updating existing movements)
         ProcessMovementRequests(world);
 
-        // Query all entities with Position and GridMovement components
-        var query = new QueryDescription().WithAll<Position, GridMovement>();
-
+        // Process entities WITH animation (separate query to avoid Has<> checks)
         world.Query(
-            in query,
+            in _movementQueryWithAnimation,
+            (Entity entity, ref Position position, ref GridMovement movement, ref Animation animation) =>
+            {
+                ProcessMovementWithAnimation(ref position, ref movement, ref animation, deltaTime);
+            }
+        );
+
+        // Process entities WITHOUT animation (separate query for performance)
+        world.Query(
+            in _movementQuery,
             (Entity entity, ref Position position, ref GridMovement movement) =>
             {
-                if (movement.IsMoving)
-                {
-                    // Update movement progress based on speed and delta time
-                    movement.MovementProgress += movement.MovementSpeed * deltaTime;
-
-                    if (movement.MovementProgress >= 1.0f)
-                    {
-                        // Movement complete - snap to target position
-                        movement.MovementProgress = 1.0f;
-                        position.PixelX = movement.TargetPosition.X;
-                        position.PixelY = movement.TargetPosition.Y;
-
-                        // Update grid coordinates
-                        position.X = (int)(movement.TargetPosition.X / TileSize);
-                        position.Y = (int)(movement.TargetPosition.Y / TileSize);
-
-                        movement.CompleteMovement();
-
-                        // Switch to idle animation if entity has Animation component
-                        if (entity.Has<Animation>())
-                        {
-                            ref var animation = ref entity.Get<Animation>();
-                            animation.ChangeAnimation(movement.FacingDirection.ToIdleAnimation());
-                        }
-                    }
-                    else
-                    {
-                        // Interpolate between start and target positions
-                        position.PixelX = MathHelper.Lerp(
-                            movement.StartPosition.X,
-                            movement.TargetPosition.X,
-                            movement.MovementProgress
-                        );
-
-                        position.PixelY = MathHelper.Lerp(
-                            movement.StartPosition.Y,
-                            movement.TargetPosition.Y,
-                            movement.MovementProgress
-                        );
-
-                        // Ensure walk animation is playing if entity has Animation component
-                        if (entity.Has<Animation>())
-                        {
-                            ref var animation = ref entity.Get<Animation>();
-                            var expectedAnimation = movement.FacingDirection.ToWalkAnimation();
-
-                            if (animation.CurrentAnimation != expectedAnimation)
-                                animation.ChangeAnimation(expectedAnimation);
-                        }
-                    }
-                }
-                else
-                {
-                    // Ensure pixel position matches grid position when not moving
-                    position.SyncPixelsToGrid();
-
-                    // Ensure idle animation is playing if entity has Animation component
-                    if (entity.Has<Animation>())
-                    {
-                        ref var animation = ref entity.Get<Animation>();
-                        var expectedAnimation = movement.FacingDirection.ToIdleAnimation();
-
-                        if (animation.CurrentAnimation != expectedAnimation)
-                            animation.ChangeAnimation(expectedAnimation);
-                    }
-                }
+                ProcessMovementNoAnimation(ref position, ref movement, deltaTime);
             }
         );
     }
+    
+    /// <summary>
+    ///     Processes movement for entities with animation components.
+    /// </summary>
+    private void ProcessMovementWithAnimation(ref Position position, ref GridMovement movement, ref Animation animation, float deltaTime)
+    {
+        if (movement.IsMoving)
+        {
+            // Update movement progress based on speed and delta time
+            movement.MovementProgress += movement.MovementSpeed * deltaTime;
+
+            if (movement.MovementProgress >= 1.0f)
+            {
+                // Movement complete - snap to target position
+                movement.MovementProgress = 1.0f;
+                position.PixelX = movement.TargetPosition.X;
+                position.PixelY = movement.TargetPosition.Y;
+
+                // Update grid coordinates
+                position.X = (int)(movement.TargetPosition.X / TileSize);
+                position.Y = (int)(movement.TargetPosition.Y / TileSize);
+
+                movement.CompleteMovement();
+
+                // Switch to idle animation
+                animation.ChangeAnimation(movement.FacingDirection.ToIdleAnimation());
+            }
+            else
+            {
+                // Interpolate between start and target positions
+                position.PixelX = MathHelper.Lerp(
+                    movement.StartPosition.X,
+                    movement.TargetPosition.X,
+                    movement.MovementProgress
+                );
+
+                position.PixelY = MathHelper.Lerp(
+                    movement.StartPosition.Y,
+                    movement.TargetPosition.Y,
+                    movement.MovementProgress
+                );
+
+                // Ensure walk animation is playing
+                var expectedAnimation = movement.FacingDirection.ToWalkAnimation();
+                if (animation.CurrentAnimation != expectedAnimation)
+                    animation.ChangeAnimation(expectedAnimation);
+            }
+        }
+        else
+        {
+            // Ensure pixel position matches grid position when not moving
+            position.SyncPixelsToGrid();
+
+            // Ensure idle animation is playing
+            var expectedAnimation = movement.FacingDirection.ToIdleAnimation();
+            if (animation.CurrentAnimation != expectedAnimation)
+                animation.ChangeAnimation(expectedAnimation);
+        }
+    }
+    
+    /// <summary>
+    ///     Processes movement for entities without animation components.
+    /// </summary>
+    private void ProcessMovementNoAnimation(ref Position position, ref GridMovement movement, float deltaTime)
+    {
+        if (movement.IsMoving)
+        {
+            // Update movement progress based on speed and delta time
+            movement.MovementProgress += movement.MovementSpeed * deltaTime;
+
+            if (movement.MovementProgress >= 1.0f)
+            {
+                // Movement complete - snap to target position
+                movement.MovementProgress = 1.0f;
+                position.PixelX = movement.TargetPosition.X;
+                position.PixelY = movement.TargetPosition.Y;
+
+                // Update grid coordinates
+                position.X = (int)(movement.TargetPosition.X / TileSize);
+                position.Y = (int)(movement.TargetPosition.Y / TileSize);
+
+                movement.CompleteMovement();
+            }
+            else
+            {
+                // Interpolate between start and target positions
+                position.PixelX = MathHelper.Lerp(
+                    movement.StartPosition.X,
+                    movement.TargetPosition.X,
+                    movement.MovementProgress
+                );
+
+                position.PixelY = MathHelper.Lerp(
+                    movement.StartPosition.Y,
+                    movement.TargetPosition.Y,
+                    movement.MovementProgress
+                );
+            }
+        }
+        else
+        {
+            // Ensure pixel position matches grid position when not moving
+            position.SyncPixelsToGrid();
+        }
+    }
+
+    // Cache for entities to remove (reused across frames to avoid allocation)
+    private readonly List<Entity> _entitiesToRemove = new(32);
 
     /// <summary>
     ///     Processes pending movement requests and validates them with collision checking.
@@ -117,14 +199,9 @@ public class MovementSystem : BaseSystem
     /// </summary>
     private void ProcessMovementRequests(World world)
     {
-        var requestQuery = new QueryDescription().WithAll<
-            Position,
-            GridMovement,
-            MovementRequest
-        >();
-
+        // Use cached query descriptions (initialized in constructor)
         world.Query(
-            in requestQuery,
+            in _requestQuery,
             (Entity entity, ref Position position, ref GridMovement movement, ref MovementRequest request) =>
             {
                 // Skip if already processed or entity is currently moving
@@ -142,20 +219,20 @@ public class MovementSystem : BaseSystem
             }
         );
 
-        // Remove processed requests
-        var removeQuery = new QueryDescription().WithAll<MovementRequest>();
-        var toRemove = new List<Entity>();
+        // Remove processed requests - reuse list to avoid allocation
+        _entitiesToRemove.Clear();
 
         world.Query(
-            in removeQuery,
+            in _removeQuery,
             (Entity entity, ref MovementRequest request) =>
             {
                 if (request.Processed)
-                    toRemove.Add(entity);
+                    _entitiesToRemove.Add(entity);
             }
         );
 
-        foreach (var entity in toRemove)
+        // Remove in separate loop to avoid modifying collection during iteration
+        foreach (var entity in _entitiesToRemove)
         {
             world.Remove<MovementRequest>(entity);
         }
@@ -201,6 +278,7 @@ public class MovementSystem : BaseSystem
         // Check map boundaries
         if (!IsWithinMapBounds(world, position.MapId, targetX, targetY))
         {
+            _logger?.LogMovementBlocked(targetX, targetY, position.MapId);
             return; // Outside map bounds - block movement
         }
 
@@ -240,7 +318,10 @@ public class MovementSystem : BaseSystem
 
                 // Check if landing position is within bounds
                 if (!IsWithinMapBounds(world, position.MapId, jumpLandX, jumpLandY))
+                {
+                    _logger?.LogLedgeJumpBlocked(jumpLandX, jumpLandY);
                     return; // Can't jump outside map bounds
+                }
 
                 // Check if landing position is valid (not blocked)
                 if (
@@ -252,7 +333,10 @@ public class MovementSystem : BaseSystem
                         Direction.None
                     )
                 )
+                {
+                    _logger?.LogLedgeLandingBlocked(jumpLandX, jumpLandY);
                     return; // Can't jump if landing is blocked
+                }
 
                 // Perform the jump (2 tiles in jump direction)
                 var jumpStart = new Vector2(position.PixelX, position.PixelY);
@@ -261,6 +345,7 @@ public class MovementSystem : BaseSystem
 
                 // Update facing direction
                 movement.FacingDirection = direction;
+                _logger?.LogLedgeJump(targetX, targetY, jumpLandX, jumpLandY, direction.ToString());
                 return;
             }
 
@@ -278,7 +363,10 @@ public class MovementSystem : BaseSystem
                 direction
             )
         )
+        {
+            _logger?.LogCollisionBlocked(targetX, targetY, direction.ToString());
             return; // Position is blocked
+        }
 
         // Start the grid movement
         var startPixels = new Vector2(position.PixelX, position.PixelY);
@@ -298,14 +386,13 @@ public class MovementSystem : BaseSystem
     /// <param name="tileX">The X coordinate in tile space.</param>
     /// <param name="tileY">The Y coordinate in tile space.</param>
     /// <returns>True if within bounds or no map bounds exist, false if outside.</returns>
-    private static bool IsWithinMapBounds(World world, int mapId, int tileX, int tileY)
+    private bool IsWithinMapBounds(World world, int mapId, int tileX, int tileY)
     {
-        // Query for MapInfo entity with matching mapId
-        var mapInfoQuery = new QueryDescription().WithAll<MapInfo>();
+        // Use cached query description to avoid allocation
         bool? withinBounds = null; // null = no MapInfo found
 
         world.Query(
-            in mapInfoQuery,
+            in _mapInfoQuery,
             (ref MapInfo mapInfo) =>
             {
                 if (mapInfo.MapId == mapId)

@@ -1,7 +1,9 @@
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using PokeSharp.Core.Components;
+using PokeSharp.Core.Logging;
 
 namespace PokeSharp.Core.Systems;
 
@@ -12,6 +14,19 @@ namespace PokeSharp.Core.Systems;
 /// </summary>
 public class TileAnimationSystem : BaseSystem
 {
+    private readonly ILogger<TileAnimationSystem>? _logger;
+    private int _animatedTileCount = -1; // Track for logging on first update
+
+    /// <summary>
+    ///     Initializes a new instance of the TileAnimationSystem class.
+    /// </summary>
+    /// <param name="logger">Optional logger for diagnostic output.</param>
+    public TileAnimationSystem(ILogger<TileAnimationSystem>? logger = null)
+    {
+        _logger = logger;
+        _logger?.LogDebug("TileAnimationSystem initialized");
+    }
+
     /// <inheritdoc />
     public override int Priority => SystemPriority.TileAnimation;
 
@@ -25,14 +40,23 @@ public class TileAnimationSystem : BaseSystem
 
         // Query all entities with AnimatedTile and TileSprite components
         var query = new QueryDescription().WithAll<AnimatedTile, TileSprite>();
+        int tileCount = 0;
 
         world.Query(
             in query,
             (Entity entity, ref AnimatedTile animTile, ref TileSprite sprite) =>
             {
                 UpdateTileAnimation(ref animTile, ref sprite, deltaTime);
+                tileCount++;
             }
         );
+
+        // Log animated tile count on first update
+        if (_animatedTileCount < 0 && tileCount > 0)
+        {
+            _animatedTileCount = tileCount;
+            _logger?.LogAnimatedTilesProcessed(_animatedTileCount);
+        }
     }
 
     /// <summary>
