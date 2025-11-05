@@ -1,5 +1,4 @@
 using Arch.Core;
-using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Core.Components;
 using PokeSharp.Core.Systems;
@@ -9,18 +8,18 @@ using AnimationComponent = PokeSharp.Core.Components.Animation;
 namespace PokeSharp.Rendering.Systems;
 
 /// <summary>
-/// System that updates sprite animations by modifying sprite source rectangles based on
-/// animation definitions and frame timing.
-/// Executes at priority 800 (after movement, before rendering).
+///     System that updates sprite animations by modifying sprite source rectangles based on
+///     animation definitions and frame timing.
+///     Executes at priority 800 (after movement, before rendering).
 /// </summary>
 public class AnimationSystem : BaseSystem
 {
     private readonly AnimationLibrary _animationLibrary;
     private readonly ILogger<AnimationSystem>? _logger;
-    private ulong _frameCounter = 0;
+    private ulong _frameCounter;
 
     /// <summary>
-    /// Initializes a new instance of the AnimationSystem class.
+    ///     Initializes a new instance of the AnimationSystem class.
     /// </summary>
     /// <param name="animationLibrary">The animation library containing all animation definitions.</param>
     /// <param name="logger">Optional logger for diagnostics.</param>
@@ -34,10 +33,10 @@ public class AnimationSystem : BaseSystem
         _logger = logger;
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override int Priority => SystemPriority.Animation;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Update(World world, float deltaTime)
     {
         try
@@ -68,7 +67,7 @@ public class AnimationSystem : BaseSystem
     }
 
     /// <summary>
-    /// Updates a single animation and its corresponding sprite.
+    ///     Updates a single animation and its corresponding sprite.
     /// </summary>
     private void UpdateAnimation(
         Entity entity,
@@ -79,9 +78,7 @@ public class AnimationSystem : BaseSystem
     {
         // Skip if animation is not playing
         if (!animation.IsPlaying || animation.IsComplete)
-        {
             return;
-        }
 
         // Get the animation definition
         if (!_animationLibrary.TryGetAnimation(animation.CurrentAnimation, out var animDef))
@@ -103,7 +100,7 @@ public class AnimationSystem : BaseSystem
             return;
         }
 
-        int previousFrame = animation.CurrentFrame;
+        var previousFrame = animation.CurrentFrame;
 
         // Update frame timer
         animation.FrameTimer += deltaTime;
@@ -138,9 +135,7 @@ public class AnimationSystem : BaseSystem
 
         // Trigger events for the current frame if it changed and hasn't been triggered yet
         if (animation.CurrentFrame != previousFrame)
-        {
             TriggerFrameEvents(entity, animation.CurrentFrame, animDef, ref animation);
-        }
 
         // Update sprite source rectangle to current frame
         try
@@ -164,7 +159,7 @@ public class AnimationSystem : BaseSystem
     }
 
     /// <summary>
-    /// Triggers all events associated with a specific frame.
+    ///     Triggers all events associated with a specific frame.
     /// </summary>
     /// <param name="entity">The entity that owns the animation.</param>
     /// <param name="frameIndex">The frame index to check for events.</param>
@@ -182,16 +177,13 @@ public class AnimationSystem : BaseSystem
             !animDef.HasEventsOnFrame(frameIndex)
             || animation.TriggeredEventFrames.Contains(frameIndex)
         )
-        {
             return;
-        }
 
         // Get events for this frame
         var events = animDef.GetEventsForFrame(frameIndex);
 
         // Trigger each event
         foreach (var animEvent in events)
-        {
             try
             {
                 _logger?.LogDebug(
@@ -213,7 +205,6 @@ public class AnimationSystem : BaseSystem
                     animation.CurrentAnimation
                 );
             }
-        }
 
         // Mark this frame as triggered
         animation.TriggeredEventFrames.Add(frameIndex);

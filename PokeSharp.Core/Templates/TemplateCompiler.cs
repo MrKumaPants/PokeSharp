@@ -3,9 +3,9 @@ using Microsoft.Extensions.Logging;
 namespace PokeSharp.Core.Templates;
 
 /// <summary>
-/// Default implementation of <see cref="ITemplateCompiler{TEntity}"/>.
-/// Converts data layer entities into runtime EntityTemplates for ECS spawning.
-/// Supports template validation, base template inheritance, and component mapping.
+///     Default implementation of <see cref="ITemplateCompiler{TEntity}" />.
+///     Converts data layer entities into runtime EntityTemplates for ECS spawning.
+///     Supports template validation, base template inheritance, and component mapping.
 /// </summary>
 /// <typeparam name="TEntity">Data layer entity type</typeparam>
 public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
@@ -19,7 +19,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<EntityTemplate> CompileAsync(
         TEntity entity,
         CancellationToken cancellationToken = default
@@ -63,7 +63,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
         return await Task.FromResult(template);
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<IEnumerable<EntityTemplate>> CompileBatchAsync(
         IEnumerable<TEntity> entities,
         CancellationToken cancellationToken = default
@@ -109,7 +109,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
         return templates;
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public bool Validate(TEntity entity)
     {
         ArgumentNullException.ThrowIfNull(entity, nameof(entity));
@@ -126,14 +126,14 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
         }
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public bool SupportsType<T>()
         where T : class
     {
         return typeof(T) == typeof(TEntity);
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public void RegisterCompiler(Func<TEntity, EntityTemplate> compilationFunc)
     {
         ArgumentNullException.ThrowIfNull(compilationFunc, nameof(compilationFunc));
@@ -146,8 +146,8 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
 }
 
 /// <summary>
-/// Registry for managing multiple template compilers for different entity types.
-/// Provides centralized access to all registered compilers.
+///     Registry for managing multiple template compilers for different entity types.
+///     Provides centralized access to all registered compilers.
 /// </summary>
 public sealed class TemplateCompilerRegistry
 {
@@ -160,7 +160,7 @@ public sealed class TemplateCompilerRegistry
     }
 
     /// <summary>
-    /// Register a compiler for a specific entity type.
+    ///     Register a compiler for a specific entity type.
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <param name="compiler">Compiler instance</param>
@@ -176,7 +176,7 @@ public sealed class TemplateCompilerRegistry
     }
 
     /// <summary>
-    /// Get a compiler for a specific entity type.
+    ///     Get a compiler for a specific entity type.
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <returns>Compiler instance or null if not found</returns>
@@ -190,7 +190,7 @@ public sealed class TemplateCompilerRegistry
     }
 
     /// <summary>
-    /// Check if a compiler is registered for an entity type.
+    ///     Check if a compiler is registered for an entity type.
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <returns>True if compiler exists</returns>
@@ -201,7 +201,7 @@ public sealed class TemplateCompilerRegistry
     }
 
     /// <summary>
-    /// Get all registered entity types.
+    ///     Get all registered entity types.
     /// </summary>
     /// <returns>Collection of entity types</returns>
     public IEnumerable<Type> GetRegisteredTypes()

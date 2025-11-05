@@ -4,15 +4,15 @@ using Microsoft.Extensions.Logging;
 namespace PokeSharp.Data.Seed;
 
 /// <summary>
-/// JSON-based data seeder using System.Text.Json.
-/// Loads game data from JSON files into the database.
-/// Idempotent - safe to run multiple times (checks for existing data).
+///     JSON-based data seeder using System.Text.Json.
+///     Loads game data from JSON files into the database.
+///     Idempotent - safe to run multiple times (checks for existing data).
 /// </summary>
 public sealed class JsonDataSeeder : IDataSeeder
 {
-    private readonly ILogger<JsonDataSeeder> _logger;
-    private readonly JsonSerializerOptions _jsonOptions;
     private readonly string _defaultDataPath;
+    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger<JsonDataSeeder> _logger;
 
     public JsonDataSeeder(ILogger<JsonDataSeeder> logger, string defaultDataPath = "data")
     {
@@ -29,7 +29,7 @@ public sealed class JsonDataSeeder : IDataSeeder
         };
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<int> SeedAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
@@ -50,7 +50,7 @@ public sealed class JsonDataSeeder : IDataSeeder
         return await SeedFromDirectoryAsync(_defaultDataPath, cancellationToken);
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<int> SeedFromDirectoryAsync(
         string directoryPath,
         CancellationToken cancellationToken = default
@@ -96,7 +96,7 @@ public sealed class JsonDataSeeder : IDataSeeder
         return totalSeeded;
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<int> SeedFromFileAsync(
         string filePath,
         CancellationToken cancellationToken = default
@@ -118,13 +118,9 @@ public sealed class JsonDataSeeder : IDataSeeder
 
             // Try to parse as array first
             if (json.TrimStart().StartsWith('['))
-            {
                 return await SeedArrayAsync(json, filePath, cancellationToken);
-            }
-            else
-            {
-                return await SeedSingleAsync(json, filePath, cancellationToken);
-            }
+
+            return await SeedSingleAsync(json, filePath, cancellationToken);
         }
         catch (JsonException ex)
         {
@@ -133,7 +129,7 @@ public sealed class JsonDataSeeder : IDataSeeder
         }
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public async Task<DataValidationResult> ValidateAsync(
         string directoryPath,
         CancellationToken cancellationToken = default
@@ -142,9 +138,7 @@ public sealed class JsonDataSeeder : IDataSeeder
         ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath, nameof(directoryPath));
 
         if (!Directory.Exists(directoryPath))
-        {
             return DataValidationResult.Failure($"Directory not found: {directoryPath}");
-        }
 
         var errors = new List<string>();
         var warnings = new List<string>();
@@ -186,17 +180,13 @@ public sealed class JsonDataSeeder : IDataSeeder
         var isValid = errors.Count == 0;
 
         if (isValid)
-        {
             _logger.LogInformation("Validation successful for {FileCount} files", jsonFiles.Length);
-        }
         else
-        {
             _logger.LogWarning(
                 "Validation found {ErrorCount} errors in {FileCount} files",
                 errors.Count,
                 jsonFiles.Length
             );
-        }
 
         return new DataValidationResult
         {

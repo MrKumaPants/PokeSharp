@@ -1,11 +1,9 @@
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Rendering.Assets;
 
 namespace PokeSharp.Game.Diagnostics;
 
 /// <summary>
-/// Diagnostic utility to check asset loading.
+///     Diagnostic utility to check asset loading.
 /// </summary>
 public static class AssetDiagnostics
 {
@@ -21,15 +19,14 @@ public static class AssetDiagnostics
 
         // Check for player texture
         Console.WriteLine("🔍 Checking for 'player' texture:");
-        bool hasPlayer = assetManager.HasTexture("player");
+        var hasPlayer = assetManager.HasTexture("player");
         Console.WriteLine($"   HasTexture('player'): {hasPlayer}");
 
         if (hasPlayer)
-        {
             try
             {
                 var playerTexture = assetManager.GetTexture("player");
-                Console.WriteLine($"   ✅ Player texture loaded successfully!");
+                Console.WriteLine("   ✅ Player texture loaded successfully!");
                 Console.WriteLine($"   Dimensions: {playerTexture.Width}x{playerTexture.Height}px");
                 Console.WriteLine($"   Format: {playerTexture.Format}");
             }
@@ -37,11 +34,8 @@ public static class AssetDiagnostics
             {
                 Console.WriteLine($"   ❌ ERROR getting player texture: {ex.Message}");
             }
-        }
         else
-        {
-            Console.WriteLine($"   ❌ Player texture NOT found in AssetManager!");
-        }
+            Console.WriteLine("   ❌ Player texture NOT found in AssetManager!");
 
         Console.WriteLine();
         Console.WriteLine("═══════════════════════════════════════════");

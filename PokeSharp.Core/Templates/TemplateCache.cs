@@ -3,19 +3,19 @@ using System.Collections.Concurrent;
 namespace PokeSharp.Core.Templates;
 
 /// <summary>
-/// Thread-safe in-memory cache for entity templates with O(1) lookup performance.
-/// Supports hot-reload and invalidation for development workflows.
-/// Uses ConcurrentDictionary for lock-free operations.
+///     Thread-safe in-memory cache for entity templates with O(1) lookup performance.
+///     Supports hot-reload and invalidation for development workflows.
+///     Uses ConcurrentDictionary for lock-free operations.
 /// </summary>
 public sealed class TemplateCache
 {
-    private readonly ConcurrentDictionary<string, EntityTemplate> _templates = new();
-    private readonly ConcurrentDictionary<string, DateTime> _lastModified = new();
     private readonly object _invalidationLock = new();
+    private readonly ConcurrentDictionary<string, DateTime> _lastModified = new();
+    private readonly ConcurrentDictionary<string, EntityTemplate> _templates = new();
 
     /// <summary>
-    /// Register a template in the cache.
-    /// If a template with the same ID exists, it will be replaced.
+    ///     Register a template in the cache.
+    ///     If a template with the same ID exists, it will be replaced.
     /// </summary>
     /// <param name="template">Template to register</param>
     /// <exception cref="ArgumentNullException">Template is null</exception>
@@ -39,7 +39,7 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Get a template by ID with O(1) lookup performance.
+    ///     Get a template by ID with O(1) lookup performance.
     /// </summary>
     /// <param name="templateId">Unique template identifier</param>
     /// <returns>Template if found, null otherwise</returns>
@@ -52,7 +52,7 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Try to get a template by ID.
+    ///     Try to get a template by ID.
     /// </summary>
     /// <param name="templateId">Template identifier</param>
     /// <param name="template">Output template if found</param>
@@ -64,7 +64,7 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Check if a template exists in the cache.
+    ///     Check if a template exists in the cache.
     /// </summary>
     /// <param name="templateId">Template identifier</param>
     /// <returns>True if template is cached</returns>
@@ -74,7 +74,7 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Remove a template from the cache (invalidation).
+    ///     Remove a template from the cache (invalidation).
     /// </summary>
     /// <param name="templateId">Template identifier to remove</param>
     /// <returns>True if template was removed</returns>
@@ -91,8 +91,8 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Invalidate all templates matching a predicate.
-    /// Useful for bulk invalidation (e.g., all pokemon templates).
+    ///     Invalidate all templates matching a predicate.
+    ///     Useful for bulk invalidation (e.g., all pokemon templates).
     /// </summary>
     /// <param name="predicate">Predicate to test template IDs</param>
     /// <returns>Number of templates invalidated</returns>
@@ -106,18 +106,16 @@ public sealed class TemplateCache
             var count = 0;
 
             foreach (var templateId in toRemove)
-            {
                 if (Invalidate(templateId))
                     count++;
-            }
 
             return count;
         }
     }
 
     /// <summary>
-    /// Clear all templates from the cache.
-    /// Use with caution - typically only for testing or full reload.
+    ///     Clear all templates from the cache.
+    ///     Use with caution - typically only for testing or full reload.
     /// </summary>
     public void Clear()
     {
@@ -126,7 +124,7 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Get all template IDs currently in the cache.
+    ///     Get all template IDs currently in the cache.
     /// </summary>
     /// <returns>Enumerable of template IDs</returns>
     public IEnumerable<string> GetAllTemplateIds()
@@ -135,8 +133,8 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Get all templates currently in the cache.
-    /// Returns a snapshot to avoid concurrent modification issues.
+    ///     Get all templates currently in the cache.
+    ///     Returns a snapshot to avoid concurrent modification issues.
     /// </summary>
     /// <returns>Enumerable of templates</returns>
     public IEnumerable<EntityTemplate> GetAllTemplates()
@@ -145,8 +143,8 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Get templates by tag (category/archetype).
-    /// Example: GetByTag("pokemon") returns all Pokemon templates.
+    ///     Get templates by tag (category/archetype).
+    ///     Example: GetByTag("pokemon") returns all Pokemon templates.
     /// </summary>
     /// <param name="tag">Entity tag to filter by</param>
     /// <returns>Templates matching the tag</returns>
@@ -161,7 +159,7 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Get the timestamp when a template was last modified/registered.
+    ///     Get the timestamp when a template was last modified/registered.
     /// </summary>
     /// <param name="templateId">Template identifier</param>
     /// <returns>Last modified timestamp or null if not found</returns>
@@ -174,7 +172,7 @@ public sealed class TemplateCache
     }
 
     /// <summary>
-    /// Get cache statistics for monitoring.
+    ///     Get cache statistics for monitoring.
     /// </summary>
     /// <returns>Cache statistics</returns>
     public CacheStatistics GetStatistics()
@@ -185,17 +183,13 @@ public sealed class TemplateCache
             TemplatesByTag = _templates
                 .Values.GroupBy(t => t.Tag)
                 .ToDictionary(g => g.Key, g => g.Count()),
-            OldestTemplate = _lastModified.Values.Any()
-                ? _lastModified.Values.Min()
-                : (DateTime?)null,
-            NewestTemplate = _lastModified.Values.Any()
-                ? _lastModified.Values.Max()
-                : (DateTime?)null,
+            OldestTemplate = _lastModified.Values.Any() ? _lastModified.Values.Min() : null,
+            NewestTemplate = _lastModified.Values.Any() ? _lastModified.Values.Max() : null,
         };
     }
 
     /// <summary>
-    /// Batch register multiple templates efficiently.
+    ///     Batch register multiple templates efficiently.
     /// </summary>
     /// <param name="templates">Templates to register</param>
     /// <returns>Number of templates successfully registered</returns>
@@ -205,7 +199,6 @@ public sealed class TemplateCache
 
         var count = 0;
         foreach (var template in templates)
-        {
             try
             {
                 Register(template);
@@ -215,16 +208,14 @@ public sealed class TemplateCache
             {
                 // Log error but continue with other templates
                 // In production, use ILogger here
-                continue;
             }
-        }
 
         return count;
     }
 }
 
 /// <summary>
-/// Statistics about the template cache state.
+///     Statistics about the template cache state.
 /// </summary>
 public sealed class CacheStatistics
 {

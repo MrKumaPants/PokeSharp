@@ -7,17 +7,17 @@ using PokeSharp.Rendering.Components;
 namespace PokeSharp.Rendering.Systems;
 
 /// <summary>
-/// System for camera following with smooth transitions and map bounds clamping.
-/// Sets the camera's follow target and calls camera.Update() to handle all logic.
+///     System for camera following with smooth transitions and map bounds clamping.
+///     Sets the camera's follow target and calls camera.Update() to handle all logic.
 /// </summary>
 public class CameraFollowSystem : BaseSystem
 {
     private QueryDescription _playerQuery;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override int Priority => SystemPriority.Camera;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Initialize(World world)
     {
         base.Initialize(world);
@@ -26,7 +26,7 @@ public class CameraFollowSystem : BaseSystem
         _playerQuery = new QueryDescription().WithAll<Player, Position, Camera>();
     }
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Update(World world, float deltaTime)
     {
         if (!Enabled)

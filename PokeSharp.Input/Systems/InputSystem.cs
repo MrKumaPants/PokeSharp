@@ -10,19 +10,20 @@ using PokeSharp.Input.Services;
 namespace PokeSharp.Input.Systems;
 
 /// <summary>
-/// System that processes keyboard and gamepad input and converts it to movement commands.
-/// Implements Pokemon-style grid-locked input with queue-based buffering for responsive controls.
+///     System that processes keyboard and gamepad input and converts it to movement commands.
+///     Implements Pokemon-style grid-locked input with queue-based buffering for responsive controls.
 /// </summary>
 public class InputSystem : BaseSystem
 {
     private const int TileSize = 16;
     private readonly InputBuffer _inputBuffer;
-    private float _totalTime;
     private Direction _lastBufferedDirection = Direction.None;
     private float _lastBufferTime = -1f;
+    private float _totalTime;
+    private SpatialHashSystem? _spatialHashSystem;
 
     /// <summary>
-    /// Initializes a new instance of the InputSystem class.
+    ///     Initializes a new instance of the InputSystem class.
     /// </summary>
     /// <param name="maxBufferSize">Maximum number of inputs to buffer (default: 5).</param>
     /// <param name="bufferTimeout">How long inputs remain valid in seconds (default: 0.2s).</param>
@@ -31,10 +32,20 @@ public class InputSystem : BaseSystem
         _inputBuffer = new InputBuffer(maxBufferSize, bufferTimeout);
     }
 
-    /// <inheritdoc/>
+    /// <summary>
+    ///     Sets the spatial hash system for collision detection.
+    ///     Should be called during system initialization.
+    /// </summary>
+    /// <param name="spatialHashSystem">The spatial hash system instance.</param>
+    public void SetSpatialHashSystem(SpatialHashSystem spatialHashSystem)
+    {
+        _spatialHashSystem = spatialHashSystem;
+    }
+
+    /// <inheritdoc />
     public override int Priority => SystemPriority.Input;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Update(World world, float deltaTime)
     {
         EnsureInitialized();
@@ -63,9 +74,7 @@ public class InputSystem : BaseSystem
             ) =>
             {
                 if (!input.InputEnabled)
-                {
                     return;
-                }
 
                 // Get current input direction
                 var currentDirection = GetInputDirection(keyboardState, gamepadState);
@@ -83,21 +92,19 @@ public class InputSystem : BaseSystem
                     // 1. Not currently moving (allows holding keys for continuous movement), OR
                     // 2. Direction changed (allows queuing direction changes during movement)
                     // But only if we haven't buffered this exact direction very recently (prevents duplicates)
-                    bool shouldBuffer =
-                        !movement.IsMoving || (currentDirection != _lastBufferedDirection);
+                    var shouldBuffer =
+                        !movement.IsMoving || currentDirection != _lastBufferedDirection;
 
                     // Also prevent buffering the same direction multiple times per frame
-                    bool isDifferentTiming =
+                    var isDifferentTiming =
                         _totalTime != _lastBufferTime || currentDirection != _lastBufferedDirection;
 
                     if (shouldBuffer && isDifferentTiming)
-                    {
                         if (_inputBuffer.AddInput(currentDirection, _totalTime))
                         {
                             _lastBufferedDirection = currentDirection;
                             _lastBufferTime = _totalTime;
                         }
-                    }
                 }
 
                 // Check for action button
@@ -146,7 +153,7 @@ public class InputSystem : BaseSystem
         return Direction.None;
     }
 
-    private static void StartMovement(
+    private void StartMovement(
         World world,
         ref Position position,
         ref GridMovement movement,
@@ -154,8 +161,8 @@ public class InputSystem : BaseSystem
     )
     {
         // Calculate target grid position
-        int targetX = position.X;
-        int targetY = position.Y;
+        var targetX = position.X;
+        var targetY = position.Y;
 
         switch (direction)
         {
@@ -174,11 +181,15 @@ public class InputSystem : BaseSystem
         }
 
         // Check if target tile is a Pokemon ledge
-        if (CollisionSystem.IsLedge(world, targetX, targetY))
+        if (
+            _spatialHashSystem != null
+            && CollisionSystem.IsLedge(_spatialHashSystem, position.MapId, targetX, targetY)
+        )
         {
             // Get the allowed jump direction for this ledge
-            Direction allowedJumpDir = CollisionSystem.GetLedgeJumpDirection(
-                world,
+            var allowedJumpDir = CollisionSystem.GetLedgeJumpDirection(
+                _spatialHashSystem,
+                position.MapId,
                 targetX,
                 targetY
             );
@@ -187,8 +198,8 @@ public class InputSystem : BaseSystem
             if (direction == allowedJumpDir)
             {
                 // Calculate landing position (2 tiles in jump direction)
-                int jumpLandX = targetX;
-                int jumpLandY = targetY;
+                var jumpLandX = targetX;
+                var jumpLandY = targetY;
 
                 switch (allowedJumpDir)
                 {
@@ -208,31 +219,40 @@ public class InputSystem : BaseSystem
 
                 // Check if landing position is valid
                 if (
-                    !CollisionSystem.IsPositionWalkable(world, jumpLandX, jumpLandY, Direction.None)
+                    _spatialHashSystem == null
+                    || !CollisionSystem.IsPositionWalkable(
+                        _spatialHashSystem,
+                        position.MapId,
+                        jumpLandX,
+                        jumpLandY,
+                        Direction.None
+                    )
                 )
-                {
                     return; // Can't jump if landing is blocked
-                }
 
                 // Perform the jump (2 tiles in jump direction)
                 var jumpStart = new Vector2(position.PixelX, position.PixelY);
                 var jumpEnd = new Vector2(jumpLandX * TileSize, jumpLandY * TileSize);
                 movement.StartMovement(jumpStart, jumpEnd);
-                return;
             }
-            else
-            {
-                // Block all other directions
-                return;
-            }
+
+            // Block all other directions
+            return;
         }
 
         // Check collision with directional blocking (for Pokemon ledges)
         // Pass the movement direction to check if ledges block this move
-        if (!CollisionSystem.IsPositionWalkable(world, targetX, targetY, direction))
-        {
+        if (
+            _spatialHashSystem == null
+            || !CollisionSystem.IsPositionWalkable(
+                _spatialHashSystem,
+                position.MapId,
+                targetX,
+                targetY,
+                direction
+            )
+        )
             return; // Position is blocked from this direction, don't start movement
-        }
 
         // Start the grid movement
         var startPixels = new Vector2(position.PixelX, position.PixelY);

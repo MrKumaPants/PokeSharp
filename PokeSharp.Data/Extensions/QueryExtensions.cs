@@ -1,16 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using PokeSharp.Data.Caching;
 
 namespace PokeSharp.Data.Extensions;
 
 /// <summary>
-/// Generic query extension methods for common EF Core operations.
-/// Provides caching, pagination, and filtering helpers.
+///     Generic query extension methods for common EF Core operations.
+///     Provides caching, pagination, and filtering helpers.
 /// </summary>
 public static class QueryExtensions
 {
     /// <summary>
-    /// Get entity by ID with caching support.
+    ///     Get entity by ID with caching support.
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <param name="dbSet">DbSet to query</param>
@@ -36,16 +37,13 @@ public static class QueryExtensions
         return await cache.GetOrCreateAsync(
             cacheKey,
             async () => await dbSet.FindAsync(new object[] { id }, cancellationToken),
-            new Microsoft.Extensions.Caching.Memory.MemoryCacheEntryOptions
-            {
-                SlidingExpiration = TimeSpan.FromMinutes(10),
-            }
+            new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(10) }
         );
     }
 
     /// <summary>
-    /// Get all entities with caching support.
-    /// WARNING: Only use for small datasets (< 1000 entities).
+    ///     Get all entities with caching support.
+    ///     WARNING: Only use for small datasets (< 1000 entities).
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <param name="query">IQueryable to execute</param>
@@ -67,15 +65,12 @@ public static class QueryExtensions
         return await cache.GetOrCreateAsync(
             cacheKey,
             async () => await query.ToListAsync(cancellationToken),
-            new Microsoft.Extensions.Caching.Memory.MemoryCacheEntryOptions
-            {
-                SlidingExpiration = TimeSpan.FromMinutes(15),
-            }
+            new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(15) }
         );
     }
 
     /// <summary>
-    /// Paginate a query with optional caching.
+    ///     Paginate a query with optional caching.
     /// </summary>
     /// <typeparam name="TEntity">Entity type</typeparam>
     /// <param name="query">IQueryable to paginate</param>
@@ -113,7 +108,7 @@ public static class QueryExtensions
 }
 
 /// <summary>
-/// Result of a paginated query.
+///     Result of a paginated query.
 /// </summary>
 /// <typeparam name="T">Entity type</typeparam>
 public sealed class PaginatedResult<T>

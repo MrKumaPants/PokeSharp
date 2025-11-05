@@ -4,19 +4,19 @@ using Microsoft.Xna.Framework.Graphics;
 namespace PokeSharp.Rendering.Assets;
 
 /// <summary>
-/// Manages runtime asset loading for textures and resources.
-/// Provides PNG loading without MonoGame Content Pipeline.
+///     Manages runtime asset loading for textures and resources.
+///     Provides PNG loading without MonoGame Content Pipeline.
 /// </summary>
 public class AssetManager : IDisposable
 {
-    private readonly GraphicsDevice _graphicsDevice;
     private readonly string _assetRoot;
+    private readonly GraphicsDevice _graphicsDevice;
     private readonly Dictionary<string, Texture2D> _textures;
-    private AssetManifest? _manifest;
     private bool _disposed;
+    private AssetManifest? _manifest;
 
     /// <summary>
-    /// Initializes a new instance of the AssetManager class.
+    ///     Initializes a new instance of the AssetManager class.
     /// </summary>
     /// <param name="graphicsDevice">The graphics device for creating textures.</param>
     /// <param name="assetRoot">Root directory for assets (default: "Assets").</param>
@@ -28,15 +28,35 @@ public class AssetManager : IDisposable
     }
 
     /// <summary>
-    /// Loads all assets defined in a manifest file.
+    ///     Gets the number of loaded textures.
+    /// </summary>
+    public int LoadedTextureCount => _textures.Count;
+
+    /// <summary>
+    ///     Disposes all loaded textures.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        foreach (var texture in _textures.Values)
+            texture.Dispose();
+
+        _textures.Clear();
+        _disposed = true;
+
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    ///     Loads all assets defined in a manifest file.
     /// </summary>
     /// <param name="manifestPath">Path to the manifest JSON file.</param>
     public void LoadManifest(string manifestPath = "Assets/manifest.json")
     {
         if (!File.Exists(manifestPath))
-        {
             throw new FileNotFoundException($"Asset manifest not found: {manifestPath}");
-        }
 
         var json = File.ReadAllText(manifestPath);
         Console.WriteLine($"📄 Manifest JSON content:\n{json}");
@@ -47,7 +67,7 @@ public class AssetManager : IDisposable
             JsonSerializer.Deserialize<AssetManifest>(json, options)
             ?? throw new InvalidOperationException("Failed to deserialize asset manifest");
 
-        Console.WriteLine($"🔍 Deserialized manifest:");
+        Console.WriteLine("🔍 Deserialized manifest:");
         Console.WriteLine($"   Tilesets: {_manifest.Tilesets?.Count ?? 0}");
         Console.WriteLine($"   Sprites: {_manifest.Sprites?.Count ?? 0}");
         Console.WriteLine($"   Maps: {_manifest.Maps?.Count ?? 0}");
@@ -57,7 +77,6 @@ public class AssetManager : IDisposable
         {
             Console.WriteLine($"📦 Loading {_manifest.Tilesets.Count} tileset(s)...");
             foreach (var tileset in _manifest.Tilesets)
-            {
                 try
                 {
                     Console.WriteLine(
@@ -70,7 +89,6 @@ public class AssetManager : IDisposable
                 {
                     Console.WriteLine($"   ❌ Failed to load tileset '{tileset.Id}': {ex.Message}");
                 }
-            }
         }
 
         // Load all sprites
@@ -78,7 +96,6 @@ public class AssetManager : IDisposable
         {
             Console.WriteLine($"🎨 Loading {_manifest.Sprites.Count} sprite(s)...");
             foreach (var sprite in _manifest.Sprites)
-            {
                 try
                 {
                     Console.WriteLine($"   → Loading sprite '{sprite.Id}' from '{sprite.Path}'...");
@@ -89,12 +106,11 @@ public class AssetManager : IDisposable
                 {
                     Console.WriteLine($"   ❌ Failed to load sprite '{sprite.Id}': {ex.Message}");
                 }
-            }
         }
     }
 
     /// <summary>
-    /// Loads a texture from a PNG file and caches it.
+    ///     Loads a texture from a PNG file and caches it.
     /// </summary>
     /// <param name="id">Unique identifier for the texture.</param>
     /// <param name="relativePath">Path relative to asset root.</param>
@@ -106,9 +122,7 @@ public class AssetManager : IDisposable
         var fullPath = Path.Combine(_assetRoot, relativePath);
 
         if (!File.Exists(fullPath))
-        {
             throw new FileNotFoundException($"Texture file not found: {fullPath}");
-        }
 
         using var fileStream = File.OpenRead(fullPath);
         var texture = Texture2D.FromStream(_graphicsDevice, fileStream);
@@ -117,7 +131,7 @@ public class AssetManager : IDisposable
     }
 
     /// <summary>
-    /// Gets a cached texture by its identifier.
+    ///     Gets a cached texture by its identifier.
     /// </summary>
     /// <param name="id">The texture identifier.</param>
     /// <returns>The cached texture.</returns>
@@ -125,9 +139,7 @@ public class AssetManager : IDisposable
     public Texture2D GetTexture(string id)
     {
         if (_textures.TryGetValue(id, out var texture))
-        {
             return texture;
-        }
 
         throw new KeyNotFoundException(
             $"Texture '{id}' not loaded. Available textures: {string.Join(", ", _textures.Keys)}"
@@ -135,7 +147,7 @@ public class AssetManager : IDisposable
     }
 
     /// <summary>
-    /// Checks if a texture is loaded.
+    ///     Checks if a texture is loaded.
     /// </summary>
     /// <param name="id">The texture identifier.</param>
     /// <returns>True if texture is loaded.</returns>
@@ -145,22 +157,18 @@ public class AssetManager : IDisposable
     }
 
     /// <summary>
-    /// Hot-reloads a texture from disk (useful for development).
+    ///     Hot-reloads a texture from disk (useful for development).
     /// </summary>
     /// <param name="id">The texture identifier to reload.</param>
     public void HotReloadTexture(string id)
     {
         if (!_textures.ContainsKey(id))
-        {
             throw new KeyNotFoundException(
                 $"Cannot hot-reload texture '{id}' - not originally loaded"
             );
-        }
 
         if (_manifest == null)
-        {
             throw new InvalidOperationException("Cannot hot-reload without manifest");
-        }
 
         // Find the texture path in manifest
         var tilesetEntry = _manifest.Tilesets?.FirstOrDefault(t => t.Id == id);
@@ -177,31 +185,5 @@ public class AssetManager : IDisposable
 
         // Reload
         LoadTexture(id, path);
-    }
-
-    /// <summary>
-    /// Gets the number of loaded textures.
-    /// </summary>
-    public int LoadedTextureCount => _textures.Count;
-
-    /// <summary>
-    /// Disposes all loaded textures.
-    /// </summary>
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        foreach (var texture in _textures.Values)
-        {
-            texture.Dispose();
-        }
-
-        _textures.Clear();
-        _disposed = true;
-
-        GC.SuppressFinalize(this);
     }
 }

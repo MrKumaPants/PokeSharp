@@ -6,17 +6,17 @@ using PokeSharp.Core.Components;
 namespace PokeSharp.Core.Systems;
 
 /// <summary>
-/// System that handles grid-based movement with smooth interpolation.
-/// Implements Pokemon-style tile-by-tile movement and updates animations based on movement state.
+///     System that handles grid-based movement with smooth interpolation.
+///     Implements Pokemon-style tile-by-tile movement and updates animations based on movement state.
 /// </summary>
 public class MovementSystem : BaseSystem
 {
     private const int TileSize = 16;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override int Priority => SystemPriority.Movement;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Update(World world, float deltaTime)
     {
         EnsureInitialized();
@@ -75,9 +75,7 @@ public class MovementSystem : BaseSystem
                             var expectedAnimation = movement.FacingDirection.ToWalkAnimation();
 
                             if (animation.CurrentAnimation != expectedAnimation)
-                            {
                                 animation.ChangeAnimation(expectedAnimation);
-                            }
                         }
                     }
                 }
@@ -93,9 +91,7 @@ public class MovementSystem : BaseSystem
                         var expectedAnimation = movement.FacingDirection.ToIdleAnimation();
 
                         if (animation.CurrentAnimation != expectedAnimation)
-                        {
                             animation.ChangeAnimation(expectedAnimation);
-                        }
                     }
                 }
             }

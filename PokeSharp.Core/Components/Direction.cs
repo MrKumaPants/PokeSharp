@@ -1,43 +1,43 @@
 namespace PokeSharp.Core.Components;
 
 /// <summary>
-/// Represents the four cardinal directions for movement and facing.
+///     Represents the four cardinal directions for movement and facing.
 /// </summary>
 public enum Direction
 {
     /// <summary>
-    /// No direction / neutral.
+    ///     No direction / neutral.
     /// </summary>
     None = -1,
 
     /// <summary>
-    /// Facing down (south).
+    ///     Facing down (south).
     /// </summary>
     Down = 0,
 
     /// <summary>
-    /// Facing left (west).
+    ///     Facing left (west).
     /// </summary>
     Left = 1,
 
     /// <summary>
-    /// Facing right (east).
+    ///     Facing right (east).
     /// </summary>
     Right = 2,
 
     /// <summary>
-    /// Facing up (north).
+    ///     Facing up (north).
     /// </summary>
     Up = 3,
 }
 
 /// <summary>
-/// Extension methods for Direction enum.
+///     Extension methods for Direction enum.
 /// </summary>
 public static class DirectionExtensions
 {
     /// <summary>
-    /// Converts a direction to a movement delta in tile coordinates.
+    ///     Converts a direction to a movement delta in tile coordinates.
     /// </summary>
     /// <param name="direction">The direction.</param>
     /// <returns>A tuple (deltaX, deltaY) representing the movement in tiles.</returns>
@@ -54,7 +54,7 @@ public static class DirectionExtensions
     }
 
     /// <summary>
-    /// Gets the animation name for walking in this direction.
+    ///     Gets the animation name for walking in this direction.
     /// </summary>
     /// <param name="direction">The direction.</param>
     /// <returns>The walk animation name.</returns>
@@ -71,7 +71,7 @@ public static class DirectionExtensions
     }
 
     /// <summary>
-    /// Gets the animation name for idling in this direction.
+    ///     Gets the animation name for idling in this direction.
     /// </summary>
     /// <param name="direction">The direction.</param>
     /// <returns>The idle animation name.</returns>
@@ -88,7 +88,7 @@ public static class DirectionExtensions
     }
 
     /// <summary>
-    /// Gets the opposite direction.
+    ///     Gets the opposite direction.
     /// </summary>
     /// <param name="direction">The direction.</param>
     /// <returns>The opposite direction.</returns>

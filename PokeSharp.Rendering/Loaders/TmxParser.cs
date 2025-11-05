@@ -4,13 +4,13 @@ using System.Xml.Linq;
 namespace PokeSharp.Rendering.Loaders;
 
 /// <summary>
-/// Parses Tiled map files (TMX format) using System.Xml.Linq.
-/// Supports Tiled 1.11.2 format without external dependencies.
+///     Parses Tiled map files (TMX format) using System.Xml.Linq.
+///     Supports Tiled 1.11.2 format without external dependencies.
 /// </summary>
 public static class TmxParser
 {
     /// <summary>
-    /// Loads and parses a TMX file.
+    ///     Loads and parses a TMX file.
     /// </summary>
     /// <param name="tmxPath">Path to the TMX file.</param>
     /// <returns>Parsed TMX document.</returns>
@@ -19,9 +19,7 @@ public static class TmxParser
     public static TmxDocument Load(string tmxPath)
     {
         if (!File.Exists(tmxPath))
-        {
             throw new FileNotFoundException($"TMX file not found: {tmxPath}");
-        }
 
         var doc = XDocument.Load(tmxPath);
         var mapElement =
@@ -58,29 +56,25 @@ public static class TmxParser
                 Source = tilesetElement.Attribute("source")?.Value,
                 TileWidth = ParseInt(tilesetElement, "tilewidth", 16),
                 TileHeight = ParseInt(tilesetElement, "tileheight", 16),
-                TileCount = ParseInt(tilesetElement, "tilecount", 0),
+                TileCount = ParseInt(tilesetElement, "tilecount"),
             };
 
             // Parse embedded image
             var imageElement = tilesetElement.Element("image");
             if (imageElement != null)
-            {
                 tileset.Image = new TmxImage
                 {
                     Source = imageElement.Attribute("source")?.Value ?? string.Empty,
                     Width = ParseInt(imageElement, "width"),
                     Height = ParseInt(imageElement, "height"),
                 };
-            }
 
             // Handle external tileset reference (.tsx)
             if (!string.IsNullOrEmpty(tileset.Source))
             {
                 var tsxPath = Path.Combine(mapDirectory, tileset.Source);
                 if (File.Exists(tsxPath))
-                {
                     LoadExternalTileset(tileset, tsxPath);
-                }
             }
 
             tilesets.Add(tileset);
@@ -101,14 +95,12 @@ public static class TmxParser
 
         var imageElement = tilesetElement.Element("image");
         if (imageElement != null)
-        {
             tileset.Image = new TmxImage
             {
                 Source = imageElement.Attribute("source")?.Value ?? string.Empty,
                 Width = ParseInt(imageElement, "width"),
                 Height = ParseInt(imageElement, "height"),
             };
-        }
     }
 
     private static List<TmxLayer> ParseLayers(XElement mapElement)
@@ -134,18 +126,12 @@ public static class TmxParser
                 var encoding = dataElement.Attribute("encoding")?.Value;
 
                 if (encoding == "csv")
-                {
                     layer.Data = ParseCsvData(dataElement.Value, layer.Width, layer.Height);
-                }
                 else if (encoding == null)
-                {
                     // XML encoding (tile elements)
                     layer.Data = ParseXmlData(dataElement, layer.Width, layer.Height);
-                }
                 else
-                {
                     throw new NotSupportedException($"Unsupported tile data encoding: {encoding}");
-                }
             }
 
             layers.Add(layer);
@@ -162,19 +148,13 @@ public static class TmxParser
             .ToArray();
 
         if (values.Length != width * height)
-        {
             throw new InvalidOperationException(
                 $"CSV data length mismatch. Expected {width * height}, got {values.Length}"
             );
-        }
 
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                data[y, x] = values[y * width + x];
-            }
-        }
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+            data[y, x] = values[y * width + x];
 
         return data;
     }
@@ -184,11 +164,11 @@ public static class TmxParser
         var data = new int[height, width];
         var tiles = dataElement.Elements("tile").ToArray();
 
-        for (int i = 0; i < tiles.Length && i < width * height; i++)
+        for (var i = 0; i < tiles.Length && i < width * height; i++)
         {
-            int y = i / width;
-            int x = i % width;
-            data[y, x] = ParseInt(tiles[i], "gid", 0);
+            var y = i / width;
+            var x = i % width;
+            data[y, x] = ParseInt(tiles[i], "gid");
         }
 
         return data;
@@ -243,9 +223,7 @@ public static class TmxParser
         var propertiesElement = objectElement.Element("properties");
 
         if (propertiesElement == null)
-        {
             return properties;
-        }
 
         foreach (var propElement in propertiesElement.Elements("property"))
         {
@@ -254,9 +232,7 @@ public static class TmxParser
             var value = propElement.Attribute("value")?.Value ?? string.Empty;
 
             if (string.IsNullOrEmpty(name))
-            {
                 continue;
-            }
 
             properties[name] = type switch
             {

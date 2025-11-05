@@ -1,12 +1,14 @@
 using Arch.Core;
-using Arch.Core.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using PokeSharp.Core.Components;
+using PokeSharp.Core.Factories;
+using PokeSharp.Core.Logging;
 using PokeSharp.Core.Systems;
+using PokeSharp.Core.Templates;
 using PokeSharp.Game.Diagnostics;
-using PokeSharp.Input.Components;
+using PokeSharp.Game.Templates;
 using PokeSharp.Input.Systems;
 using PokeSharp.Rendering.Animation;
 using PokeSharp.Rendering.Assets;
@@ -17,24 +19,25 @@ using PokeSharp.Rendering.Systems;
 namespace PokeSharp.Game;
 
 /// <summary>
-/// Main game class for PokeSharp.
-/// Integrates Arch ECS with MonoGame and manages the game loop.
+///     Main game class for PokeSharp.
+///     Integrates Arch ECS with MonoGame and manages the game loop.
 /// </summary>
 public class PokeSharpGame : Microsoft.Xna.Framework.Game
 {
     private readonly GraphicsDeviceManager _graphics;
-    private World _world = null!;
-    private SystemManager _systemManager = null!;
-    private AssetManager _assetManager = null!;
-    private MapLoader _mapLoader = null!;
     private AnimationLibrary _animationLibrary = null!;
-    private ZOrderRenderSystem _renderSystem = null!;
+    private AssetManager _assetManager = null!;
+    private IEntityFactoryService _entityFactory = null!;
+    private MapLoader _mapLoader = null!;
 
     // Keyboard state for zoom controls
     private KeyboardState _previousKeyboardState;
+    private ZOrderRenderSystem _renderSystem = null!;
+    private SystemManager _systemManager = null!;
+    private World _world = null!;
 
     /// <summary>
-    /// Initializes a new instance of the PokeSharpGame class.
+    ///     Initializes a new instance of the PokeSharpGame class.
     /// </summary>
     public PokeSharpGame()
     {
@@ -51,7 +54,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
     }
 
     /// <summary>
-    /// Initializes the game, creating the ECS world and systems.
+    ///     Initializes the game, creating the ECS world and systems.
     /// </summary>
     protected override void Initialize()
     {
@@ -64,43 +67,58 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
         _systemManager = new SystemManager();
 
         // Initialize AssetManager
-        _assetManager = new AssetManager(GraphicsDevice, "Assets");
+        _assetManager = new AssetManager(GraphicsDevice);
 
         // Load asset manifest
         try
         {
-            _assetManager.LoadManifest("Assets/manifest.json");
-            System.Console.WriteLine("✅ Asset manifest loaded successfully");
+            _assetManager.LoadManifest();
+            Console.WriteLine("✅ Asset manifest loaded successfully");
 
             // Run diagnostics
             AssetDiagnostics.PrintAssetManagerStatus(_assetManager);
         }
         catch (Exception ex)
         {
-            System.Console.WriteLine($"⚠️ Failed to load manifest: {ex.Message}");
-            System.Console.WriteLine("Continuing with empty asset manager...");
+            Console.WriteLine($"⚠️ Failed to load manifest: {ex.Message}");
+            Console.WriteLine("Continuing with empty asset manager...");
         }
 
         // Create map loader
         _mapLoader = new MapLoader(_assetManager);
 
+        // Initialize entity factory with template system
+        var templateCache = new TemplateCache();
+        var factoryLogger = ConsoleLoggerFactory.Create<EntityFactoryService>(LogLevel.Debug);
+        TemplateRegistry.RegisterAllTemplates(templateCache);
+        _entityFactory = new EntityFactoryService(templateCache, factoryLogger);
+        Console.WriteLine("✅ Entity factory initialized with template system");
+
         // Create animation library with default player animations
-        _animationLibrary = new AnimationLibrary(logger: null);
-        System.Console.WriteLine(
+        _animationLibrary = new AnimationLibrary();
+        Console.WriteLine(
             $"✅ AnimationLibrary initialized with {_animationLibrary.Count} animations"
         );
 
         // Create and register systems in priority order
+        // SpatialHashSystem (Priority: 25) - must run early to build spatial index
+        _spatialHashSystem = new SpatialHashSystem();
+        _systemManager.RegisterSystem(_spatialHashSystem);
+
         // InputSystem with Pokemon-style input buffering (5 inputs, 200ms timeout)
-        _systemManager.RegisterSystem(new InputSystem(maxBufferSize: 5, bufferTimeout: 0.2f));
+        var inputSystem = new InputSystem();
+        inputSystem.SetSpatialHashSystem(_spatialHashSystem);
+        _systemManager.RegisterSystem(inputSystem);
 
         // Register CollisionSystem (Priority: 200, provides tile collision checking)
-        _systemManager.RegisterSystem(new CollisionSystem());
+        var collisionSystem = new CollisionSystem();
+        collisionSystem.SetSpatialHashSystem(_spatialHashSystem);
+        _systemManager.RegisterSystem(collisionSystem);
 
         _systemManager.RegisterSystem(new MovementSystem());
 
         // Register AnimationSystem (Priority: 800, after movement, before rendering)
-        _systemManager.RegisterSystem(new AnimationSystem(_animationLibrary, logger: null));
+        _systemManager.RegisterSystem(new AnimationSystem(_animationLibrary));
 
         // Register CameraFollowSystem (Priority: 825, after Animation, before TileAnimation)
         _systemManager.RegisterSystem(new CameraFollowSystem());
@@ -121,10 +139,13 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
 
         // Create test player entity
         CreateTestPlayer();
+
+        // Create test NPCs to demonstrate template system
+        CreateTestNpcs();
     }
 
     /// <summary>
-    /// Loads game content.
+    ///     Loads game content.
     /// </summary>
     protected override void LoadContent()
     {
@@ -132,12 +153,12 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
     }
 
     /// <summary>
-    /// Updates game logic.
+    ///     Updates game logic.
     /// </summary>
     /// <param name="gameTime">Provides timing information.</param>
     protected override void Update(GameTime gameTime)
     {
-        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        var deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         // Handle zoom controls
         HandleZoomControls(deltaTime);
@@ -152,7 +173,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
     }
 
     /// <summary>
-    /// Renders the game.
+    ///     Renders the game.
     /// </summary>
     /// <param name="gameTime">Provides timing information.</param>
     protected override void Draw(GameTime gameTime)
@@ -162,35 +183,45 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
         base.Draw(gameTime);
     }
 
+    private SpatialHashSystem? _spatialHashSystem;
+
     /// <summary>
-    /// Loads the test map and creates a map entity.
+    ///     Loads the test map using the new entity-based tile system.
+    ///     Creates individual entities for each tile with appropriate components.
     /// </summary>
     private void LoadTestMap()
     {
         try
         {
-            // Load test map entity with all components (single file parse - 4x faster!)
-            var mapEntity = _mapLoader.LoadMapEntity(_world, "Assets/Maps/test-map.json");
+            // Load map as tile entities (new ECS-based approach)
+            var mapInfoEntity = _mapLoader.LoadMapEntities(_world, "Assets/Maps/test-map.json");
 
-            // Set camera bounds from map dimensions
-            var mapQuery = new QueryDescription().WithAll<TileMap>();
+            // Invalidate spatial hash to reindex static tiles
+            _spatialHashSystem?.InvalidateStaticTiles();
+
+            // Set camera bounds from MapInfo
+            var mapInfoQuery = new QueryDescription().WithAll<MapInfo>();
             _world.Query(
-                in mapQuery,
-                (ref TileMap tileMap) =>
+                in mapInfoQuery,
+                (ref MapInfo mapInfo) =>
                 {
-                    SetCameraMapBounds(tileMap.Width, tileMap.Height);
+                    SetCameraMapBounds(mapInfo.Width, mapInfo.Height);
+                    Console.WriteLine(
+                        $"✅ Camera bounds set to {mapInfo.PixelWidth}x{mapInfo.PixelHeight} pixels"
+                    );
                 }
             );
         }
         catch (Exception ex)
         {
-            System.Console.WriteLine($"⚠️ Failed to load test map: {ex.Message}");
-            System.Console.WriteLine("Continuing without map...");
+            Console.WriteLine($"⚠️ Failed to load test map: {ex.Message}");
+            Console.WriteLine("Continuing without map...");
         }
     }
 
     /// <summary>
-    /// Creates a test player entity for Week 1 demo.
+    ///     Creates a test player entity for Week 1 demo.
+    ///     Uses the entity factory to spawn from template.
     /// </summary>
     private void CreateTestPlayer()
     {
@@ -201,7 +232,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
             _graphics.PreferredBackBufferWidth,
             _graphics.PreferredBackBufferHeight
         );
-        var camera = new Camera(viewport, smoothingSpeed: 0.2f, leadDistance: 1.5f)
+        var camera = new Camera(viewport)
         {
             Zoom = 3.0f,
             TargetZoom = 3.0f,
@@ -209,49 +240,70 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
             Position = new Vector2(10 * 16, 8 * 16), // Start at player's position (grid to pixels)
         };
 
-        // Set map bounds on camera from the loaded tilemap
-        var mapQuery = new QueryDescription().WithAll<TileMap>();
+        // Set map bounds on camera from MapInfo
+        var mapInfoQuery = new QueryDescription().WithAll<MapInfo>();
         _world.Query(
-            in mapQuery,
-            (ref TileMap tileMap) =>
+            in mapInfoQuery,
+            (ref MapInfo mapInfo) =>
             {
-                const int tileSize = 16;
-                camera.MapBounds = new Rectangle(
-                    0,
-                    0,
-                    tileMap.Width * tileSize,
-                    tileMap.Height * tileSize
-                );
+                camera.MapBounds = new Rectangle(0, 0, mapInfo.PixelWidth, mapInfo.PixelHeight);
             }
         );
 
-        // Create player entity with all required components including Camera
-        var playerEntity = _world.Create(
-            new Player(),
-            new Position(10, 8), // Start at grid position (10, 8)
-            new Sprite("player-spritesheet") // Use spritesheet for animations
-            {
-                Tint = Color.White,
-                Scale = 1f,
-            },
-            new GridMovement(4.0f), // 4 tiles per second movement speed
-            Direction.Down, // Initial facing direction
-            new PokeSharp.Core.Components.Animation("idle_down"), // Start with idle animation
-            new InputState(),
-            camera // Add camera component for CameraFollowSystem
-        );
+        // Spawn player entity from template with position override
+        var playerEntity = _entityFactory
+            .SpawnFromTemplateAsync(
+                "player",
+                _world,
+                builder =>
+                {
+                    builder.OverrideComponent(new Position(10, 8));
+                }
+            )
+            .GetAwaiter()
+            .GetResult();
 
-        System.Console.WriteLine($"✅ Created player entity: {playerEntity}");
-        System.Console.WriteLine(
+        // Add Camera component (not in template as it's created per-instance)
+        _world.Add(playerEntity, camera);
+
+        Console.WriteLine($"✅ Created player entity from template: {playerEntity}");
+        Console.WriteLine(
             "   Components: Player, Position, Sprite, GridMovement, Direction, Animation, InputState, Camera"
         );
-        System.Console.WriteLine("🎮 Use WASD or Arrow Keys to move!");
-        System.Console.WriteLine("🔍 Zoom controls: +/- to zoom in/out, 1=GBA, 2=NDS, 3=Default");
+        Console.WriteLine("   Template: player");
+        Console.WriteLine("🎮 Use WASD or Arrow Keys to move!");
+        Console.WriteLine("🔍 Zoom controls: +/- to zoom in/out, 1=GBA, 2=NDS, 3=Default");
     }
 
     /// <summary>
-    /// Handles zoom control keyboard input.
-    /// +/- keys for zoom in/out, number keys for presets.
+    ///     Creates test NPCs to demonstrate the entity factory system.
+    ///     Spawns NPCs at various positions using different templates.
+    /// </summary>
+    private void CreateTestNpcs()
+    {
+        Console.WriteLine("\n📦 Spawning test NPCs from templates...");
+
+        // Spawn a generic NPC at position (15, 8)
+        var npc1 = _entityFactory
+            .SpawnFromTemplateAsync(
+                "npc/generic",
+                _world,
+                builder =>
+                {
+                    builder.OverrideComponent(new Position(15, 8));
+                }
+            )
+            .GetAwaiter()
+            .GetResult();
+
+        Console.WriteLine($"✅ Spawned NPC: {npc1} from template 'npc/generic' at (15, 8)");
+        Console.WriteLine("   Total NPCs created: 1");
+        Console.WriteLine("   Template system working! 🎉\n");
+    }
+
+    /// <summary>
+    ///     Handles zoom control keyboard input.
+    ///     +/- keys for zoom in/out, number keys for presets.
     /// </summary>
     /// <param name="deltaTime">Time elapsed since last update.</param>
     private void HandleZoomControls(float deltaTime)
@@ -270,7 +322,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
                 )
                 {
                     camera.SetZoomSmooth(camera.TargetZoom + 0.5f);
-                    System.Console.WriteLine($"🔍 Zoom: {camera.TargetZoom:F1}x");
+                    Console.WriteLine($"🔍 Zoom: {camera.TargetZoom:F1}x");
                 }
 
                 // Zoom out with - key
@@ -280,7 +332,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
                 )
                 {
                     camera.SetZoomSmooth(camera.TargetZoom - 0.5f);
-                    System.Console.WriteLine($"🔍 Zoom: {camera.TargetZoom:F1}x");
+                    Console.WriteLine($"🔍 Zoom: {camera.TargetZoom:F1}x");
                 }
 
                 // Preset zoom levels
@@ -288,20 +340,20 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
                 {
                     var gbaZoom = camera.CalculateGbaZoom();
                     camera.SetZoomSmooth(gbaZoom);
-                    System.Console.WriteLine($"🔍 GBA Preset: {gbaZoom:F1}x (240x160)");
+                    Console.WriteLine($"🔍 GBA Preset: {gbaZoom:F1}x (240x160)");
                 }
 
                 if (IsKeyPressed(currentKeyboardState, Keys.D2))
                 {
                     var ndsZoom = camera.CalculateNdsZoom();
                     camera.SetZoomSmooth(ndsZoom);
-                    System.Console.WriteLine($"🔍 NDS Preset: {ndsZoom:F1}x (256x192)");
+                    Console.WriteLine($"🔍 NDS Preset: {ndsZoom:F1}x (256x192)");
                 }
 
                 if (IsKeyPressed(currentKeyboardState, Keys.D3))
                 {
                     camera.SetZoomSmooth(3.0f);
-                    System.Console.WriteLine($"🔍 Default Preset: 3.0x");
+                    Console.WriteLine("🔍 Default Preset: 3.0x");
                 }
             }
         );
@@ -310,7 +362,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
     }
 
     /// <summary>
-    /// Checks if a key was just pressed (not held).
+    ///     Checks if a key was just pressed (not held).
     /// </summary>
     /// <param name="currentState">Current keyboard state.</param>
     /// <param name="key">The key to check.</param>
@@ -321,8 +373,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
     }
 
     /// <summary>
-    /// Sets the camera map bounds based on tilemap dimensions.
-    /// Prevents the camera from showing areas outside the map.
+    ///     Sets the camera map bounds based on tilemap dimensions.
+    ///     Prevents the camera from showing areas outside the map.
     /// </summary>
     /// <param name="mapWidthInTiles">Map width in tiles.</param>
     /// <param name="mapHeightInTiles">Map height in tiles.</param>
@@ -346,20 +398,16 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
             }
         );
 
-        System.Console.WriteLine(
-            $"🎥 Camera bounds set: {mapBounds.Width}x{mapBounds.Height} pixels"
-        );
+        Console.WriteLine($"🎥 Camera bounds set: {mapBounds.Width}x{mapBounds.Height} pixels");
     }
 
     /// <summary>
-    /// Disposes resources.
+    ///     Disposes resources.
     /// </summary>
     protected override void Dispose(bool disposing)
     {
         if (disposing)
-        {
             _world?.Dispose();
-        }
 
         base.Dispose(disposing);
     }

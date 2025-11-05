@@ -8,13 +8,17 @@
 
 ## Executive Summary
 
-The player sprite fails to render because **no textures are being loaded** into AssetManager due to a JSON deserialization case-sensitivity issue. The manifest file uses lowercase property names (`tilesets`, `sprites`, `maps`) while the C# classes use PascalCase (`Tilesets`, `Sprites`, `Maps`). System.Text.Json's default case-sensitive deserialization causes all asset lists to deserialize as `null`.
+The player sprite fails to render because **no textures are being loaded** into AssetManager due to a JSON
+deserialization case-sensitivity issue. The manifest file uses lowercase property names (`tilesets`, `sprites`, `maps`)
+while the C# classes use PascalCase (`Tilesets`, `Sprites`, `Maps`). System.Text.Json's default case-sensitive
+deserialization causes all asset lists to deserialize as `null`.
 
 ---
 
 ## Investigation Process
 
 ### 1. Initial Verification ✅
+
 - **Map rendering:** WORKING (confirms rendering pipeline functional)
 - **Asset manifest loading:** WORKING (file read succeeds)
 - **Player entity creation:** WORKING (entity exists with correct components)
@@ -23,6 +27,7 @@ The player sprite fails to render because **no textures are being loaded** into 
 ### 2. Component Analysis ✅
 
 #### Position Component
+
 ```csharp
 // Player at grid (10, 8) → pixel (160, 128)
 public Position(int x, int y) {
@@ -32,11 +37,13 @@ public Position(int x, int y) {
     PixelY = y * 16f;  // 8 * 16 = 128
 }
 ```
+
 - **Position:** (160, 128) pixels
 - **Screen dimensions:** 800x600
 - **Conclusion:** Player position IS within visible area ✅
 
 #### RenderSystem Query
+
 ```csharp
 var query = new QueryDescription().WithAll<Position, Sprite>();
 world.Query(in query, (ref Position position, ref Sprite sprite) => {
@@ -44,12 +51,14 @@ world.Query(in query, (ref Position position, ref Sprite sprite) => {
     RenderSprite(ref position, ref sprite);
 });
 ```
+
 - **Query logic:** CORRECT ✅
 - **Component check:** `HasTexture("player")` → **FALSE** ❌
 
 ### 3. Critical Discovery 🔍
 
 #### Diagnostic Output
+
 ```
 ✅ Asset manifest loaded successfully
 📄 Manifest JSON content:
@@ -87,6 +96,7 @@ HasTexture('player'): False
 ### The Problem: Case-Sensitive JSON Deserialization
 
 **JSON Property Names (manifest.json):**
+
 ```json
 {
   "tilesets": [...],  // lowercase
@@ -96,6 +106,7 @@ HasTexture('player'): False
 ```
 
 **C# Property Names (AssetManifest.cs):**
+
 ```csharp
 public class AssetManifest {
     public List<TilesetAssetEntry>? Tilesets { get; set; }  // PascalCase
@@ -105,6 +116,7 @@ public class AssetManifest {
 ```
 
 **Deserialization Code:**
+
 ```csharp
 _manifest = JsonSerializer.Deserialize<AssetManifest>(json);
 // Uses System.Text.Json with DEFAULT case-sensitive settings
@@ -144,6 +156,7 @@ Player sprite never drawn ❌
 ## Solution Options
 
 ### Option 1: Fix JSON Property Names (Change JSON)
+
 ```json
 {
   "Tilesets": [...],  // Match C# PascalCase
@@ -153,6 +166,7 @@ Player sprite never drawn ❌
 ```
 
 ### Option 2: Configure Case-Insensitive Deserialization (Recommended)
+
 ```csharp
 var options = new JsonSerializerOptions {
     PropertyNameCaseInsensitive = true
@@ -161,6 +175,7 @@ _manifest = JsonSerializer.Deserialize<AssetManifest>(json, options);
 ```
 
 ### Option 3: Use JsonPropertyName Attributes
+
 ```csharp
 public class AssetManifest {
     [JsonPropertyName("tilesets")]
@@ -179,6 +194,7 @@ public class AssetManifest {
 ## Recommendation
 
 **Use Option 2** (case-insensitive deserialization):
+
 - ✅ Simplest fix (one line change)
 - ✅ Most robust (handles future case variations)
 - ✅ No breaking changes to JSON format
@@ -191,6 +207,7 @@ public class AssetManifest {
 ### Why the Map Still Works
 
 The map loads via `MapLoader.LoadMap()` which:
+
 1. Reads the map JSON directly (not via AssetManifest)
 2. Loads tileset texture independently
 3. Uses separate deserialization logic
@@ -201,21 +218,22 @@ This is why the map renders correctly while the player sprite does not.
 
 ## Files Analyzed
 
-| File | Location | Purpose |
-|------|----------|---------|
-| AssetManager.cs | /PokeSharp.Rendering/Assets/ | Asset loading and caching |
-| AssetManifest.cs | /PokeSharp.Rendering/Assets/ | Manifest data model |
-| manifest.json | /PokeSharp.Game/Assets/ | Asset definitions |
-| RenderSystem.cs | /PokeSharp.Rendering/Systems/ | Sprite rendering |
-| PokeSharpGame.cs | /PokeSharp.Game/ | Game initialization |
-| Position.cs | /PokeSharp.Core/Components/ | Position component |
-| player.png | /PokeSharp.Game/Assets/Sprites/ | Player sprite texture |
+| File             | Location                        | Purpose                   |
+|------------------|---------------------------------|---------------------------|
+| AssetManager.cs  | /PokeSharp.Rendering/Assets/    | Asset loading and caching |
+| AssetManifest.cs | /PokeSharp.Rendering/Assets/    | Manifest data model       |
+| manifest.json    | /PokeSharp.Game/Assets/         | Asset definitions         |
+| RenderSystem.cs  | /PokeSharp.Rendering/Systems/   | Sprite rendering          |
+| PokeSharpGame.cs | /PokeSharp.Game/                | Game initialization       |
+| Position.cs      | /PokeSharp.Core/Components/     | Position component        |
+| player.png       | /PokeSharp.Game/Assets/Sprites/ | Player sprite texture     |
 
 ---
 
 ## Test Evidence
 
 ### Console Output Before Fix
+
 ```
 ✅ Asset manifest loaded successfully
 🔍 Deserialized manifest:
@@ -229,6 +247,7 @@ HasTexture('player'): False
 ```
 
 ### Expected Output After Fix
+
 ```
 ✅ Asset manifest loaded successfully
 🔍 Deserialized manifest:
@@ -255,7 +274,8 @@ HasTexture('player'): True
 **Fix Complexity:** TRIVIAL (one line change)
 **Confidence:** 100% (root cause confirmed via diagnostic logging)
 
-The rendering pipeline is fully functional. Once the JSON deserialization is fixed, the player sprite will render immediately.
+The rendering pipeline is fully functional. Once the JSON deserialization is fixed, the player sprite will render
+immediately.
 
 ---
 

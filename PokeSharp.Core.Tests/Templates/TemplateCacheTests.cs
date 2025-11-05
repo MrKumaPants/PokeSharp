@@ -1,6 +1,5 @@
 using FluentAssertions;
 using PokeSharp.Core.Templates;
-using Xunit;
 
 namespace PokeSharp.Core.Tests.Templates;
 
@@ -156,7 +155,7 @@ public class TemplateCacheTests
         var tasks = new List<Task>();
 
         // Act
-        for (int i = 0; i < 100; i++)
+        for (var i = 0; i < 100; i++)
         {
             var index = i;
             tasks.Add(
@@ -169,7 +168,7 @@ public class TemplateCacheTests
         }
 
         // Assert
-        Action act = () => Task.WaitAll(tasks.ToArray());
+        var act = () => Task.WaitAll(tasks.ToArray());
         act.Should().NotThrow();
         cache.GetStatistics().TotalTemplates.Should().Be(100);
     }

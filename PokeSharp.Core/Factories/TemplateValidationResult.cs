@@ -1,38 +1,38 @@
 namespace PokeSharp.Core.Factories;
 
 /// <summary>
-/// Result of template validation before entity spawning.
-/// Provides detailed error messages for debugging invalid templates.
+///     Result of template validation before entity spawning.
+///     Provides detailed error messages for debugging invalid templates.
 /// </summary>
 public sealed class TemplateValidationResult
 {
     /// <summary>
-    /// Template ID that was validated.
+    ///     Template ID that was validated.
     /// </summary>
     public string TemplateId { get; init; } = string.Empty;
 
     /// <summary>
-    /// Whether the template is valid and safe to spawn.
+    ///     Whether the template is valid and safe to spawn.
     /// </summary>
     public bool IsValid { get; init; }
 
     /// <summary>
-    /// List of validation errors (empty if valid).
+    ///     List of validation errors (empty if valid).
     /// </summary>
     public List<string> Errors { get; init; } = new();
 
     /// <summary>
-    /// List of validation warnings (non-fatal issues).
+    ///     List of validation warnings (non-fatal issues).
     /// </summary>
     public List<string> Warnings { get; init; } = new();
 
     /// <summary>
-    /// Timestamp when validation was performed.
+    ///     Timestamp when validation was performed.
     /// </summary>
     public DateTime ValidatedAt { get; init; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Create a successful validation result.
+    ///     Create a successful validation result.
     /// </summary>
     public static TemplateValidationResult Success(string templateId)
     {
@@ -40,7 +40,7 @@ public sealed class TemplateValidationResult
     }
 
     /// <summary>
-    /// Create a failed validation result with errors.
+    ///     Create a failed validation result with errors.
     /// </summary>
     public static TemplateValidationResult Failure(string templateId, params string[] errors)
     {
@@ -53,7 +53,7 @@ public sealed class TemplateValidationResult
     }
 
     /// <summary>
-    /// Create a validation result with warnings (still valid).
+    ///     Create a validation result with warnings (still valid).
     /// </summary>
     public static TemplateValidationResult WithWarnings(string templateId, params string[] warnings)
     {

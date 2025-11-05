@@ -5,14 +5,16 @@ using PokeSharp.Rendering.Assets;
 namespace PokeSharp.Rendering.Loaders;
 
 /// <summary>
-/// Loads Tiled maps and converts them to ECS components.
+///     Loads Tiled maps and converts them to ECS components.
 /// </summary>
 public class MapLoader
 {
     private readonly AssetManager _assetManager;
+    private readonly Dictionary<string, int> _mapNameToId = new();
+    private int _nextMapId = 0;
 
     /// <summary>
-    /// Initializes a new instance of the MapLoader class.
+    ///     Initializes a new instance of the MapLoader class.
     /// </summary>
     /// <param name="assetManager">Asset manager for texture loading.</param>
     public MapLoader(AssetManager assetManager)
@@ -21,69 +23,17 @@ public class MapLoader
     }
 
     /// <summary>
-    /// Loads a complete map entity with all components from a Tiled map file.
-    /// Parses the file once and extracts all data (TileMap, TileProperties).
-    /// Uses bounds checking and tile properties for collision (no TileCollider needed).
+    ///     Loads a complete map by creating tile entities for each non-empty tile.
+    ///     This is the new ECS-based approach where every tile is an entity with components.
+    ///     Also creates a MapInfo entity to store map metadata.
     /// </summary>
-    /// <param name="world">The ECS world to create the entity in.</param>
+    /// <param name="world">The ECS world to create entities in.</param>
     /// <param name="mapPath">Path to the Tiled JSON map file.</param>
-    /// <returns>The created map entity with all components attached.</returns>
-    public Entity LoadMapEntity(World world, string mapPath)
-    {
-        // Parse Tiled map once
-        var tmxDoc = TiledMapLoader.Load(mapPath);
-
-        // Extract components
-        var tileMap = ExtractTileMap(tmxDoc, mapPath);
-        var tileProperties = ExtractTileProperties(tmxDoc);
-
-        // Add animated tiles to TileMap
-        tileMap.AnimatedTiles = ExtractAnimatedTiles(tmxDoc);
-
-        // Create entity with components (no TileCollider - using TileProperties instead)
-        var mapEntity = world.Create(tileMap, tileProperties);
-
-        Console.WriteLine(
-            $"✅ Loaded map entity: {tileMap.MapId} ({tileMap.Width}x{tileMap.Height} tiles)"
-        );
-        Console.WriteLine($"   Entity ID: {mapEntity}");
-        Console.WriteLine($"   Components: TileMap, TileProperties");
-        Console.WriteLine($"   Collision: Tile-type (from tileset properties) + Bounds checking");
-        Console.WriteLine($"   Animated tiles: {tileMap.AnimatedTiles?.Length ?? 0}");
-        Console.WriteLine($"   Tiles with properties: {tileProperties.TileCount}");
-
-        return mapEntity;
-    }
-
-    /// <summary>
-    /// Loads a Tiled map from JSON file and converts to TileMap component.
-    /// </summary>
-    /// <param name="mapPath">Path to the .json map file.</param>
-    /// <returns>TileMap component ready for ECS.</returns>
-    [Obsolete("Use LoadMapEntity() instead for better performance (avoids multiple file parses)")]
-    public TileMap LoadMap(string mapPath)
+    /// <returns>The MapInfo entity containing map metadata.</returns>
+    public Entity LoadMapEntities(World world, string mapPath)
     {
         var tmxDoc = TiledMapLoader.Load(mapPath);
-        return ExtractTileMap(tmxDoc, mapPath);
-    }
-
-    /// <summary>
-    /// Extracts TileMap component from a parsed Tiled map document.
-    /// </summary>
-    private TileMap ExtractTileMap(TmxDocument tmxDoc, string mapPath)
-    {
-        // Extract layers by name
-        var groundLayer = tmxDoc.Layers.FirstOrDefault(l =>
-            l.Name.Equals("Ground", StringComparison.OrdinalIgnoreCase)
-        );
-        var objectLayer = tmxDoc.Layers.FirstOrDefault(l =>
-            l.Name.Equals("Objects", StringComparison.OrdinalIgnoreCase)
-        );
-        var overheadLayer = tmxDoc.Layers.FirstOrDefault(l =>
-            l.Name.Equals("Overhead", StringComparison.OrdinalIgnoreCase)
-        );
-
-        // Get tileset info and extract texture ID
+        var mapId = GetMapId(mapPath);
         var tileset =
             tmxDoc.Tilesets.FirstOrDefault()
             ?? throw new InvalidOperationException($"Map '{mapPath}' has no tilesets");
@@ -92,118 +42,118 @@ public class MapLoader
 
         // Ensure tileset texture is loaded
         if (!_assetManager.HasTexture(tilesetId))
-        {
             LoadTilesetTexture(tileset, mapPath, tilesetId);
+
+        int tilesCreated = 0;
+
+        // Create entity for each non-empty tile across all layers
+        for (int layerIndex = 0; layerIndex < 3; layerIndex++)
+        {
+            var layerData = GetLayerData(tmxDoc, layerIndex);
+            if (layerData == null)
+                continue;
+
+            var tileLayer = (TileLayer)layerIndex;
+
+            for (int y = 0; y < tmxDoc.Height; y++)
+            {
+                for (int x = 0; x < tmxDoc.Width; x++)
+                {
+                    int tileGid = layerData[y, x];
+                    if (tileGid == 0)
+                        continue; // Skip empty tiles
+
+                    CreateTileEntity(world, x, y, mapId, tileGid, tileset, tileLayer);
+                    tilesCreated++;
+                }
+            }
         }
 
-        // Create TileMap component
-        return new TileMap
-        {
-            MapId = Path.GetFileNameWithoutExtension(mapPath),
-            Width = tmxDoc.Width,
-            Height = tmxDoc.Height,
-            TilesetId = tilesetId,
-            GroundLayer = groundLayer?.Data ?? new int[tmxDoc.Height, tmxDoc.Width],
-            ObjectLayer = objectLayer?.Data ?? new int[tmxDoc.Height, tmxDoc.Width],
-            OverheadLayer = overheadLayer?.Data ?? new int[tmxDoc.Height, tmxDoc.Width],
-        };
+        // Create MapInfo entity for map metadata
+        var mapName = Path.GetFileNameWithoutExtension(mapPath);
+        var mapInfo = new MapInfo(mapId, mapName, tmxDoc.Width, tmxDoc.Height, tmxDoc.TileWidth);
+        var mapInfoEntity = world.Create(mapInfo);
+
+        // Create TilesetInfo entity for tileset metadata
+        var tilesetInfo = new TilesetInfo(
+            tilesetId,
+            tileset.FirstGid,
+            tileset.TileWidth,
+            tileset.TileHeight,
+            tileset.Image?.Width ?? 256,
+            tileset.Image?.Height ?? 256
+        );
+        var tilesetEntity = world.Create(tilesetInfo);
+
+        // Create animated tile entities
+        var animatedTilesCreated = CreateAnimatedTileEntities(world, tmxDoc, tileset);
+
+        Console.WriteLine($"✅ Loaded map: {mapName} ({tmxDoc.Width}x{tmxDoc.Height} tiles)");
+        Console.WriteLine($"   MapId: {mapId}");
+        Console.WriteLine($"   Created {tilesCreated} tile entities");
+        Console.WriteLine($"   Created {animatedTilesCreated} animated tile entities");
+        Console.WriteLine($"   MapInfo entity: {mapInfoEntity}");
+        Console.WriteLine($"   TilesetInfo entity: {tilesetEntity}");
+        Console.WriteLine(
+            $"   Tileset: {tilesetId} ({tilesetInfo.TilesPerRow}x{tilesetInfo.TilesPerColumn} tiles)"
+        );
+
+        return mapInfoEntity;
     }
 
-    /// <summary>
-    /// Loads animated tile data from a Tiled map.
-    /// </summary>
-    /// <param name="mapPath">Path to the .json map file.</param>
-    /// <returns>Array of AnimatedTile components for tiles with animations.</returns>
-    [Obsolete("Use LoadMapEntity() instead for better performance (avoids multiple file parses)")]
-    public AnimatedTile[] LoadAnimatedTiles(string mapPath)
+    private int CreateAnimatedTileEntities(World world, TmxDocument tmxDoc, TmxTileset tileset)
     {
-        var tmxDoc = TiledMapLoader.Load(mapPath);
-        return ExtractAnimatedTiles(tmxDoc);
-    }
+        if (tileset.Animations.Count == 0)
+            return 0;
 
-    /// <summary>
-    /// Extracts AnimatedTile array from a parsed Tiled map document.
-    /// </summary>
-    private AnimatedTile[] ExtractAnimatedTiles(TmxDocument tmxDoc)
-    {
-        var tileset = tmxDoc.Tilesets.FirstOrDefault();
-
-        if (tileset == null || tileset.Animations.Count == 0)
-        {
-            return Array.Empty<AnimatedTile>();
-        }
-
-        var animatedTiles = new List<AnimatedTile>();
+        int created = 0;
 
         foreach (var kvp in tileset.Animations)
         {
-            int localTileId = kvp.Key;
+            var localTileId = kvp.Key;
             var animation = kvp.Value;
 
             // Convert local tile ID to global tile ID
-            int globalTileId = tileset.FirstGid + localTileId;
+            var globalTileId = tileset.FirstGid + localTileId;
 
             // Convert frame local IDs to global IDs
             var globalFrameIds = animation
                 .FrameTileIds.Select(id => tileset.FirstGid + id)
                 .ToArray();
 
-            animatedTiles.Add(
-                new AnimatedTile(globalTileId, globalFrameIds, animation.FrameDurations)
+            // Create AnimatedTile component
+            var animatedTile = new AnimatedTile(
+                globalTileId,
+                globalFrameIds,
+                animation.FrameDurations
+            );
+
+            // Find all tile entities with this tile ID and add AnimatedTile component
+            var tileQuery = new QueryDescription().WithAll<TileSprite>();
+            world.Query(
+                in tileQuery,
+                (Entity entity, ref TileSprite sprite) =>
+                {
+                    if (sprite.TileGid == globalTileId)
+                    {
+                        world.Add(entity, animatedTile);
+                        created++;
+                    }
+                }
             );
         }
 
-        return animatedTiles.ToArray();
+        return created;
     }
 
-    /// <summary>
-    /// Loads tile properties from a Tiled map (data-driven).
-    /// Properties are defined in Tiled editor - no hardcoded tile types!
-    /// Supports custom properties like "passable", "encounter_rate", "terrain_type", etc.
-    /// </summary>
-    /// <param name="mapPath">Path to the .json map file.</param>
-    /// <returns>TileProperties component with all tile properties from Tiled.</returns>
-    [Obsolete("Use LoadMapEntity() instead for better performance (avoids multiple file parses)")]
-    public TileProperties LoadTileProperties(string mapPath)
-    {
-        var tmxDoc = TiledMapLoader.Load(mapPath);
-        return ExtractTileProperties(tmxDoc);
-    }
-
-    /// <summary>
-    /// Extracts TileProperties component from a parsed Tiled map document.
-    /// </summary>
-    private TileProperties ExtractTileProperties(TmxDocument tmxDoc)
-    {
-        var tileProps = new TileProperties();
-
-        // Process each tileset
-        foreach (var tileset in tmxDoc.Tilesets)
-        {
-            // Convert local tile IDs to global IDs and store properties
-            foreach (var kvp in tileset.TileProperties)
-            {
-                int localTileId = kvp.Key;
-                var properties = kvp.Value;
-
-                // Convert to global tile ID
-                int globalTileId = tileset.FirstGid + localTileId;
-
-                // Store properties for this tile
-                tileProps.TilePropertyMap[globalTileId] = properties;
-            }
-        }
-
-        return tileProps;
-    }
+    // Obsolete methods removed - they referenced TileMap and TileProperties components which no longer exist
+    // Use LoadMapEntities() instead
 
     private static string ExtractTilesetId(TmxTileset tileset, string mapPath)
     {
         // If tileset has an image, use the image filename as ID
         if (tileset.Image != null && !string.IsNullOrEmpty(tileset.Image.Source))
-        {
             return Path.GetFileNameWithoutExtension(tileset.Image.Source);
-        }
 
         // Fallback to tileset name
         return tileset.Name ?? "default-tileset";
@@ -212,9 +162,7 @@ public class MapLoader
     private void LoadTilesetTexture(TmxTileset tileset, string mapPath, string tilesetId)
     {
         if (tileset.Image == null || string.IsNullOrEmpty(tileset.Image.Source))
-        {
-            throw new InvalidOperationException($"Tileset has no image source");
-        }
+            throw new InvalidOperationException("Tileset has no image source");
 
         // Resolve relative path from map directory
         var mapDirectory = Path.GetDirectoryName(mapPath) ?? string.Empty;
@@ -225,5 +173,191 @@ public class MapLoader
         var relativePath = Path.GetRelativePath(assetsRoot, tilesetPath);
 
         _assetManager.LoadTexture(tilesetId, relativePath);
+    }
+
+    private int GetMapId(string mapPath)
+    {
+        var mapName = Path.GetFileNameWithoutExtension(mapPath);
+
+        // Get or create unique map ID
+        if (_mapNameToId.TryGetValue(mapName, out var existingId))
+            return existingId;
+
+        var newId = _nextMapId++;
+        _mapNameToId[mapName] = newId;
+        return newId;
+    }
+
+    /// <summary>
+    ///     Gets the map ID for a map name without loading it.
+    /// </summary>
+    /// <param name="mapName">The map name (without extension).</param>
+    /// <returns>Map ID if the map has been loaded, -1 otherwise.</returns>
+    public int GetMapIdByName(string mapName)
+    {
+        return _mapNameToId.TryGetValue(mapName, out var id) ? id : -1;
+    }
+
+    private int[,]? GetLayerData(TmxDocument tmxDoc, int layerIndex)
+    {
+        var layerName = layerIndex switch
+        {
+            0 => "Ground",
+            1 => "Objects",
+            2 => "Overhead",
+            _ => null,
+        };
+
+        if (layerName == null)
+            return null;
+
+        var layer = tmxDoc.Layers.FirstOrDefault(l =>
+            l.Name.Equals(layerName, StringComparison.OrdinalIgnoreCase)
+        );
+
+        return layer?.Data;
+    }
+
+    private void CreateTileEntity(
+        World world,
+        int x,
+        int y,
+        int mapId,
+        int tileGid,
+        TmxTileset tileset,
+        TileLayer layer
+    )
+    {
+        // Always add position and sprite
+        var position = new TilePosition(x, y, mapId);
+        var sprite = new TileSprite(
+            tileset.Name ?? "default",
+            tileGid,
+            layer,
+            CalculateSourceRect(tileGid, tileset)
+        );
+
+        // Create entity with base components
+        var entity = world.Create(position, sprite);
+
+        // Get tile properties from tileset (convert global ID to local ID)
+        int localTileId = tileGid - tileset.FirstGid;
+        if (localTileId >= 0 && tileset.TileProperties.TryGetValue(localTileId, out var props))
+        {
+            // Check if this is a ledge tile (needs special handling)
+            bool isLedge = props.ContainsKey("ledge_direction");
+
+            // Add Collision component if tile is solid OR is a ledge (ledges are always solid with directional exceptions)
+            if (props.TryGetValue("solid", out var solidValue) || isLedge)
+            {
+                bool isSolid = false;
+
+                if (solidValue != null)
+                {
+                    // Handle different value types from JSON
+                    isSolid = solidValue switch
+                    {
+                        bool b => b,
+                        string s => bool.TryParse(s, out var result) && result,
+                        _ => false,
+                    };
+                }
+                else if (isLedge)
+                {
+                    // Ledges are always solid (just with directional exceptions)
+                    isSolid = true;
+                }
+
+                if (isSolid)
+                {
+                    world.Add(entity, new Collision(true));
+                }
+            }
+
+            // Add TileLedge component for ledges
+            if (props.TryGetValue("ledge_direction", out var ledgeValue))
+            {
+                // Handle different value types from JSON
+                string? ledgeDir = ledgeValue switch
+                {
+                    string s => s,
+                    _ => ledgeValue?.ToString(),
+                };
+
+                if (!string.IsNullOrEmpty(ledgeDir))
+                {
+                    var jumpDirection = ledgeDir.ToLower() switch
+                    {
+                        "down" => Direction.Down,
+                        "up" => Direction.Up,
+                        "left" => Direction.Left,
+                        "right" => Direction.Right,
+                        _ => Direction.None,
+                    };
+
+                    if (jumpDirection != Direction.None)
+                    {
+                        world.Add(entity, new TileLedge(jumpDirection));
+                    }
+                }
+            }
+
+            // Add EncounterZone component if encounter rate exists
+            if (
+                props.TryGetValue("encounter_rate", out var encounterRateValue)
+                && encounterRateValue is int encounterRate
+                && encounterRate > 0
+            )
+            {
+                var encounterTableId = props.TryGetValue("encounter_table", out var tableValue)
+                    ? tableValue.ToString() ?? ""
+                    : "";
+
+                world.Add(entity, new EncounterZone(encounterTableId, encounterRate));
+            }
+
+            // Add TerrainType component if terrain type exists
+            if (
+                props.TryGetValue("terrain_type", out var terrainValue)
+                && terrainValue is string terrainType
+            )
+            {
+                var footstepSound = props.TryGetValue("footstep_sound", out var soundValue)
+                    ? soundValue.ToString() ?? ""
+                    : "";
+
+                world.Add(entity, new TerrainType(terrainType, footstepSound));
+            }
+
+            // Add TileScript component if script path exists
+            if (
+                props.TryGetValue("script", out var scriptValue) && scriptValue is string scriptPath
+            )
+            {
+                world.Add(entity, new TileScript(scriptPath));
+            }
+        }
+    }
+
+    private Microsoft.Xna.Framework.Rectangle CalculateSourceRect(int tileGid, TmxTileset tileset)
+    {
+        // Convert global ID to local ID
+        int localTileId = tileGid - tileset.FirstGid;
+
+        // Get tileset dimensions
+        int tileWidth = tileset.TileWidth;
+        int tileHeight = tileset.TileHeight;
+        int tilesPerRow = tileset.Image?.Width / tileWidth ?? 1;
+
+        // Calculate source rectangle
+        int tileX = localTileId % tilesPerRow;
+        int tileY = localTileId / tilesPerRow;
+
+        return new Microsoft.Xna.Framework.Rectangle(
+            tileX * tileWidth,
+            tileY * tileHeight,
+            tileWidth,
+            tileHeight
+        );
     }
 }

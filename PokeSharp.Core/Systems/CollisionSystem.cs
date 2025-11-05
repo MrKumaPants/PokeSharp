@@ -5,15 +5,17 @@ using PokeSharp.Core.Components;
 namespace PokeSharp.Core.Systems;
 
 /// <summary>
-/// System that provides tile-based collision detection for grid movement.
-/// Checks TileCollider components to determine if positions are walkable.
+///     System that provides tile-based collision detection for grid movement.
+///     Uses spatial hash to query entities with Collision components.
 /// </summary>
 public class CollisionSystem : BaseSystem
 {
-    /// <inheritdoc/>
+    private SpatialHashSystem? _spatialHashSystem;
+
+    /// <inheritdoc />
     public override int Priority => SystemPriority.Collision;
 
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Update(World world, float deltaTime)
     {
         // Collision system doesn't require per-frame updates
@@ -22,185 +24,165 @@ public class CollisionSystem : BaseSystem
     }
 
     /// <summary>
-    /// Checks if a tile position is walkable (not blocked by collision).
+    ///     Sets the spatial hash system for entity lookups.
+    ///     Should be called during system initialization.
     /// </summary>
-    /// <param name="world">The game world to query.</param>
-    /// <param name="tileX">The X coordinate in tile space.</param>
-    /// <param name="tileY">The Y coordinate in tile space.</param>
-    /// <returns>True if the position is walkable, false if blocked or no collision data exists.</returns>
-    public static bool IsPositionWalkable(World world, int tileX, int tileY)
+    /// <param name="spatialHashSystem">The spatial hash system instance.</param>
+    public void SetSpatialHashSystem(SpatialHashSystem spatialHashSystem)
     {
-        return IsPositionWalkable(world, tileX, tileY, Direction.None);
+        _spatialHashSystem = spatialHashSystem;
     }
 
     /// <summary>
-    /// Checks if a tile position is walkable from a specific direction.
-    /// Uses tile-type collision from TileProperties (data-driven from Tiled tileset).
-    /// Supports Pokemon-style directional blocking (ledges) via tile properties.
+    ///     Checks if a tile position is walkable (not blocked by collision).
     /// </summary>
-    /// <param name="world">The game world to query.</param>
+    /// <param name="spatialHash">The spatial hash system for entity lookups.</param>
+    /// <param name="mapId">The map identifier.</param>
+    /// <param name="tileX">The X coordinate in tile space.</param>
+    /// <param name="tileY">The Y coordinate in tile space.</param>
+    /// <returns>True if the position is walkable, false if blocked.</returns>
+    public static bool IsPositionWalkable(
+        SpatialHashSystem spatialHash,
+        int mapId,
+        int tileX,
+        int tileY
+    )
+    {
+        return IsPositionWalkable(spatialHash, mapId, tileX, tileY, Direction.None);
+    }
+
+    /// <summary>
+    ///     Checks if a tile position is walkable from a specific direction.
+    ///     Queries spatial hash for entities with Collision components.
+    ///     Supports Pokemon-style directional blocking (ledges).
+    /// </summary>
+    /// <param name="spatialHash">The spatial hash system for entity lookups.</param>
+    /// <param name="mapId">The map identifier.</param>
     /// <param name="tileX">The X coordinate in tile space.</param>
     /// <param name="tileY">The Y coordinate in tile space.</param>
     /// <param name="fromDirection">Direction moving FROM (player's movement direction).</param>
     /// <returns>True if the position is walkable from this direction, false if blocked.</returns>
     public static bool IsPositionWalkable(
-        World world,
+        SpatialHashSystem spatialHash,
+        int mapId,
         int tileX,
         int tileY,
         Direction fromDirection
     )
     {
-        if (world == null)
-        {
+        if (spatialHash == null)
             return false;
-        }
 
-        // Query for entities with TileMap and TileProperties components
-        var query = new QueryDescription().WithAll<TileMap, TileProperties>();
+        // Get all entities at this position from spatial hash
+        var entities = spatialHash.GetEntitiesAt(mapId, tileX, tileY);
 
-        bool isWalkable = true; // Default to walkable if no collision data found
-
-        world.Query(
-            in query,
-            (Entity entity, ref TileMap tileMap, ref TileProperties tileProps) =>
+        foreach (var entity in entities)
+        {
+            // Check if entity has Collision component
+            if (entity.Has<Collision>())
             {
-                // 1. Bounds checking - out of bounds is always solid
-                if (tileX < 0 || tileY < 0 || tileX >= tileMap.Width || tileY >= tileMap.Height)
-                {
-                    isWalkable = false;
-                    return;
-                }
+                ref var collision = ref entity.Get<Collision>();
 
-                // 2. Get tile at position
-                int tileGid = tileMap.GroundLayer[tileY, tileX];
-                if (tileGid == 0)
+                if (collision.IsSolid)
                 {
-                    return; // Empty tile (ID 0) is walkable
-                }
-
-                // 3. Check tile-type solid property (from tileset)
-                if (tileProps.GetProperty<bool>(tileGid, "solid", defaultValue: false))
-                {
-                    isWalkable = false;
-                    return;
-                }
-
-                // 4. Check tile-type ledges (from tileset properties)
-                if (fromDirection != Direction.None && tileProps.HasProperty(tileGid, "ledge"))
-                {
-                    string ledgeDirection = tileProps.GetProperty<string>(
-                        tileGid,
-                        "ledge_direction",
-                        defaultValue: ""
-                    );
-
-                    // Pokemon ledge logic: block opposite direction
-                    // ledge_direction="down" means you can jump DOWN, but can't climb UP
-                    bool blockedByLedge = (ledgeDirection, fromDirection) switch
+                    // Check ledge logic if entity has TileLedge component
+                    if (entity.Has<TileLedge>() && fromDirection != Direction.None)
                     {
-                        ("down", Direction.Up) => true, // Can't climb up
-                        ("up", Direction.Down) => true, // Can't climb down (rare)
-                        ("left", Direction.Right) => true, // Can't go right
-                        ("right", Direction.Left) => true, // Can't go left
-                        _ => false,
-                    };
+                        ref var ledge = ref entity.Get<TileLedge>();
 
-                    if (blockedByLedge)
+                        // Check if ledge blocks this specific direction
+                        if (ledge.IsBlockedFrom(fromDirection))
+                        {
+                            return false; // Ledge blocks this direction (can't climb up)
+                        }
+                        // Ledge allows this direction (can jump down) - continue checking other entities
+                        // Don't return true yet, there might be other blocking entities
+                    }
+                    else
                     {
-                        isWalkable = false;
+                        // Solid collision without ledge - always blocks
+                        return false;
                     }
                 }
             }
-        );
+        }
 
-        return isWalkable;
+        // No blocking collisions found
+        return true;
     }
 
     /// <summary>
-    /// Checks if a tile is a Pokemon-style ledge (has ledge property).
+    ///     Instance method that uses the system's spatial hash.
+    ///     Legacy compatibility wrapper.
     /// </summary>
-    /// <param name="world">The game world to query.</param>
+    public bool IsPositionWalkableInstance(
+        int mapId,
+        int tileX,
+        int tileY,
+        Direction fromDirection = Direction.None
+    )
+    {
+        if (_spatialHashSystem == null)
+            throw new InvalidOperationException(
+                "SpatialHashSystem not initialized. Call SetSpatialHashSystem() first."
+            );
+
+        return IsPositionWalkable(_spatialHashSystem, mapId, tileX, tileY, fromDirection);
+    }
+
+    /// <summary>
+    ///     Checks if a tile is a Pokemon-style ledge (has TileLedge component).
+    /// </summary>
+    /// <param name="spatialHash">The spatial hash system for entity lookups.</param>
+    /// <param name="mapId">The map identifier.</param>
     /// <param name="tileX">The X coordinate in tile space.</param>
     /// <param name="tileY">The Y coordinate in tile space.</param>
     /// <returns>True if the tile is a ledge, false otherwise.</returns>
-    public static bool IsLedge(World world, int tileX, int tileY)
+    public static bool IsLedge(SpatialHashSystem spatialHash, int mapId, int tileX, int tileY)
     {
-        if (world == null)
-        {
+        if (spatialHash == null)
             return false;
+
+        var entities = spatialHash.GetEntitiesAt(mapId, tileX, tileY);
+
+        foreach (var entity in entities)
+        {
+            if (entity.Has<TileLedge>())
+                return true;
         }
 
-        var query = new QueryDescription().WithAll<TileMap, TileProperties>();
-        bool ledgeFound = false;
-
-        world.Query(
-            in query,
-            (ref TileMap tileMap, ref TileProperties tileProps) =>
-            {
-                if (tileX < 0 || tileY < 0 || tileX >= tileMap.Width || tileY >= tileMap.Height)
-                {
-                    return;
-                }
-
-                int tileGid = tileMap.GroundLayer[tileY, tileX];
-                if (tileGid > 0 && tileProps.HasProperty(tileGid, "ledge"))
-                {
-                    ledgeFound = true;
-                }
-            }
-        );
-
-        return ledgeFound;
+        return false;
     }
 
     /// <summary>
-    /// Gets the allowed jump direction for a ledge tile.
+    ///     Gets the allowed jump direction for a ledge tile.
     /// </summary>
-    /// <param name="world">The game world to query.</param>
+    /// <param name="spatialHash">The spatial hash system for entity lookups.</param>
+    /// <param name="mapId">The map identifier.</param>
     /// <param name="tileX">The X coordinate in tile space.</param>
     /// <param name="tileY">The Y coordinate in tile space.</param>
     /// <returns>The direction you can jump across this ledge, or None if not a ledge.</returns>
-    public static Direction GetLedgeJumpDirection(World world, int tileX, int tileY)
+    public static Direction GetLedgeJumpDirection(
+        SpatialHashSystem spatialHash,
+        int mapId,
+        int tileX,
+        int tileY
+    )
     {
-        if (world == null)
-        {
+        if (spatialHash == null)
             return Direction.None;
+
+        var entities = spatialHash.GetEntitiesAt(mapId, tileX, tileY);
+
+        foreach (var entity in entities)
+        {
+            if (entity.Has<TileLedge>())
+            {
+                ref var ledge = ref entity.Get<TileLedge>();
+                return ledge.JumpDirection;
+            }
         }
 
-        var query = new QueryDescription().WithAll<TileMap, TileProperties>();
-        Direction jumpDirection = Direction.None;
-
-        world.Query(
-            in query,
-            (ref TileMap tileMap, ref TileProperties tileProps) =>
-            {
-                if (tileX < 0 || tileY < 0 || tileX >= tileMap.Width || tileY >= tileMap.Height)
-                {
-                    return;
-                }
-
-                int tileGid = tileMap.GroundLayer[tileY, tileX];
-                if (tileGid > 0 && tileProps.HasProperty(tileGid, "ledge"))
-                {
-                    string ledgeDirection = tileProps.GetProperty<string>(
-                        tileGid,
-                        "ledge_direction",
-                        defaultValue: "down"
-                    );
-
-                    // Pokemon ledge logic: jump direction is same as ledge direction
-                    jumpDirection = ledgeDirection switch
-                    {
-                        "down" => Direction.Down,
-                        "up" => Direction.Up,
-                        "left" => Direction.Left,
-                        "right" => Direction.Right,
-                        _ => Direction.Down,
-                    };
-                }
-            }
-        );
-
-        return jumpDirection;
+        return Direction.None;
     }
 }

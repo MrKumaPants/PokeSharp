@@ -1,6 +1,5 @@
 using FluentAssertions;
 using PokeSharp.Core.Templates;
-using Xunit;
 
 namespace PokeSharp.Core.Tests.Templates;
 
@@ -52,7 +51,7 @@ public class EntityTemplateTests
         var template = new EntityTemplate();
 
         // Act
-        Action act = () => template.AddComponent(null!);
+        var act = () => template.AddComponent(null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();

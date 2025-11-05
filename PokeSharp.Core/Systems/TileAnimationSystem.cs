@@ -1,161 +1,130 @@
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Xna.Framework;
 using PokeSharp.Core.Components;
 
 namespace PokeSharp.Core.Systems;
 
 /// <summary>
-/// System that updates animated tile frames based on time.
-/// Handles Pokemon-style tile animations (water ripples, grass swaying, flowers).
-/// Priority: 850 (after Animation:800, before MapRender:900).
+///     System that updates animated tile frames based on time.
+///     Handles Pokemon-style tile animations (water ripples, grass swaying, flowers).
+///     Priority: 850 (after Animation:800, before Render:1000).
 /// </summary>
 public class TileAnimationSystem : BaseSystem
 {
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override int Priority => SystemPriority.TileAnimation;
 
-    private QueryDescription _tileMapQuery;
-
-    /// <inheritdoc/>
-    public override void Initialize(World world)
-    {
-        base.Initialize(world);
-        _tileMapQuery = new QueryDescription().WithAll<TileMap, AnimatedTile>();
-    }
-
-    /// <inheritdoc/>
+    /// <inheritdoc />
     public override void Update(World world, float deltaTime)
     {
         EnsureInitialized();
 
         if (!Enabled)
-        {
             return;
-        }
 
-        // Query all entities with TileMap component
-        var query = new QueryDescription().WithAll<TileMap>();
+        // Query all entities with AnimatedTile and TileSprite components
+        var query = new QueryDescription().WithAll<AnimatedTile, TileSprite>();
 
         world.Query(
             in query,
-            (ref TileMap tileMap) =>
+            (Entity entity, ref AnimatedTile animTile, ref TileSprite sprite) =>
             {
-                // Check if this map has animated tiles
-                if (tileMap.AnimatedTiles == null || tileMap.AnimatedTiles.Length == 0)
-                {
-                    return;
-                }
-
-                // Update each animated tile in the array
-                for (int i = 0; i < tileMap.AnimatedTiles!.Length; i++)
-                {
-                    UpdateTileAnimation(ref tileMap, ref tileMap.AnimatedTiles[i], deltaTime);
-                }
+                UpdateTileAnimation(ref animTile, ref sprite, deltaTime);
             }
         );
     }
 
     /// <summary>
-    /// Updates a single animated tile's frame timer and advances frames when needed.
+    ///     Updates a single animated tile's frame timer and advances frames when needed.
+    ///     Updates the TileSprite component's SourceRect to display the new frame.
     /// </summary>
-    /// <param name="tileMap">The tile map containing the animated tiles.</param>
-    /// <param name="animatedTile">The animated tile data.</param>
+    /// <param name="animTile">The animated tile data.</param>
+    /// <param name="sprite">The tile sprite to update.</param>
     /// <param name="deltaTime">Time elapsed since last frame in seconds.</param>
     private static void UpdateTileAnimation(
-        ref TileMap tileMap,
-        ref AnimatedTile animatedTile,
+        ref AnimatedTile animTile,
+        ref TileSprite sprite,
         float deltaTime
     )
     {
         // Validate animation data
         if (
-            animatedTile.FrameTileIds == null
-            || animatedTile.FrameTileIds.Length == 0
-            || animatedTile.FrameDurations == null
-            || animatedTile.FrameDurations.Length == 0
+            animTile.FrameTileIds == null
+            || animTile.FrameTileIds.Length == 0
+            || animTile.FrameDurations == null
+            || animTile.FrameDurations.Length == 0
         )
-        {
             return;
-        }
 
         // Update frame timer
-        animatedTile.FrameTimer += deltaTime;
+        animTile.FrameTimer += deltaTime;
 
         // Get current frame duration
-        int currentIndex = animatedTile.CurrentFrameIndex;
-        if (currentIndex < 0 || currentIndex >= animatedTile.FrameDurations.Length)
+        var currentIndex = animTile.CurrentFrameIndex;
+        if (currentIndex < 0 || currentIndex >= animTile.FrameDurations.Length)
         {
             currentIndex = 0;
-            animatedTile.CurrentFrameIndex = 0;
+            animTile.CurrentFrameIndex = 0;
         }
 
-        float currentDuration = animatedTile.FrameDurations[currentIndex];
+        var currentDuration = animTile.FrameDurations[currentIndex];
 
         // Check if we need to advance to next frame
-        if (animatedTile.FrameTimer >= currentDuration)
+        if (animTile.FrameTimer >= currentDuration)
         {
             // Advance to next frame
-            animatedTile.CurrentFrameIndex = (currentIndex + 1) % animatedTile.FrameTileIds.Length;
-            animatedTile.FrameTimer = 0f;
+            animTile.CurrentFrameIndex = (currentIndex + 1) % animTile.FrameTileIds.Length;
+            animTile.FrameTimer = 0f;
 
-            // Update tile map data to show the new frame
-            UpdateTileMapFrames(ref tileMap, animatedTile);
+            // Update sprite's source rectangle for the new frame
+            var newFrameTileId = animTile.FrameTileIds[animTile.CurrentFrameIndex];
+            sprite.SourceRect = CalculateTileSourceRect(newFrameTileId, sprite);
         }
     }
 
     /// <summary>
-    /// Updates all instances of the animated tile in the tile map layers.
+    ///     Calculates the source rectangle for a tile ID using tileset info.
+    ///     Falls back to assumptions if tileset info not found.
     /// </summary>
-    /// <param name="tileMap">The tile map to update.</param>
-    /// <param name="animatedTile">The animated tile data.</param>
-    private static void UpdateTileMapFrames(ref TileMap tileMap, AnimatedTile animatedTile)
+    private static Rectangle CalculateTileSourceRect(int tileGid, TileSprite sprite)
     {
-        int currentFrameTileId = animatedTile.FrameTileIds[animatedTile.CurrentFrameIndex];
-
-        // Get previous frame index (wrap around)
-        int prevIndex = animatedTile.CurrentFrameIndex - 1;
-        if (prevIndex < 0)
+        // Try to use existing SourceRect dimensions if valid
+        if (sprite.SourceRect.Width > 0 && sprite.SourceRect.Height > 0)
         {
-            prevIndex = animatedTile.FrameTileIds.Length - 1;
-        }
-        int previousFrameTileId = animatedTile.FrameTileIds[prevIndex];
+            // Just update the position based on new tile ID
+            // Assume the dimensions stay the same (all tiles in set are same size)
+            const int tilesPerRow = 16; // Fallback assumption
+            var tileIndex = tileGid - 1;
+            if (tileIndex < 0)
+                tileIndex = 0;
 
-        // Update ground layer - replace PREVIOUS frame with CURRENT frame
-        UpdateLayer(tileMap.GroundLayer, previousFrameTileId, currentFrameTileId);
+            var tileX = tileIndex % tilesPerRow;
+            var tileY = tileIndex / tilesPerRow;
 
-        // Update object layer
-        UpdateLayer(tileMap.ObjectLayer, previousFrameTileId, currentFrameTileId);
-
-        // Update overhead layer
-        UpdateLayer(tileMap.OverheadLayer, previousFrameTileId, currentFrameTileId);
-    }
-
-    /// <summary>
-    /// Updates a single layer, replacing all instances of the old tile ID with the new tile ID.
-    /// </summary>
-    /// <param name="layer">The layer data to update.</param>
-    /// <param name="oldTileId">The tile ID to find and replace.</param>
-    /// <param name="newTileId">The new tile ID to replace with.</param>
-    private static void UpdateLayer(int[,] layer, int oldTileId, int newTileId)
-    {
-        if (layer == null)
-        {
-            return;
+            return new Rectangle(
+                tileX * sprite.SourceRect.Width,
+                tileY * sprite.SourceRect.Height,
+                sprite.SourceRect.Width,
+                sprite.SourceRect.Height
+            );
         }
 
-        int height = layer.GetLength(0);
-        int width = layer.GetLength(1);
+        // Fallback for invalid SourceRect
+        const int fallbackTileSize = 16;
+        const int fallbackTilesPerRow = 16;
+        var fallbackIndex = tileGid - 1;
+        if (fallbackIndex < 0)
+            fallbackIndex = 0;
 
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                // Replace previous frame with current frame
-                if (layer[y, x] == oldTileId)
-                {
-                    layer[y, x] = newTileId;
-                }
-            }
-        }
+        var fallbackX = fallbackIndex % fallbackTilesPerRow;
+        var fallbackY = fallbackIndex / fallbackTilesPerRow;
+
+        return new Rectangle(
+            fallbackX * fallbackTileSize,
+            fallbackY * fallbackTileSize,
+            fallbackTileSize,
+            fallbackTileSize
+        );
     }
 }

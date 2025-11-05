@@ -3,8 +3,8 @@ using System.Text.Json.Serialization;
 namespace PokeSharp.Rendering.Loaders;
 
 /// <summary>
-/// JSON structure for Tiled map format (Tiled 1.11.2).
-/// See: https://doc.mapeditor.org/en/stable/reference/json-map-format/
+///     JSON structure for Tiled map format (Tiled 1.11.2).
+///     See: https://doc.mapeditor.org/en/stable/reference/json-map-format/
 /// </summary>
 public class TiledJsonMap
 {
@@ -49,7 +49,7 @@ public class TiledJsonMap
 }
 
 /// <summary>
-/// Represents a layer in a Tiled JSON map.
+///     Represents a layer in a Tiled JSON map.
 /// </summary>
 public class TiledJsonLayer
 {
@@ -81,13 +81,13 @@ public class TiledJsonLayer
     public int Y { get; set; }
 
     /// <summary>
-    /// Tile data as flat array (for tilelayer).
+    ///     Tile data as flat array (for tilelayer).
     /// </summary>
     [JsonPropertyName("data")]
     public int[]? Data { get; set; }
 
     /// <summary>
-    /// Objects in this layer (for objectgroup).
+    ///     Objects in this layer (for objectgroup).
     /// </summary>
     [JsonPropertyName("objects")]
     public List<TiledJsonObject>? Objects { get; set; }
@@ -97,7 +97,7 @@ public class TiledJsonLayer
 }
 
 /// <summary>
-/// Represents a tileset reference in a Tiled JSON map.
+///     Represents a tileset reference in a Tiled JSON map.
 /// </summary>
 public class TiledJsonTileset
 {
@@ -105,7 +105,7 @@ public class TiledJsonTileset
     public int FirstGid { get; set; }
 
     /// <summary>
-    /// External tileset file path (if external).
+    ///     External tileset file path (if external).
     /// </summary>
     [JsonPropertyName("source")]
     public string? Source { get; set; }
@@ -136,62 +136,62 @@ public class TiledJsonTileset
     public int? ImageHeight { get; set; }
 
     /// <summary>
-    /// Tile definitions with animations and properties.
+    ///     Tile definitions with animations and properties.
     /// </summary>
     [JsonPropertyName("tiles")]
     public List<TiledJsonTileDefinition>? Tiles { get; set; }
 }
 
 /// <summary>
-/// Represents a tile definition with animation data and custom properties.
+///     Represents a tile definition with animation data and custom properties.
 /// </summary>
 public class TiledJsonTileDefinition
 {
     /// <summary>
-    /// Local tile ID within the tileset.
+    ///     Local tile ID within the tileset.
     /// </summary>
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
     /// <summary>
-    /// Animation frames for this tile.
+    ///     Animation frames for this tile.
     /// </summary>
     [JsonPropertyName("animation")]
     public List<TiledJsonAnimationFrame>? Animation { get; set; }
 
     /// <summary>
-    /// Custom properties for this tile (fully data-driven).
+    ///     Custom properties for this tile (fully data-driven).
     /// </summary>
     [JsonPropertyName("properties")]
     public List<TiledJsonProperty>? Properties { get; set; }
 
     /// <summary>
-    /// Tile type/class (optional, from Tiled object types).
+    ///     Tile type/class (optional, from Tiled object types).
     /// </summary>
     [JsonPropertyName("type")]
     public string? Type { get; set; }
 }
 
 /// <summary>
-/// Represents a single animation frame in a tile animation.
+///     Represents a single animation frame in a tile animation.
 /// </summary>
 public class TiledJsonAnimationFrame
 {
     /// <summary>
-    /// Local tile ID to display for this frame.
+    ///     Local tile ID to display for this frame.
     /// </summary>
     [JsonPropertyName("tileid")]
     public int TileId { get; set; }
 
     /// <summary>
-    /// Duration of this frame in milliseconds.
+    ///     Duration of this frame in milliseconds.
     /// </summary>
     [JsonPropertyName("duration")]
     public int Duration { get; set; }
 }
 
 /// <summary>
-/// Represents an object in an object layer.
+///     Represents an object in an object layer.
 /// </summary>
 public class TiledJsonObject
 {
@@ -224,7 +224,7 @@ public class TiledJsonObject
 }
 
 /// <summary>
-/// Represents a custom property in Tiled.
+///     Represents a custom property in Tiled.
 /// </summary>
 public class TiledJsonProperty
 {

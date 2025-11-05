@@ -3,43 +3,43 @@ using Microsoft.Xna.Framework;
 namespace PokeSharp.Core.Components;
 
 /// <summary>
-/// Component for grid-based movement with smooth interpolation.
-/// Used for Pokemon-style tile-by-tile movement.
+///     Component for grid-based movement with smooth interpolation.
+///     Used for Pokemon-style tile-by-tile movement.
 /// </summary>
 public struct GridMovement
 {
     /// <summary>
-    /// Gets or sets whether the entity is currently moving between tiles.
+    ///     Gets or sets whether the entity is currently moving between tiles.
     /// </summary>
     public bool IsMoving { get; set; }
 
     /// <summary>
-    /// Gets or sets the starting position of the current movement.
+    ///     Gets or sets the starting position of the current movement.
     /// </summary>
     public Vector2 StartPosition { get; set; }
 
     /// <summary>
-    /// Gets or sets the target position of the current movement.
+    ///     Gets or sets the target position of the current movement.
     /// </summary>
     public Vector2 TargetPosition { get; set; }
 
     /// <summary>
-    /// Gets or sets the movement progress from 0 (start) to 1 (complete).
+    ///     Gets or sets the movement progress from 0 (start) to 1 (complete).
     /// </summary>
     public float MovementProgress { get; set; }
 
     /// <summary>
-    /// Gets or sets the movement speed in tiles per second.
+    ///     Gets or sets the movement speed in tiles per second.
     /// </summary>
     public float MovementSpeed { get; set; }
 
     /// <summary>
-    /// Gets or sets the current facing direction.
+    ///     Gets or sets the current facing direction.
     /// </summary>
     public Direction FacingDirection { get; set; }
 
     /// <summary>
-    /// Initializes a new instance of the GridMovement struct.
+    ///     Initializes a new instance of the GridMovement struct.
     /// </summary>
     /// <param name="speed">Movement speed in tiles per second (default 4.0).</param>
     public GridMovement(float speed = 4.0f)
@@ -53,7 +53,7 @@ public struct GridMovement
     }
 
     /// <summary>
-    /// Starts movement from the current position to a target grid position.
+    ///     Starts movement from the current position to a target grid position.
     /// </summary>
     /// <param name="start">The starting pixel position.</param>
     /// <param name="target">The target pixel position.</param>
@@ -68,8 +68,8 @@ public struct GridMovement
     }
 
     /// <summary>
-    /// Starts movement from the current position to a target grid position.
-    /// Direction is automatically calculated from start and target positions.
+    ///     Starts movement from the current position to a target grid position.
+    ///     Direction is automatically calculated from start and target positions.
     /// </summary>
     /// <param name="start">The starting pixel position.</param>
     /// <param name="target">The target pixel position.</param>
@@ -80,7 +80,7 @@ public struct GridMovement
     }
 
     /// <summary>
-    /// Completes the current movement and resets state.
+    ///     Completes the current movement and resets state.
     /// </summary>
     public void CompleteMovement()
     {
@@ -89,7 +89,7 @@ public struct GridMovement
     }
 
     /// <summary>
-    /// Calculates the direction based on the difference between start and target positions.
+    ///     Calculates the direction based on the difference between start and target positions.
     /// </summary>
     private static Direction CalculateDirection(Vector2 start, Vector2 target)
     {
@@ -97,12 +97,8 @@ public struct GridMovement
 
         // Determine primary axis (larger delta)
         if (Math.Abs(delta.X) > Math.Abs(delta.Y))
-        {
             return delta.X > 0 ? Direction.Right : Direction.Left;
-        }
-        else
-        {
-            return delta.Y > 0 ? Direction.Down : Direction.Up;
-        }
+
+        return delta.Y > 0 ? Direction.Down : Direction.Up;
     }
 }

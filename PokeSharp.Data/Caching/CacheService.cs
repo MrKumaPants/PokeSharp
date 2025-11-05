@@ -4,15 +4,15 @@ using Microsoft.Extensions.Logging;
 namespace PokeSharp.Data.Caching;
 
 /// <summary>
-/// Wrapper around Microsoft.Extensions.Caching.Memory for game data caching.
-/// Provides typed caching with configurable expiration policies.
-/// Thread-safe and optimized for read-heavy workloads.
+///     Wrapper around Microsoft.Extensions.Caching.Memory for game data caching.
+///     Provides typed caching with configurable expiration policies.
+///     Thread-safe and optimized for read-heavy workloads.
 /// </summary>
 public sealed class CacheService
 {
-    private readonly IMemoryCache _memoryCache;
-    private readonly ILogger<CacheService> _logger;
     private readonly MemoryCacheEntryOptions _defaultOptions;
+    private readonly ILogger<CacheService> _logger;
+    private readonly IMemoryCache _memoryCache;
 
     public CacheService(IMemoryCache memoryCache, ILogger<CacheService> logger)
     {
@@ -28,7 +28,7 @@ public sealed class CacheService
     }
 
     /// <summary>
-    /// Get an item from cache.
+    ///     Get an item from cache.
     /// </summary>
     /// <typeparam name="T">Item type</typeparam>
     /// <param name="key">Cache key</param>
@@ -48,8 +48,8 @@ public sealed class CacheService
     }
 
     /// <summary>
-    /// Get or create an item in cache.
-    /// If item doesn't exist, factory function is called to create it.
+    ///     Get or create an item in cache.
+    ///     If item doesn't exist, factory function is called to create it.
     /// </summary>
     /// <typeparam name="T">Item type</typeparam>
     /// <param name="key">Cache key</param>
@@ -85,7 +85,7 @@ public sealed class CacheService
     }
 
     /// <summary>
-    /// Set an item in cache with default expiration.
+    ///     Set an item in cache with default expiration.
     /// </summary>
     /// <typeparam name="T">Item type</typeparam>
     /// <param name="key">Cache key</param>
@@ -100,7 +100,7 @@ public sealed class CacheService
     }
 
     /// <summary>
-    /// Set an item in cache with custom expiration.
+    ///     Set an item in cache with custom expiration.
     /// </summary>
     /// <typeparam name="T">Item type</typeparam>
     /// <param name="key">Cache key</param>
@@ -126,7 +126,7 @@ public sealed class CacheService
     }
 
     /// <summary>
-    /// Remove an item from cache.
+    ///     Remove an item from cache.
     /// </summary>
     /// <param name="key">Cache key</param>
     public void Remove(string key)
@@ -138,8 +138,8 @@ public sealed class CacheService
     }
 
     /// <summary>
-    /// Clear all cache entries.
-    /// WARNING: This is expensive and should be used sparingly.
+    ///     Clear all cache entries.
+    ///     WARNING: This is expensive and should be used sparingly.
     /// </summary>
     public void Clear()
     {
@@ -152,7 +152,7 @@ public sealed class CacheService
     }
 
     /// <summary>
-    /// Check if a key exists in cache.
+    ///     Check if a key exists in cache.
     /// </summary>
     /// <param name="key">Cache key</param>
     /// <returns>True if key exists</returns>
