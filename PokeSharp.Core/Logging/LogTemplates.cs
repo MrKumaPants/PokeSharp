@@ -18,7 +18,7 @@ public static class LogTemplates
     public static void LogSystemInitialized(this ILogger logger, string systemName, params (string key, object value)[] details)
     {
         var detailsFormatted = FormatDetails(details);
-        var message = $"[green]✓[/] {systemName} initialized{detailsFormatted}";
+        var message = $"[green]{systemName} initialized{detailsFormatted}[/]";
         logger.LogInformation(message);
     }
 
@@ -27,7 +27,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogComponentInitialized(this ILogger logger, string componentName, int count)
     {
-        var message = $"[green]✓[/] {componentName} initialized with [cyan]{count}[/] items";
+        var message = $"[green]{componentName} initialized with [cyan]{count}[/] items[/]";
         logger.LogInformation(message);
     }
 
@@ -37,7 +37,7 @@ public static class LogTemplates
     public static void LogResourceLoaded(this ILogger logger, string resourceType, string resourceId, params (string key, object value)[] details)
     {
         var detailsFormatted = FormatDetails(details);
-        var message = $"[green]✓[/] Loaded {resourceType} '[cyan]{resourceId}[/]'{detailsFormatted}";
+        var message = $"[green]Loaded {resourceType} '[cyan]{resourceId}[/]'{detailsFormatted}[/]";
         logger.LogInformation(message);
     }
 
@@ -50,7 +50,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogEntitySpawned(this ILogger logger, string entityType, int entityId, string templateId, int x, int y)
     {
-        var message = $"[green]✓[/] Spawned [yellow]{entityType}[/] [dim]#{entityId}[/] from template '[cyan]{templateId}[/]' at [magenta]({x}, {y})[/]";
+        var message = $"[green]Spawned [yellow]{entityType}[/] [dim]#{entityId}[/] from template '[cyan]{templateId}[/]' at [magenta]({x}, {y})[/][/]";
         logger.LogInformation(message);
     }
 
@@ -60,7 +60,7 @@ public static class LogTemplates
     public static void LogEntityCreated(this ILogger logger, string entityType, int entityId, params (string key, object value)[] components)
     {
         var componentList = FormatComponents(components);
-        var message = $"[green]✓[/] Created [yellow]{entityType}[/] [dim]#{entityId}[/]{componentList}";
+        var message = $"[green]Created [yellow]{entityType}[/] [dim]#{entityId}[/]{componentList}[/]";
         logger.LogInformation(message);
     }
 
@@ -83,7 +83,7 @@ public static class LogTemplates
     public static void LogAssetLoadedWithTiming(this ILogger logger, string assetId, double timeMs, int width, int height)
     {
         var timeColor = timeMs > 100 ? "yellow" : "green";
-        var message = $"[green]✓[/] [cyan]{assetId}[/] [{timeColor}]{timeMs:F1}ms[/] [dim]({width}x{height}px)[/]";
+        var message = $"[cyan]{assetId}[/] [{timeColor}]{timeMs:F1}ms[/] [dim]({width}x{height}px)[/]";
         logger.LogDebug(message);
     }
 
@@ -92,7 +92,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogMapLoaded(this ILogger logger, string mapName, int width, int height, int tiles, int objects)
     {
-        var message = $"[green]✓[/] Map '[cyan]{mapName}[/]' loaded [dim]{width}x{height}[/] | [yellow]{tiles}[/] tiles, [magenta]{objects}[/] objects";
+        var message = $"[green]Map '[cyan]{mapName}[/]' loaded [dim]{width}x{height}[/] | [yellow]{tiles}[/] tiles, [magenta]{objects}[/] objects[/]";
         logger.LogInformation(message);
     }
 
@@ -126,7 +126,7 @@ public static class LogTemplates
     public static void LogMemoryStatistics(this ILogger logger, double memoryMb, int gen0, int gen1, int gen2)
     {
         var memColor = memoryMb > 500 ? "red" : memoryMb > 250 ? "yellow" : "green";
-        var message = $"[blue]💾[/] Memory: [{memColor}]{memoryMb:F1}MB[/] [dim]|[/] GC: [grey]G0:{gen0}[/] [grey]G1:{gen1}[/] [grey]G2:{gen2}[/]";
+        var message = $"[blue]Memory: [{memColor}]{memoryMb:F1}MB[/] [dim]|[/] GC: [grey]G0:{gen0}[/] [grey]G1:{gen1}[/] [grey]G2:{gen2}[/][/]";
         logger.LogInformation(message);
     }
 
@@ -139,7 +139,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogSlowOperation(this ILogger logger, string operation, double timeMs, double thresholdMs)
     {
-        var message = $"[yellow]⚠[/] Slow operation: [cyan]{operation}[/] took [red]{timeMs:F1}ms[/] [dim](threshold: {thresholdMs:F1}ms)[/]";
+        var message = $"[yellow]Slow operation: [cyan]{operation}[/] took [red]{timeMs:F1}ms[/] [dim](threshold: {thresholdMs:F1}ms)[/][/]";
         logger.LogWarning(message);
     }
 
@@ -156,21 +156,21 @@ public static class LogTemplates
         
         if (percent > 50)
         {
-            icon = "[red bold on yellow]⚠⚠⚠[/]";
+            icon = "[red bold on yellow]!!![/]";
             timeColor = "red bold";
             percentColor = "red bold";
             label = "[red bold]CRITICAL:[/]";
         }
         else if (percent > 20)
         {
-            icon = "[red bold]⚠⚠[/]";
+            icon = "[red bold]!![/]";
             timeColor = "red";
             percentColor = "red bold";
             label = "[red]SLOW:[/]";
         }
         else
         {
-            icon = "[yellow]⚠[/]";
+            icon = "[yellow]![/]";
             timeColor = "yellow";
             percentColor = "orange1";
             label = "[yellow]Slow:[/]";
@@ -185,7 +185,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogResourceNotFound(this ILogger logger, string resourceType, string resourceId)
     {
-        var message = $"[yellow]⚠[/] {resourceType} '[red]{resourceId}[/]' not found, skipping";
+        var message = $"[yellow]{resourceType} '[red]{resourceId}[/]' not found, skipping[/]";
         logger.LogWarning(message);
     }
 
@@ -194,7 +194,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogOperationSkipped(this ILogger logger, string operation, string reason)
     {
-        var message = $"[yellow]⚠[/] Skipped: [cyan]{operation}[/] [dim]({reason})[/]";
+        var message = $"[yellow]Skipped: [cyan]{operation}[/] [dim]({reason})[/][/]";
         logger.LogWarning(message);
     }
 
@@ -216,7 +216,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogCriticalError(this ILogger logger, Exception ex, string operation)
     {
-        var message = $"[red bold]✗✗✗[/] CRITICAL: [cyan]{operation}[/] failed [dim]→[/] [red]{ex.GetType().Name}: {EscapeMarkup(ex.Message)}[/]";
+        var message = $"[red bold]CRITICAL: [cyan]{operation}[/] failed [dim]→[/] [red]{ex.GetType().Name}: {EscapeMarkup(ex.Message)}[/][/]";
         logger.LogError(message);
     }
 
@@ -244,7 +244,7 @@ public static class LogTemplates
     public static void LogBatchCompleted(this ILogger logger, string operation, int successful, int failed, double timeMs)
     {
         var successColor = failed == 0 ? "green" : "yellow";
-        var message = $"[green]✓[/] Completed: [cyan]{operation}[/] [{successColor}]{successful} OK[/] [dim]{failed} failed[/] [grey]in {timeMs:F1}ms[/]";
+        var message = $"[green]Completed: [cyan]{operation}[/] [{successColor}]{successful} OK[/] [dim]{failed} failed[/] [grey]in {timeMs:F1}ms[/][/]";
         logger.LogInformation(message);
     }
 
@@ -257,7 +257,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogControlsHint(this ILogger logger, string hint)
     {
-        var message = $"[grey]🎮[/] [dim]{hint}[/]";
+        var message = $"[grey]Controls: [dim]{hint}[/][/]";
         logger.LogInformation(message);
     }
 
@@ -266,7 +266,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogZoomChanged(this ILogger logger, string preset, float zoom)
     {
-        var message = $"[blue]🔍[/] Zoom: [cyan]{preset}[/] [yellow]{zoom:F1}x[/]";
+        var message = $"[blue]Zoom: [cyan]{preset}[/] [yellow]{zoom:F1}x[/][/]";
         logger.LogDebug(message);
     }
 
@@ -275,7 +275,7 @@ public static class LogTemplates
     /// </summary>
     public static void LogRenderStats(this ILogger logger, int totalEntities, int tiles, int sprites, ulong calls)
     {
-        var message = $"[blue]🎨[/] Rendered [cyan bold]{totalEntities}[/] entities [dim]│[/] [yellow]{tiles}[/] tiles [dim]+[/] [magenta]{sprites}[/] sprites [dim]│[/] [grey]{calls} calls[/]";
+        var message = $"[blue]Rendered [cyan bold]{totalEntities}[/] entities [dim]│[/] [yellow]{tiles}[/] tiles [dim]+[/] [magenta]{sprites}[/] sprites [dim]│[/] [grey]{calls} calls[/][/]";
         logger.LogInformation(message);
     }
 

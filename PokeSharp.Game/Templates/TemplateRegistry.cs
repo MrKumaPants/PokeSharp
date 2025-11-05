@@ -35,7 +35,7 @@ public static class TemplateRegistry
         RegisterNpcTemplates(cache, logger);
 
         var stats = cache.GetStatistics();
-        logger?.LogInformation("✅ Registered {Count} entity templates", stats.TotalTemplates);
+        logger?.LogInformation("Registered {Count} entity templates", stats.TotalTemplates);
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ public static class TemplateRegistry
                 ledgeTile.TemplateId, ledgeTile.BaseTemplateId);
         }
 
-        logger?.LogInformation("✅ Registered tile template hierarchy with {Count} templates", 8);
+        logger?.LogInformation("Registered tile template hierarchy with {Count} templates", 8);
     }
 
     /// <summary>
@@ -353,7 +353,7 @@ public static class TemplateRegistry
         logger?.LogDebug("Registered template: {TemplateId} (inherits from {BaseId})", 
             fastNpc.TemplateId, fastNpc.BaseTemplateId);
 
-        logger?.LogInformation("✅ Registered NPC template hierarchy with {Count} templates", 7);
+        logger?.LogInformation("Registered NPC template hierarchy with {Count} templates", 7);
     }
 
     /// <summary>

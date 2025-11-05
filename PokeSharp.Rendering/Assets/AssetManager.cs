@@ -106,7 +106,7 @@ public class AssetManager : IDisposable
                 }
                 
             if (successful > 0)
-                _logger?.LogInformation("[green]✓[/] Loaded [cyan]{Count}[/] tilesets" + (failed > 0 ? " [dim]({Failed} failed)[/]" : ""), 
+                _logger?.LogInformation("[green]Loaded [cyan]{Count}[/] tilesets" + (failed > 0 ? " [dim]({Failed} failed)[/]" : "") + "[/]", 
                     successful, failed);
         }
 
@@ -130,7 +130,7 @@ public class AssetManager : IDisposable
                 }
                 
             if (successful > 0)
-                _logger?.LogInformation("[green]✓[/] Loaded [cyan]{Count}[/] sprites" + (failed > 0 ? " [dim]({Failed} failed)[/]" : ""), 
+                _logger?.LogInformation("[green]Loaded [cyan]{Count}[/] sprites" + (failed > 0 ? " [dim]({Failed} failed)[/]" : "") + "[/]", 
                     successful, failed);
         }
     }

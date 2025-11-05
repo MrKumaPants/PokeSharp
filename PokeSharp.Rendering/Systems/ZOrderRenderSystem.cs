@@ -367,7 +367,7 @@ public class ZOrderRenderSystem : BaseSystem
                         if (tilesRendered == 0) // Only warn once per layer
                         {
                             _logger?.LogWarning(
-                                "  ⚠️  Tileset '{TilesetId}' NOT FOUND - skipping tiles",
+                                "  WARNING: Tileset '{TilesetId}' NOT FOUND - skipping tiles",
                                 sprite.TilesetId
                             );
                         }
@@ -407,7 +407,7 @@ public class ZOrderRenderSystem : BaseSystem
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "  ❌ ERROR rendering {Layer} layer", layer);
+            _logger?.LogError(ex, "  ERROR rendering {Layer} layer", layer);
         }
 
         return tilesRendered;
@@ -425,7 +425,7 @@ public class ZOrderRenderSystem : BaseSystem
             if (!_assetManager.HasTexture(sprite.TextureId))
             {
                 _logger?.LogWarning(
-                    "    ⚠️  Texture '{TextureId}' NOT FOUND in AssetManager - skipping sprite",
+                    "    WARNING: Texture '{TextureId}' NOT FOUND in AssetManager - skipping sprite",
                     sprite.TextureId
                 );
                 return;
@@ -480,7 +480,7 @@ public class ZOrderRenderSystem : BaseSystem
         {
             _logger?.LogError(
                 ex,
-                "    ❌ ERROR rendering moving sprite with TextureId '{TextureId}' at position ({X}, {Y})",
+                "    ERROR rendering moving sprite with TextureId '{TextureId}' at position ({X}, {Y})",
                 sprite.TextureId,
                 position.PixelX,
                 position.PixelY
@@ -496,7 +496,7 @@ public class ZOrderRenderSystem : BaseSystem
             if (!_assetManager.HasTexture(sprite.TextureId))
             {
                 _logger?.LogWarning(
-                    "    ⚠️  Texture '{TextureId}' NOT FOUND in AssetManager - skipping sprite",
+                    "    WARNING: Texture '{TextureId}' NOT FOUND in AssetManager - skipping sprite",
                     sprite.TextureId
                 );
                 return;
@@ -543,7 +543,7 @@ public class ZOrderRenderSystem : BaseSystem
         {
             _logger?.LogError(
                 ex,
-                "    ❌ ERROR rendering sprite with TextureId '{TextureId}' at position ({X}, {Y})",
+                "    ERROR rendering sprite with TextureId '{TextureId}' at position ({X}, {Y})",
                 sprite.TextureId,
                 position.PixelX,
                 position.PixelY

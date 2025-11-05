@@ -44,7 +44,7 @@ public class MapLoadingIntegrationTests
         // Expected output:
         // "Tile (0,0) GID=1 LocalID=0 has 1 properties"
         // "  solid property found: value=True, type=Boolean"
-        // "  ✅ Added Collision(IsSolid=true) to tile at (0,0)"
+        // "  Added Collision(IsSolid=true) to tile at (0,0)"
 
         Assert.True(true, "This is a documentation test");
     }

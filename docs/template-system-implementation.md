@@ -302,3 +302,4 @@ The game now spawns the player and test NPCs from templates, demonstrating the s
 
 **Status: Ready for Phase 4** 🎉
 
+

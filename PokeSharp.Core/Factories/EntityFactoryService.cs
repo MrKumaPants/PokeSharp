@@ -87,7 +87,7 @@ public sealed class EntityFactoryService : IEntityFactoryService
 
                 // Invoke Add<T>(entity, component)
                 genericMethod.Invoke(world, new[] { entity, component });
-                _logger.LogDebug("  ✓ Added {Type} to entity", componentType.Name);
+                _logger.LogDebug("  Added {Type} to entity", componentType.Name);
             }
             else
             {
