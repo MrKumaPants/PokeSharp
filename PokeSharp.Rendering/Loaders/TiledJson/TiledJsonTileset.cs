@@ -42,6 +42,18 @@ public class TiledJsonTileset
     public int? ImageHeight { get; set; }
 
     /// <summary>
+    ///     Spacing between tiles in pixels.
+    /// </summary>
+    [JsonPropertyName("spacing")]
+    public int? Spacing { get; set; }
+
+    /// <summary>
+    ///     Margin around the tileset in pixels.
+    /// </summary>
+    [JsonPropertyName("margin")]
+    public int? Margin { get; set; }
+
+    /// <summary>
     ///     Tile definitions with animations and properties.
     /// </summary>
     [JsonPropertyName("tiles")]

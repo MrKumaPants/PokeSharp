@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Core.Factories;
 using PokeSharp.Core.Logging;
+using PokeSharp.Core.Scripting.Services;
 using PokeSharp.Core.Systems;
 using PokeSharp.Core.Templates;
 using PokeSharp.Game.Diagnostics;

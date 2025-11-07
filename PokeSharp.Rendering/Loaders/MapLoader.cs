@@ -23,6 +23,12 @@ public class MapLoader(
     IEntityFactoryService? entityFactory = null,
     ILogger<MapLoader>? logger = null)
 {
+    // Tiled flip flags (stored in upper 3 bits of GID)
+    private const uint FLIPPED_HORIZONTALLY_FLAG = 0x80000000;
+    private const uint FLIPPED_VERTICALLY_FLAG = 0x40000000;
+    private const uint FLIPPED_DIAGONALLY_FLAG = 0x20000000;
+    private const uint TILE_ID_MASK = 0x1FFFFFFF;
+
     private readonly AssetManager _assetManager = assetManager ?? throw new ArgumentNullException(nameof(assetManager));
     private readonly IEntityFactoryService? _entityFactory = entityFactory;
     private readonly ILogger<MapLoader>? _logger = logger;
@@ -74,11 +80,17 @@ public class MapLoader(
             for (var y = 0; y < tmxDoc.Height; y++)
             for (var x = 0; x < tmxDoc.Width; x++)
             {
-                var tileGid = layerData[y, x];
+                // Extract flip flags from GID
+                var rawGid = (uint)layerData[y, x];
+                var tileGid = (int)(rawGid & TILE_ID_MASK);
+                var flipH = (rawGid & FLIPPED_HORIZONTALLY_FLAG) != 0;
+                var flipV = (rawGid & FLIPPED_VERTICALLY_FLAG) != 0;
+                var flipD = (rawGid & FLIPPED_DIAGONALLY_FLAG) != 0;
+
                 if (tileGid == 0)
                     continue; // Skip empty tiles
 
-                CreateTileEntity(world, x, y, mapId, tileGid, tileset, tileLayer);
+                CreateTileEntity(world, x, y, mapId, tileGid, tileset, tileLayer, flipH, flipV, flipD);
                 tilesCreated++;
             }
         }
@@ -309,7 +321,10 @@ public class MapLoader(
         int mapId,
         int tileGid,
         TmxTileset tileset,
-        TileLayer layer
+        TileLayer layer,
+        bool flipH = false,
+        bool flipV = false,
+        bool flipD = false
     )
     {
         // Get tile properties from tileset (convert global ID to local ID)
@@ -333,7 +348,10 @@ public class MapLoader(
                 tileset.Name ?? "default",
                 tileGid,
                 layer,
-                CalculateSourceRect(tileGid, tileset)
+                CalculateSourceRect(tileGid, tileset),
+                flipH,
+                flipV,
+                flipD
             );
 
             entity = _entityFactory.SpawnFromTemplate(
@@ -354,7 +372,10 @@ public class MapLoader(
                 tileset.Name ?? "default",
                 tileGid,
                 layer,
-                CalculateSourceRect(tileGid, tileset)
+                CalculateSourceRect(tileGid, tileset),
+                flipH,
+                flipV,
+                flipD
             );
 
             entity = world.Create(position, sprite);
@@ -491,9 +512,9 @@ public class MapLoader(
             }
 
             // Convert pixel coordinates to tile coordinates
-            // Tiled Y coordinate is from top of object, we want bottom-center for entities
+            // Tiled Y coordinate is from top of object, use top-left corner for positioning
             var tileX = (int)Math.Floor(obj.X / tileHeight);
-            var tileY = (int)Math.Floor((obj.Y + obj.Height) / tileHeight) - 1; // -1 to account for entity being 1 tile tall
+            var tileY = (int)Math.Floor(obj.Y / tileHeight);
 
             try
             {
@@ -625,12 +646,28 @@ public class MapLoader(
         // Get tileset dimensions
         var tileWidth = tileset.TileWidth;
         var tileHeight = tileset.TileHeight;
-        var tilesPerRow = tileset.Image?.Width / tileWidth ?? 1;
 
-        // Calculate source rectangle
+        // Validate tile dimensions to prevent division by zero
+        if (tileWidth <= 0 || tileHeight <= 0)
+        {
+            _logger?.LogError("Invalid tile dimensions: {Width}x{Height}", tileWidth, tileHeight);
+            throw new InvalidOperationException($"Invalid tile dimensions: {tileWidth}x{tileHeight}");
+        }
+
+        var spacing = tileset.Spacing; // Space between tiles
+        var margin = tileset.Margin;   // Border around tileset
+
+        var imageWidth = tileset.Image?.Width ?? 256;
+        var tilesPerRow = (imageWidth - margin) / (tileWidth + spacing);
+
+        // Calculate tile position in the grid
         var tileX = localTileId % tilesPerRow;
         var tileY = localTileId / tilesPerRow;
 
-        return new Rectangle(tileX * tileWidth, tileY * tileHeight, tileWidth, tileHeight);
+        // Calculate source rect with spacing and margin
+        var sourceX = margin + tileX * (tileWidth + spacing);
+        var sourceY = margin + tileY * (tileHeight + spacing);
+
+        return new Rectangle(sourceX, sourceY, tileWidth, tileHeight);
     }
 }

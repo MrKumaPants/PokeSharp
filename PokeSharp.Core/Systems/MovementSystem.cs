@@ -258,7 +258,10 @@ public class MovementSystem(ILogger<MovementSystem>? logger = null) : BaseSystem
     )
     {
         if (_spatialHashSystem == null)
-            return;
+        {
+            _logger?.LogError("SpatialHashSystem not set - movement blocked for entity");
+            throw new InvalidOperationException("SpatialHashSystem must be set before processing movement. Call SetSpatialHashSystem() first.");
+        }
 
         // Calculate target grid position
         var targetX = position.X;

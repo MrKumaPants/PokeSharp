@@ -18,12 +18,11 @@ internal sealed class ConsoleLoggerFactoryImpl(LogLevel minLevel = LogLevel.Info
 
     public ILogger CreateLogger(string categoryName)
     {
-        // Create a logger using reflection to instantiate ConsoleLogger<T> where T is a generic type
-        // Since we can't use generics at runtime directly, we'll use a non-generic approach
+        // Create ConsoleLogger<object> with categoryName override to show proper class names
         var loggerType = typeof(ConsoleLogger<>).MakeGenericType(typeof(object));
-        var constructor = loggerType.GetConstructor(new[] { typeof(LogLevel) });
+        var constructor = loggerType.GetConstructor(new[] { typeof(LogLevel), typeof(string) });
         if (constructor != null)
-            return (ILogger)constructor.Invoke(new object[] { _minLevel });
+            return (ILogger)constructor.Invoke(new object[] { _minLevel, categoryName });
 
         // Fallback to a simple implementation
         return new SimpleLogger(categoryName, _minLevel);

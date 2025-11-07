@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Text.Json;
 using PokeSharp.Rendering.Loaders.TiledJson;
 using PokeSharp.Rendering.Loaders.Tmx;
@@ -75,6 +76,8 @@ public static class TiledMapLoader
                 TileWidth = tiledTileset.TileWidth ?? 16,
                 TileHeight = tiledTileset.TileHeight ?? 16,
                 TileCount = tiledTileset.TileCount ?? 0,
+                Spacing = tiledTileset.Spacing ?? 0,
+                Margin = tiledTileset.Margin ?? 0,
             };
 
             // Handle external tileset
@@ -119,6 +122,8 @@ public static class TiledMapLoader
                 tileset.TileWidth = tiledTileset.TileWidth ?? tileset.TileWidth;
                 tileset.TileHeight = tiledTileset.TileHeight ?? tileset.TileHeight;
                 tileset.TileCount = tiledTileset.TileCount ?? tileset.TileCount;
+                tileset.Spacing = tiledTileset.Spacing ?? tileset.Spacing;
+                tileset.Margin = tiledTileset.Margin ?? tileset.Margin;
 
                 if (!string.IsNullOrEmpty(tiledTileset.Image))
                     tileset.Image = new TmxImage
@@ -207,14 +212,101 @@ public static class TiledMapLoader
                 Opacity = tiledLayer.Opacity,
             };
 
-            // Convert flat array to 2D array
-            if (tiledLayer.Data != null)
-                layer.Data = ConvertFlatArrayTo2D(tiledLayer.Data, layer.Width, layer.Height);
+            // Decode layer data (handles plain arrays, base64, and compression)
+            var flatData = DecodeLayerData(tiledLayer);
+            if (flatData.Length > 0)
+                layer.Data = ConvertFlatArrayTo2D(flatData, layer.Width, layer.Height);
 
             result.Add(layer);
         }
 
         return result;
+    }
+
+    /// <summary>
+    ///     Decodes layer data from various formats (plain array, base64, compressed).
+    /// </summary>
+    private static int[] DecodeLayerData(TiledJsonLayer layer)
+    {
+        if (layer.Data == null)
+            return Array.Empty<int>();
+
+        var dataElement = layer.Data.Value;
+
+        // Check if data is an array (uncompressed)
+        if (dataElement.ValueKind == JsonValueKind.Array)
+        {
+            var dataList = new List<int>();
+            foreach (var element in dataElement.EnumerateArray())
+            {
+                dataList.Add(element.GetInt32());
+            }
+            return dataList.ToArray();
+        }
+
+        // Data is a string (compressed or base64)
+        if (dataElement.ValueKind == JsonValueKind.String)
+        {
+            var base64Data = dataElement.GetString();
+            if (string.IsNullOrEmpty(base64Data))
+                return Array.Empty<int>();
+
+            var bytes = Convert.FromBase64String(base64Data);
+
+            // Handle compression
+            if (!string.IsNullOrEmpty(layer.Compression))
+            {
+                bytes = DecompressBytes(bytes, layer.Compression);
+            }
+
+            return ConvertBytesToInts(bytes);
+        }
+
+        // Unknown data type - log warning if possible
+        Console.WriteLine($"Warning: Unexpected data type in layer '{layer.Name}': {dataElement.ValueKind}");
+        return Array.Empty<int>();
+    }
+
+    /// <summary>
+    ///     Decompresses byte array using the specified compression algorithm.
+    /// </summary>
+    private static byte[] DecompressBytes(byte[] compressed, string compression)
+    {
+        using var compressedStream = new MemoryStream(compressed);
+        Stream decompressor = compression.ToLower() switch
+        {
+            "gzip" => new GZipStream(compressedStream, CompressionMode.Decompress),
+            "zlib" => new ZLibStream(compressedStream, CompressionMode.Decompress),
+            _ => throw new NotSupportedException(
+                $"Compression '{compression}' not supported. Supported formats: gzip, zlib"
+            ),
+        };
+
+        using (decompressor)
+        {
+            using var decompressed = new MemoryStream();
+            decompressor.CopyTo(decompressed);
+            return decompressed.ToArray();
+        }
+    }
+
+    /// <summary>
+    ///     Converts byte array to int array (little-endian format).
+    /// </summary>
+    private static int[] ConvertBytesToInts(byte[] bytes)
+    {
+        if (bytes.Length % 4 != 0)
+            throw new InvalidDataException(
+                $"Byte array length must be multiple of 4, got {bytes.Length}"
+            );
+
+        var ints = new int[bytes.Length / 4];
+        for (var i = 0; i < ints.Length; i++)
+        {
+            ints[i] = BitConverter.ToInt32(bytes, i * 4);
+        }
+
+        return ints;
     }
 
     private static int[,] ConvertFlatArrayTo2D(int[] flatData, int width, int height)

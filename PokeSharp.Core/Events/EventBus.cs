@@ -17,30 +17,9 @@ namespace PokeSharp.Core.Events;
 ///     <para>
 ///         PERFORMANCE: This implementation uses ConcurrentDictionary for thread-safe
 ///         access. Event firing is synchronous and happens on the caller's thread.
-///         For high-frequency events (like TypeTickEvent), consider batching or
-///         debouncing in your handlers.
+///         For high-frequency events, consider batching or debouncing in your handlers.
 ///     </para>
 /// </remarks>
-/// <example>
-///     Basic usage:
-///     <code>
-/// var eventBus = new EventBus();
-///
-/// // Subscribe to events
-/// eventBus.Subscribe&lt;TypeActivatedEvent&gt;(evt =>
-/// {
-///     Console.WriteLine($"Type {evt.TypeId} activated");
-/// });
-///
-/// // Publish events
-/// eventBus.Publish(new TypeActivatedEvent
-/// {
-///     TypeId = "rain",
-///     Timestamp = gameTime,
-///     TargetEntity = null
-/// });
-/// </code>
-/// </example>
 public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
 {
     private readonly ConcurrentDictionary<Type, ConcurrentBag<Delegate>> _handlers = new();

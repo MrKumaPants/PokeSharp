@@ -7,6 +7,8 @@ using PokeSharp.Core.Components.Player;
 using PokeSharp.Core.Components.Rendering;
 using PokeSharp.Core.Components.Tiles;
 using PokeSharp.Core.Types;
+using PokeSharp.Core.Scripting.Services;
+using PokeSharp.Core.ScriptingApi;
 
 namespace PokeSharp.Scripting.Runtime;
 
@@ -17,7 +19,7 @@ namespace PokeSharp.Scripting.Runtime;
 /// <remarks>
 ///     <para>
 ///         ScriptContext serves as the bridge between scripts and the ECS architecture.
-///         It provides type-safe component access, logging, and entity management.
+///         It provides type-safe component access, logging, entity management, and API services.
 ///     </para>
 ///     <example>
 ///         Entity script example:
@@ -28,6 +30,10 @@ namespace PokeSharp.Scripting.Runtime;
 ///     {
 ///         ctx.Logger.LogInformation("Entity has {HP} HP", health.Current);
 ///     }
+///
+///     // Use API services
+///     var playerMoney = ctx.Player.GetMoney();
+///     ctx.Logger.LogInformation("Player has {Money} money", playerMoney);
 /// }
 /// </code>
 ///     </example>
@@ -41,6 +47,9 @@ namespace PokeSharp.Scripting.Runtime;
 ///     {
 ///         // Process all players
 ///     }
+///
+///     // Use World API
+///     ctx.World.GiveMoney(100);
 /// }
 /// </code>
 ///     </example>
@@ -55,11 +64,31 @@ public sealed class ScriptContext
     /// <param name="world">The ECS world instance.</param>
     /// <param name="entity">The target entity for entity-level scripts, or null for global scripts.</param>
     /// <param name="logger">Logger instance for this script's execution.</param>
-    public ScriptContext(World world, Entity? entity, ILogger logger)
+    /// <param name="playerApi">Player API service for player-related operations.</param>
+    /// <param name="npcApi">NPC API service for NPC-related operations.</param>
+    /// <param name="mapApi">Map API service for map queries and transitions.</param>
+    /// <param name="gameStateApi">Game state API service for flags and variables.</param>
+    /// <param name="worldApi">World API service that composes all API services.</param>
+    public ScriptContext(
+        World world,
+        Entity? entity,
+        ILogger logger,
+        PlayerApiService playerApi,
+        NpcApiService npcApi,
+        MapApiService mapApi,
+        GameStateApiService gameStateApi,
+        IWorldApi worldApi)
     {
         World = world ?? throw new ArgumentNullException(nameof(world));
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _entity = entity;
+
+        // Inject API services
+        Player = playerApi ?? throw new ArgumentNullException(nameof(playerApi));
+        Npc = npcApi ?? throw new ArgumentNullException(nameof(npcApi));
+        Map = mapApi ?? throw new ArgumentNullException(nameof(mapApi));
+        GameState = gameStateApi ?? throw new ArgumentNullException(nameof(gameStateApi));
+        WorldApi = worldApi ?? throw new ArgumentNullException(nameof(worldApi));
     }
 
     #region Core Properties
@@ -90,6 +119,87 @@ public sealed class ScriptContext
     ///     Each script context has its own logger scope.
     /// </remarks>
     public ILogger Logger { get; }
+
+    #endregion
+
+    #region API Services
+
+    /// <summary>
+    ///     Gets the Player API service for player-related operations.
+    /// </summary>
+    /// <remarks>
+    ///     Use this to interact with the player entity, manage money, position, and movement.
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    /// var playerMoney = ctx.Player.GetMoney();
+    /// ctx.Player.GiveMoney(100);
+    /// var facing = ctx.Player.GetPlayerFacing();
+    /// </code>
+    /// </example>
+    public PlayerApiService Player { get; }
+
+    /// <summary>
+    ///     Gets the NPC API service for NPC-related operations.
+    /// </summary>
+    /// <remarks>
+    ///     Use this to control NPCs, move them, face directions, and manage paths.
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    /// ctx.Npc.FaceEntity(npcEntity, playerEntity);
+    /// ctx.Npc.MoveNPC(npcEntity, Direction.Up);
+    /// </code>
+    /// </example>
+    public NpcApiService Npc { get; }
+
+    /// <summary>
+    ///     Gets the Map API service for map queries and transitions.
+    /// </summary>
+    /// <remarks>
+    ///     Use this to check walkability, query entities at positions, and transition between maps.
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    /// var isWalkable = ctx.Map.IsPositionWalkable(mapId, x, y);
+    /// var entities = ctx.Map.GetEntitiesAt(mapId, x, y);
+    /// ctx.Map.TransitionToMap(2, 10, 10);
+    /// </code>
+    /// </example>
+    public MapApiService Map { get; }
+
+    /// <summary>
+    ///     Gets the Game State API service for managing flags and variables.
+    /// </summary>
+    /// <remarks>
+    ///     Use this to manage game state through flags (booleans) and variables (strings).
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    /// ctx.GameState.SetFlag("quest_completed", true);
+    /// if (ctx.GameState.GetFlag("has_key"))
+    /// {
+    ///     ctx.GameState.SetVariable("door_state", "unlocked");
+    /// }
+    /// </code>
+    /// </example>
+    public GameStateApiService GameState { get; }
+
+    /// <summary>
+    ///     Gets the World API service that provides a unified interface to all APIs.
+    /// </summary>
+    /// <remarks>
+    ///     This is a composed API that delegates to all domain-specific services.
+    ///     Use this when you want a single interface for all world operations.
+    /// </remarks>
+    /// <example>
+    ///     <code>
+    /// ctx.WorldApi.GiveMoney(100);
+    /// ctx.WorldApi.SetFlag("event_triggered", true);
+    /// ctx.WorldApi.TransitionToMap(2, 5, 5);
+    /// </code>
+    /// </example>
+    public IWorldApi WorldApi { get; }
 
     #endregion
 

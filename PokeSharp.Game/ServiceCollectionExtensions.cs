@@ -10,9 +10,10 @@ using PokeSharp.Game.Diagnostics;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
 using PokeSharp.Game.Templates;
-using PokeSharp.Rendering.Assets;
-using PokeSharp.Rendering.Loaders;
+using PokeSharp.Rendering.Factories;
 using PokeSharp.Scripting.Services;
+using PokeSharp.Core.Scripting.Services;
+using PokeSharp.Core.ScriptingApi;
 
 namespace PokeSharp.Game;
 
@@ -45,12 +46,6 @@ public static class ServiceCollectionExtensions
         });
         services.AddSingleton<IEntityFactoryService, EntityFactoryService>();
 
-        // Scripting
-        services.AddSingleton(sp =>
-        {
-            var logger = sp.GetRequiredService<ILogger<ScriptService>>();
-            return new ScriptService("Assets/Scripts", logger);
-        });
 
         // Type Registry for Behaviors
         services.AddSingleton(sp =>
@@ -66,14 +61,45 @@ public static class ServiceCollectionExtensions
             return new EventBus(logger);
         });
 
+        // Abstract Factory Pattern: Graphics services that depend on GraphicsDevice
+        // The factory allows deferred creation of AssetManager and MapLoader until
+        // GraphicsDevice is available at runtime (in PokeSharpGame.Initialize)
+        services.AddSingleton<IGraphicsServiceFactory, GraphicsServiceFactory>();
+
+        // Scripting API Services
+        services.AddSingleton<PlayerApiService>();
+        services.AddSingleton<NpcApiService>();
+        services.AddSingleton<MapApiService>(sp =>
+        {
+            var world = sp.GetRequiredService<World>();
+            var logger = sp.GetRequiredService<ILogger<MapApiService>>();
+            // SpatialHashSystem is initialized later in GameInitializer
+            // It will be set via SetSpatialHashSystem method after initialization
+            return new MapApiService(world, logger, null!);
+        });
+        services.AddSingleton<GameStateApiService>();
+        services.AddSingleton<IWorldApi, WorldApi>();
+
+        // Scripting Service
+        services.AddSingleton(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<ScriptService>>();
+            var playerApi = sp.GetRequiredService<PlayerApiService>();
+            var npcApi = sp.GetRequiredService<NpcApiService>();
+            var mapApi = sp.GetRequiredService<MapApiService>();
+            var gameStateApi = sp.GetRequiredService<GameStateApiService>();
+            var worldApi = sp.GetRequiredService<IWorldApi>();
+            return new ScriptService("Assets/Scripts", logger, playerApi, npcApi, mapApi, gameStateApi, worldApi);
+        });
+
         // Game Initializers and Helpers
         services.AddSingleton<PerformanceMonitor>();
         services.AddSingleton<InputManager>();
         services.AddSingleton<PlayerFactory>();
 
-        // Note: GameInitializer, MapInitializer, NPCBehaviorInitializer, AssetManager, MapLoader
-        // and SpatialHashSystem are created after GraphicsDevice is available
-        // They will be registered in PokeSharpGame.Initialize()
+        // Note: GameInitializer, MapInitializer, NPCBehaviorInitializer, and SpatialHashSystem
+        // are created after GraphicsDevice is available in PokeSharpGame.Initialize()
+        // AssetManager and MapLoader are now created via IGraphicsServiceFactory
 
         return services;
     }

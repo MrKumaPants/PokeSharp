@@ -390,6 +390,17 @@ public class ZOrderRenderSystem(
                         _ => 0.5f,
                     };
 
+                    // Apply flip flags from Tiled
+                    var effects = SpriteEffects.None;
+                    if (sprite.FlipHorizontally)
+                        effects |= SpriteEffects.FlipHorizontally;
+                    if (sprite.FlipVertically)
+                        effects |= SpriteEffects.FlipVertically;
+
+                    // Note: Diagonal flip (rotate 90° then flip) is not directly supported by MonoGame's SpriteEffects.
+                    // For full diagonal flip support, we would need to use rotation parameter.
+                    // This is rarely used in practice, so we skip it for now.
+
                     // Render tile
                     _spriteBatch.Draw(
                         texture,
@@ -399,7 +410,7 @@ public class ZOrderRenderSystem(
                         0f,
                         Vector2.Zero,
                         1f,
-                        SpriteEffects.None,
+                        effects,
                         layerDepth
                     );
 

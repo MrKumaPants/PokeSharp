@@ -15,9 +15,11 @@ public sealed class ConsoleLogger<T> : ILogger<T>
     private readonly string _categoryName;
     private readonly LogLevel _minLevel;
 
-    public ConsoleLogger(LogLevel minLevel = LogLevel.Information)
+    public ConsoleLogger(LogLevel minLevel = LogLevel.Information, string? categoryNameOverride = null)
     {
-        _categoryName = typeof(T).Name;
+        var fullName = categoryNameOverride ?? typeof(T).Name;
+        // Extract just the class name without namespace (e.g., "SystemManager" from "PokeSharp.Core.Systems.SystemManager")
+        _categoryName = fullName.Contains('.') ? fullName.Split('.')[^1] : fullName;
         _minLevel = minLevel;
         _categoryColor = GetCategoryColor(_categoryName);
     }

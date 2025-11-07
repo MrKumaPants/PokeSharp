@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace PokeSharp.Rendering.Loaders.TiledJson;
@@ -35,10 +36,23 @@ public class TiledJsonLayer
     public int Y { get; set; }
 
     /// <summary>
-    ///     Tile data as flat array (for tilelayer).
+    ///     Tile data - can be either an array of ints (uncompressed) or a base64 string (compressed).
+    ///     Use JsonElement to handle the polymorphic "data" property.
     /// </summary>
     [JsonPropertyName("data")]
-    public int[]? Data { get; set; }
+    public JsonElement? Data { get; set; }
+
+    /// <summary>
+    ///     Encoding format for data string (e.g., "base64").
+    /// </summary>
+    [JsonPropertyName("encoding")]
+    public string? Encoding { get; set; }
+
+    /// <summary>
+    ///     Compression format for data (e.g., "gzip", "zlib").
+    /// </summary>
+    [JsonPropertyName("compression")]
+    public string? Compression { get; set; }
 
     /// <summary>
     ///     Objects in this layer (for objectgroup).

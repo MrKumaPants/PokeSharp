@@ -14,10 +14,12 @@ public class SystemManager(ILogger<SystemManager>? logger = null)
 {
     private const float TargetFrameTime = 16.67f; // 60 FPS target
     private const double SlowSystemThresholdPercent = 0.1; // Warn if system takes >10% of frame budget
-    
+    private const ulong SlowSystemWarningCooldownFrames = 300; // Only warn once per 5 seconds (at 60fps)
+
     private readonly object _lock = new();
     private readonly ILogger<SystemManager>? _logger = logger;
     private readonly Dictionary<ISystem, SystemMetrics> _metrics = new();
+    private readonly Dictionary<ISystem, ulong> _lastSlowWarningFrame = new();
     private readonly List<ISystem> _systems = new();
     private bool _initialized;
     private ulong _frameCounter;
@@ -89,6 +91,8 @@ public class SystemManager(ILogger<SystemManager>? logger = null)
         lock (_lock)
         {
             _systems.Remove(system);
+            _metrics.Remove(system);
+            _lastSlowWarningFrame.Remove(system);
         }
     }
 
@@ -147,33 +151,71 @@ public class SystemManager(ILogger<SystemManager>? logger = null)
             );
         }
 
-        _frameCounter++;
-
+        // Copy systems list once under lock to minimize lock contention
+        ISystem[] systemsToUpdate;
         lock (_lock)
         {
-            foreach (var system in _systems)
-            {
-                if (!system.Enabled)
-                    continue;
+            systemsToUpdate = _systems.ToArray();
+        }
 
-                var sw = Stopwatch.StartNew();
-                try
+        _frameCounter++;
+
+        // Update systems without holding lock
+        foreach (var system in systemsToUpdate)
+        {
+            if (!system.Enabled)
+                continue;
+
+            var stopwatch = Stopwatch.StartNew();
+
+            try
+            {
+                system.Update(world, deltaTime);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogExceptionWithContext(
+                    ex,
+                    "System {System} threw exception during update",
+                    system.GetType().Name
+                );
+                continue; // Continue with next system instead of crashing
+            }
+
+            stopwatch.Stop();
+
+            // Update metrics under lock
+            lock (_lock)
+            {
+                if (!_metrics.ContainsKey(system))
                 {
-                    system.Update(world, deltaTime);
+                    _metrics[system] = new SystemMetrics();
                 }
-                catch (Exception ex)
+
+                var metrics = _metrics[system];
+                metrics.UpdateCount++;
+                metrics.TotalTimeMs += stopwatch.Elapsed.TotalMilliseconds;
+                metrics.LastUpdateMs = stopwatch.Elapsed.TotalMilliseconds;
+
+                if (stopwatch.Elapsed.TotalMilliseconds > metrics.MaxUpdateMs)
+                    metrics.MaxUpdateMs = stopwatch.Elapsed.TotalMilliseconds;
+            }
+
+            // Log slow systems (throttled to avoid spam)
+            var elapsed = stopwatch.Elapsed.TotalMilliseconds;
+            if (elapsed > TargetFrameTime * SlowSystemThresholdPercent)
+            {
+                lock (_lock)
                 {
-                    _logger?.LogExceptionWithContext(
-                        ex,
-                        "Error updating system: {SystemName}",
-                        system.GetType().Name
-                    );
-                    throw;
-                }
-                finally
-                {
-                    sw.Stop();
-                    UpdateMetrics(system, sw.Elapsed.TotalMilliseconds);
+                    // Only warn if cooldown period has passed since last warning for this system
+                    if (!_lastSlowWarningFrame.TryGetValue(system, out var lastWarning) ||
+                        (_frameCounter - lastWarning) >= SlowSystemWarningCooldownFrames)
+                    {
+                        _lastSlowWarningFrame[system] = _frameCounter;
+                        var percentOfFrame = (elapsed / TargetFrameTime) * 100;
+                        _logger?.LogWarning("Slow system: {System} took {Time:F2}ms ({Percent:F1}% of frame)",
+                            system.GetType().Name, elapsed, percentOfFrame);
+                    }
                 }
             }
         }
@@ -182,26 +224,6 @@ public class SystemManager(ILogger<SystemManager>? logger = null)
         if (_frameCounter % 300 == 0)
         {
             LogPerformanceStats();
-        }
-    }
-
-    private void UpdateMetrics(ISystem system, double elapsedMs)
-    {
-        if (!_metrics.TryGetValue(system, out var metrics))
-            return;
-
-        metrics.UpdateCount++;
-        metrics.TotalTimeMs += elapsedMs;
-        metrics.LastUpdateMs = elapsedMs;
-
-        if (elapsedMs > metrics.MaxUpdateMs)
-            metrics.MaxUpdateMs = elapsedMs;
-
-        // Warn about slow systems (taking >10% of frame budget)
-        if (elapsedMs > TargetFrameTime * SlowSystemThresholdPercent)
-        {
-            var percent = (elapsedMs / TargetFrameTime) * 100;
-            _logger?.LogSlowSystem(system.GetType().Name, elapsedMs, percent);
         }
     }
 

@@ -7,6 +7,8 @@ using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Scripting.Compilation;
 using PokeSharp.Scripting.Runtime;
+using PokeSharp.Core.Scripting.Services;
+using PokeSharp.Core.ScriptingApi;
 
 namespace PokeSharp.Scripting.Services;
 
@@ -14,13 +16,46 @@ namespace PokeSharp.Scripting.Services;
 ///     Service for compiling and executing Roslyn C# scripts (.csx files).
 ///     Provides hot-reload support and script caching.
 /// </summary>
-public class ScriptService(string scriptsBasePath, ILogger<ScriptService> logger) : IAsyncDisposable
+public class ScriptService : IAsyncDisposable
 {
-    private readonly string _scriptsBasePath = scriptsBasePath ?? throw new ArgumentNullException(nameof(scriptsBasePath));
-    private readonly ILogger<ScriptService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    private readonly string _scriptsBasePath;
+    private readonly ILogger<ScriptService> _logger;
     private readonly ScriptOptions _defaultOptions = ScriptCompilationOptions.GetDefaultOptions();
     private readonly ConcurrentDictionary<string, (Script<object> compiled, Type? scriptType)> _scriptCache = new();
     private readonly ConcurrentDictionary<string, object> _scriptInstances = new();
+    private readonly PlayerApiService _playerApi;
+    private readonly NpcApiService _npcApi;
+    private readonly MapApiService _mapApi;
+    private readonly GameStateApiService _gameStateApi;
+    private readonly IWorldApi _worldApi;
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="ScriptService"/> class.
+    /// </summary>
+    /// <param name="scriptsBasePath">Base path for script files.</param>
+    /// <param name="logger">Logger instance.</param>
+    /// <param name="playerApi">Player API service.</param>
+    /// <param name="npcApi">NPC API service.</param>
+    /// <param name="mapApi">Map API service.</param>
+    /// <param name="gameStateApi">Game state API service.</param>
+    /// <param name="worldApi">World API service.</param>
+    public ScriptService(
+        string scriptsBasePath,
+        ILogger<ScriptService> logger,
+        PlayerApiService playerApi,
+        NpcApiService npcApi,
+        MapApiService mapApi,
+        GameStateApiService gameStateApi,
+        IWorldApi worldApi)
+    {
+        _scriptsBasePath = scriptsBasePath ?? throw new ArgumentNullException(nameof(scriptsBasePath));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _playerApi = playerApi ?? throw new ArgumentNullException(nameof(playerApi));
+        _npcApi = npcApi ?? throw new ArgumentNullException(nameof(npcApi));
+        _mapApi = mapApi ?? throw new ArgumentNullException(nameof(mapApi));
+        _gameStateApi = gameStateApi ?? throw new ArgumentNullException(nameof(gameStateApi));
+        _worldApi = worldApi ?? throw new ArgumentNullException(nameof(worldApi));
+    }
 
     /// <summary>
     ///     Load and compile a script from a .csx file.
@@ -121,12 +156,27 @@ public class ScriptService(string scriptsBasePath, ILogger<ScriptService> logger
 
         _logger.LogInformation("Hot-reloading script: {Path}", scriptPath);
 
-        // Remove from cache
-        _scriptCache.TryRemove(scriptPath, out _);
-        _scriptInstances.TryRemove(scriptPath, out _);
+        try
+        {
+            // Load new instance FIRST
+            var newInstance = await LoadScriptAsync(scriptPath);
 
-        // Load again
-        return await LoadScriptAsync(scriptPath);
+            // Then dispose and replace old instance atomically
+            if (_scriptInstances.TryGetValue(scriptPath, out var oldInstance))
+            {
+                if (oldInstance is IAsyncDisposable asyncDisposable)
+                    await asyncDisposable.DisposeAsync();
+                else if (oldInstance is IDisposable disposable)
+                    disposable.Dispose();
+            }
+
+            return newInstance;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to hot-reload script: {Path}", scriptPath);
+            return null;
+        }
     }
 
     /// <summary>
@@ -197,7 +247,15 @@ public class ScriptService(string scriptsBasePath, ILogger<ScriptService> logger
 
             // Create ScriptContext for initialization (use NullLogger if no logger provided)
             var effectiveLogger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
-            var context = new ScriptContext(world, entity, effectiveLogger);
+            var context = new ScriptContext(
+                world,
+                entity,
+                effectiveLogger,
+                _playerApi,
+                _npcApi,
+                _mapApi,
+                _gameStateApi,
+                _worldApi);
             initMethod.Invoke(scriptBase, new object[] { context });
 
             _logger.LogDebug(
@@ -243,20 +301,33 @@ public class ScriptService(string scriptsBasePath, ILogger<ScriptService> logger
     /// </summary>
     public async ValueTask DisposeAsync()
     {
+        var exceptions = new List<Exception>();
+
         // Dispose any scripts that implement IAsyncDisposable
         foreach (var instance in _scriptInstances.Values)
         {
-            if (instance is IAsyncDisposable asyncDisposable)
+            try
             {
-                await asyncDisposable.DisposeAsync();
+                if (instance is IAsyncDisposable asyncDisposable)
+                {
+                    await asyncDisposable.DisposeAsync();
+                }
+                else if (instance is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
             }
-            else if (instance is IDisposable disposable)
+            catch (Exception ex)
             {
-                disposable.Dispose();
+                _logger.LogError(ex, "Error disposing script instance");
+                exceptions.Add(ex);
             }
         }
 
         ClearCache();
         GC.SuppressFinalize(this);
+
+        if (exceptions.Count > 0)
+            throw new AggregateException("Errors during script disposal", exceptions);
     }
 }

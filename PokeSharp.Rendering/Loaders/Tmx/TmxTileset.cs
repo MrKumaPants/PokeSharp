@@ -41,6 +41,16 @@ public class TmxTileset
     public TmxImage? Image { get; set; }
 
     /// <summary>
+    ///     Gets or sets the spacing between tiles in pixels.
+    /// </summary>
+    public int Spacing { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the margin around the tileset in pixels.
+    /// </summary>
+    public int Margin { get; set; }
+
+    /// <summary>
     ///     Gets or sets the animated tiles in this tileset.
     ///     Key: local tile ID, Value: animation data.
     /// </summary>

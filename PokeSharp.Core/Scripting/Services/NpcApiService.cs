@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using PokeSharp.Core.Components;
 using PokeSharp.Core.Components.Movement;
+using PokeSharp.Core.Components.NPCs;
 using PokeSharp.Core.ScriptingApi;
 
 namespace PokeSharp.Core.Scripting.Services;
@@ -112,11 +113,34 @@ public class NpcApiService(World world, ILogger<NpcApiService> logger) : INPCApi
             return;
         }
 
-        #warning TODO: Implement when PathComponent is created
+        if (waypoints == null || waypoints.Length == 0)
+        {
+            _logger.LogWarning("Attempted to set empty path");
+            return;
+        }
+
+        var pathComponent = new PathComponent
+        {
+            Waypoints = waypoints,
+            CurrentWaypointIndex = 0,
+            Loop = loop,
+            WaypointWaitTime = 0f
+        };
+
+        if (_world.Has<PathComponent>(npc))
+        {
+            _world.Set(npc, pathComponent);
+        }
+        else
+        {
+            _world.Add(npc, pathComponent);
+        }
+
         _logger.LogInformation(
-            "SetNPCPath called for entity {Entity} with {Count} waypoints",
+            "Path set for entity {Entity} with {Count} waypoints (loop: {Loop})",
             npc.Id,
-            waypoints.Length
+            waypoints.Length,
+            loop
         );
     }
 

@@ -4,7 +4,7 @@ namespace PokeSharp.Core.Events;
 
 /// <summary>
 ///     Event bus interface for publishing and subscribing to events.
-///     Provides decoupled communication between systems using the unified TypeEvents pattern.
+///     Provides decoupled communication between systems.
 /// </summary>
 public interface IEventBus
 {

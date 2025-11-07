@@ -19,14 +19,22 @@ public class MapApiService(
 {
     private readonly World _world = world ?? throw new ArgumentNullException(nameof(world));
     private readonly ILogger<MapApiService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    private readonly SpatialHashSystem? _spatialHashSystem = spatialHashSystem;
+    private SpatialHashSystem? _spatialHashSystem = spatialHashSystem;
+
+    /// <summary>
+    ///     Sets the spatial hash system. This is called after initialization when GraphicsDevice is available.
+    /// </summary>
+    public void SetSpatialHashSystem(SpatialHashSystem spatialHashSystem)
+    {
+        _spatialHashSystem = spatialHashSystem ?? throw new ArgumentNullException(nameof(spatialHashSystem));
+    }
 
     public bool IsPositionWalkable(int mapId, int x, int y)
     {
         if (_spatialHashSystem == null)
         {
-            _logger.LogWarning("SpatialHashSystem not available for walkability check");
-            return true; // Default to walkable if system unavailable
+            _logger.LogWarning("SpatialHashSystem not initialized yet");
+            return true; // Default to walkable if system not ready
         }
 
         var entities = _spatialHashSystem.GetEntitiesAt(mapId, x, y);
@@ -49,7 +57,7 @@ public class MapApiService(
     {
         if (_spatialHashSystem == null)
         {
-            _logger.LogWarning("SpatialHashSystem not available for entity query");
+            _logger.LogWarning("SpatialHashSystem not initialized yet");
             return [];
         }
 

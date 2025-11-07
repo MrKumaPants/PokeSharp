@@ -29,7 +29,12 @@ public class PlayerApiService(World world, ILogger<PlayerApiService> logger) : I
 
     public int GetMoney()
     {
-        #warning TODO: Implement when Player component has Money field
+        var playerEntity = GetPlayerEntity();
+        if (playerEntity.HasValue && _world.Has<Player>(playerEntity.Value))
+        {
+            ref var player = ref _world.Get<Player>(playerEntity.Value);
+            return player.Money;
+        }
         return 0;
     }
 
@@ -40,20 +45,33 @@ public class PlayerApiService(World world, ILogger<PlayerApiService> logger) : I
             throw new ArgumentException("Amount must be positive", nameof(amount));
         }
 
-        #warning TODO: Implement when Player component has Money field
-        _logger.LogInformation("GiveMoney: {Amount}", amount);
+        var playerEntity = GetPlayerEntity();
+        if (playerEntity.HasValue && _world.Has<Player>(playerEntity.Value))
+        {
+            ref var player = ref _world.Get<Player>(playerEntity.Value);
+            player.Money += amount;
+            _logger.LogInformation("Gave {Amount} money to player. New balance: {Balance}", amount, player.Money);
+        }
     }
 
     public bool TakeMoney(int amount)
     {
-        var currentMoney = GetMoney();
-        if (currentMoney >= amount)
+        if (amount < 0)
         {
-            #warning TODO: Implement when Player component has Money field
-            _logger.LogInformation("TakeMoney: {Amount}", amount);
-            return true;
+            throw new ArgumentException("Amount must be positive", nameof(amount));
         }
 
+        var playerEntity = GetPlayerEntity();
+        if (playerEntity.HasValue && _world.Has<Player>(playerEntity.Value))
+        {
+            ref var player = ref _world.Get<Player>(playerEntity.Value);
+            if (player.Money >= amount)
+            {
+                player.Money -= amount;
+                _logger.LogInformation("Took {Amount} money from player. New balance: {Balance}", amount, player.Money);
+                return true;
+            }
+        }
         return false;
     }
 

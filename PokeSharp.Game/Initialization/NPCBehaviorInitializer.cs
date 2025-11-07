@@ -5,6 +5,8 @@ using PokeSharp.Core.Systems;
 using PokeSharp.Core.Types;
 using PokeSharp.Game.Systems;
 using PokeSharp.Scripting.Services;
+using PokeSharp.Core.Scripting.Services;
+using PokeSharp.Core.ScriptingApi;
 
 namespace PokeSharp.Game.Initialization;
 
@@ -17,7 +19,12 @@ public class NPCBehaviorInitializer(
     World world,
     SystemManager systemManager,
     ScriptService scriptService,
-    TypeRegistry<BehaviorDefinition> behaviorRegistry)
+    TypeRegistry<BehaviorDefinition> behaviorRegistry,
+    PlayerApiService playerApi,
+    NpcApiService npcApi,
+    MapApiService mapApi,
+    GameStateApiService gameStateApi,
+    IWorldApi worldApi)
 {
     private readonly ILogger<NPCBehaviorInitializer> _logger = logger;
     private readonly ILoggerFactory _loggerFactory = loggerFactory;
@@ -25,6 +32,11 @@ public class NPCBehaviorInitializer(
     private readonly SystemManager _systemManager = systemManager;
     private readonly ScriptService _scriptService = scriptService;
     private readonly TypeRegistry<BehaviorDefinition> _behaviorRegistry = behaviorRegistry;
+    private readonly PlayerApiService _playerApi = playerApi;
+    private readonly NpcApiService _npcApi = npcApi;
+    private readonly MapApiService _mapApi = mapApi;
+    private readonly GameStateApiService _gameStateApi = gameStateApi;
+    private readonly IWorldApi _worldApi = worldApi;
 
     /// <summary>
     ///     Initializes the NPC behavior system with TypeRegistry and ScriptService.
@@ -78,9 +90,16 @@ public class NPCBehaviorInitializer(
                 }
             }
 
-            // Register NPCBehaviorSystem
+            // Register NPCBehaviorSystem with API services
             var npcBehaviorLogger = _loggerFactory.CreateLogger<NPCBehaviorSystem>();
-            var npcBehaviorSystem = new NPCBehaviorSystem(npcBehaviorLogger, _loggerFactory);
+            var npcBehaviorSystem = new NPCBehaviorSystem(
+                npcBehaviorLogger,
+                _loggerFactory,
+                _playerApi,
+                _npcApi,
+                _mapApi,
+                _gameStateApi,
+                _worldApi);
             npcBehaviorSystem.SetBehaviorRegistry(_behaviorRegistry);
             _systemManager.RegisterSystem(npcBehaviorSystem);
 

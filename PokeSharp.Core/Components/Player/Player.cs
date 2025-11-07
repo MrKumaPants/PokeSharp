@@ -6,5 +6,10 @@ namespace PokeSharp.Core.Components.Player;
 /// </summary>
 public struct Player
 {
-    // Empty tag component - presence indicates player entity
+    /// <summary>
+    ///     The player's current money/currency.
+    /// </summary>
+    public int Money;
+
+    // Future fields can be added here: Name, PlayTime, etc.
 }

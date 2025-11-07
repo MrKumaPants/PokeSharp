@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Core.Factories;
+using PokeSharp.Core.Scripting.Services;
 using PokeSharp.Core.Systems;
 using PokeSharp.Core.Types;
 using PokeSharp.Game.Diagnostics;
@@ -11,6 +12,7 @@ using PokeSharp.Game.Input;
 using PokeSharp.Rendering.Assets;
 using PokeSharp.Rendering.Loaders;
 using PokeSharp.Scripting.Services;
+using PokeSharp.Core.ScriptingApi;
 
 namespace PokeSharp.Game;
 
@@ -28,6 +30,10 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
     private readonly IEntityFactoryService _entityFactory;
     private readonly ScriptService _scriptService;
     private readonly TypeRegistry<BehaviorDefinition> _behaviorRegistry;
+    private readonly PlayerApiService _playerApi;
+    private readonly NpcApiService _npcApi;
+    private readonly GameStateApiService _gameStateApi;
+    private readonly IWorldApi _worldApi;
 
     // Services that depend on GraphicsDevice (created in Initialize)
     private readonly PerformanceMonitor _performanceMonitor;
@@ -37,6 +43,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
     private GameInitializer _gameInitializer = null!;
     private MapInitializer _mapInitializer = null!;
     private NPCBehaviorInitializer _npcBehaviorInitializer = null!;
+    private MapApiService _mapApiService = null!;
 
     /// <summary>
     ///     Initializes a new instance of the PokeSharpGame class.
@@ -51,7 +58,12 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         TypeRegistry<BehaviorDefinition> behaviorRegistry,
         PerformanceMonitor performanceMonitor,
         InputManager inputManager,
-        PlayerFactory playerFactory)
+        PlayerFactory playerFactory,
+        PlayerApiService playerApi,
+        NpcApiService npcApi,
+        MapApiService mapApiService,
+        GameStateApiService gameStateApi,
+        IWorldApi worldApi)
     {
         _logger = logger;
         _loggerFactory = loggerFactory;
@@ -63,6 +75,11 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         _performanceMonitor = performanceMonitor;
         _inputManager = inputManager;
         _playerFactory = playerFactory;
+        _playerApi = playerApi;
+        _npcApi = npcApi;
+        _mapApiService = mapApiService;
+        _gameStateApi = gameStateApi;
+        _worldApi = worldApi;
 
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
@@ -105,6 +122,9 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         // Initialize core game systems
         _gameInitializer.Initialize(GraphicsDevice);
 
+        // Set SpatialHashSystem on the MapApiService that was created by DI (used by ScriptService)
+        _mapApiService.SetSpatialHashSystem(_gameInitializer.SpatialHashSystem);
+
         var mapInitializerLogger = _loggerFactory.CreateLogger<MapInitializer>();
         _mapInitializer = new MapInitializer(
             mapInitializerLogger,
@@ -121,7 +141,12 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
             _world,
             _systemManager,
             _scriptService,
-            _behaviorRegistry
+            _behaviorRegistry,
+            _playerApi,
+            _npcApi,
+            _mapApiService,
+            _gameStateApi,
+            _worldApi
         );
 
         // Initialize NPC behavior system

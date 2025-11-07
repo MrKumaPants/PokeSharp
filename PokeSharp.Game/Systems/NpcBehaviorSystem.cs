@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Core.Components.Movement;
@@ -6,6 +7,8 @@ using PokeSharp.Core.Components.Player;
 using PokeSharp.Core.Systems;
 using PokeSharp.Core.Types;
 using PokeSharp.Scripting.Runtime;
+using PokeSharp.Core.Scripting.Services;
+using PokeSharp.Core.ScriptingApi;
 
 namespace PokeSharp.Game.Systems;
 
@@ -23,12 +26,30 @@ public class NPCBehaviorSystem : BaseSystem
 {
     private readonly ILogger<NPCBehaviorSystem> _logger;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ConcurrentDictionary<string, ILogger> _scriptLoggerCache = new();
+    private readonly PlayerApiService _playerApi;
+    private readonly NpcApiService _npcApi;
+    private readonly MapApiService _mapApi;
+    private readonly GameStateApiService _gameStateApi;
+    private readonly IWorldApi _worldApi;
     private TypeRegistry<BehaviorDefinition>? _behaviorRegistry;
 
-    public NPCBehaviorSystem(ILogger<NPCBehaviorSystem> logger, ILoggerFactory loggerFactory)
+    public NPCBehaviorSystem(
+        ILogger<NPCBehaviorSystem> logger,
+        ILoggerFactory loggerFactory,
+        PlayerApiService playerApi,
+        NpcApiService npcApi,
+        MapApiService mapApi,
+        GameStateApiService gameStateApi,
+        IWorldApi worldApi)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+        _playerApi = playerApi ?? throw new ArgumentNullException(nameof(playerApi));
+        _npcApi = npcApi ?? throw new ArgumentNullException(nameof(npcApi));
+        _mapApi = mapApi ?? throw new ArgumentNullException(nameof(mapApi));
+        _gameStateApi = gameStateApi ?? throw new ArgumentNullException(nameof(gameStateApi));
+        _worldApi = worldApi ?? throw new ArgumentNullException(nameof(worldApi));
     }
 
     /// <summary>
@@ -100,11 +121,20 @@ public class NPCBehaviorSystem : BaseSystem
                         return;
                     }
 
-                    // Create ScriptContext for this entity
-                    var scriptLogger = _loggerFactory.CreateLogger(
-                        $"Script.{behavior.BehaviorTypeId}.{npc.NpcId}"
+                    // Create ScriptContext for this entity (with cached logger and API services)
+                    var scriptLogger = _scriptLoggerCache.GetOrAdd(
+                        $"{behavior.BehaviorTypeId}.{npc.NpcId}",
+                        key => _loggerFactory.CreateLogger($"Script.{key}")
                     );
-                    var context = new ScriptContext(world, entity, scriptLogger);
+                    var context = new ScriptContext(
+                        world,
+                        entity,
+                        scriptLogger,
+                        _playerApi,
+                        _npcApi,
+                        _mapApi,
+                        _gameStateApi,
+                        _worldApi);
 
                     // Initialize on first tick
                     if (!behavior.IsInitialized)
