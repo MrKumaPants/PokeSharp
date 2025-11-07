@@ -1,4 +1,6 @@
 using System.Text.Json;
+using PokeSharp.Rendering.Loaders.TiledJson;
+using PokeSharp.Rendering.Loaders.Tmx;
 
 namespace PokeSharp.Rendering.Loaders;
 

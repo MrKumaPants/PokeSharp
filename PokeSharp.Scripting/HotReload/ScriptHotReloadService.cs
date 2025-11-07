@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Scripting.Compilation;
 using PokeSharp.Scripting.HotReload.Backup;
 using PokeSharp.Scripting.HotReload.Cache;
+using PokeSharp.Scripting.HotReload.Compilation;
 using PokeSharp.Scripting.HotReload.Notifications;
 using PokeSharp.Scripting.HotReload.Watchers;
 

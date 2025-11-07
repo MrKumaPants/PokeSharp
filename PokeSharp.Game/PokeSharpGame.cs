@@ -2,7 +2,13 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
-using PokeSharp.Core.Components;
+using PokeSharp.Core.Components.Maps;
+using PokeSharp.Core.Components.Movement;
+using PokeSharp.Core.Components.NPCs;
+using PokeSharp.Core.Components.NPCs.States;
+using PokeSharp.Core.Components.Player;
+using PokeSharp.Core.Components.Rendering;
+using PokeSharp.Core.Components.Tiles;
 using PokeSharp.Core.Factories;
 using PokeSharp.Core.Logging;
 using PokeSharp.Core.Systems;
@@ -18,7 +24,8 @@ using PokeSharp.Rendering.Assets;
 using PokeSharp.Rendering.Components;
 using PokeSharp.Rendering.Loaders;
 using PokeSharp.Rendering.Systems;
-using PokeSharp.Scripting;
+using PokeSharp.Scripting.Runtime;
+using PokeSharp.Scripting.Services;
 
 namespace PokeSharp.Game;
 
@@ -165,7 +172,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
         _systemManager.RegisterSystem(new TileAnimationSystem(tileAnimLogger));
 
         // Initialize NPC Behavior System (Priority: 75, runs after spatial hash, before movement)
-        InitializeNpcBehaviorSystem();
+        InitializeNPCBehaviorSystem();
 
         // Register ZOrderRenderSystem (Priority: 1000) - unified rendering with Z-order sorting
         // Renders everything (tiles, sprites, objects) based on Y position for authentic Pokemon-style depth
@@ -517,7 +524,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
     /// <summary>
     ///     Initializes the NPC behavior system with TypeRegistry and ScriptService.
     /// </summary>
-    private void InitializeNpcBehaviorSystem()
+    private void InitializeNPCBehaviorSystem()
     {
         try
         {
@@ -579,17 +586,17 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game
                 }
             }
 
-            // Register NpcBehaviorSystem
-            var npcBehaviorLogger = ConsoleLoggerFactory.Create<NpcBehaviorSystem>();
+            // Register NPCBehaviorSystem
+            var npcBehaviorLogger = ConsoleLoggerFactory.Create<NPCBehaviorSystem>();
             var npcBehaviorLoggerFactory = ConsoleLoggerFactory.Create();
-            var npcBehaviorSystem = new NpcBehaviorSystem(
+            var npcBehaviorSystem = new NPCBehaviorSystem(
                 npcBehaviorLogger,
                 npcBehaviorLoggerFactory
             );
             npcBehaviorSystem.SetBehaviorRegistry(_behaviorRegistry);
             _systemManager.RegisterSystem(npcBehaviorSystem);
 
-            _logger.LogSystemInitialized("NpcBehaviorSystem", ("behaviors", loadedCount));
+            _logger.LogSystemInitialized("NPCBehaviorSystem", ("behaviors", loadedCount));
         }
         catch (Exception ex)
         {

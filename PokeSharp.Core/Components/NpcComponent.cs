@@ -4,7 +4,7 @@ namespace PokeSharp.Core.Components;
 ///     Component identifying an entity as an NPC with game-specific properties.
 ///     Pure data component - no methods.
 /// </summary>
-public struct NpcComponent
+public struct NPCComponent
 {
     /// <summary>
     ///     Unique identifier for this NPC (e.g., "rival_oak_lab", "nurse_joy_pewter").
@@ -36,7 +36,7 @@ public struct NpcComponent
     /// <summary>
     ///     Initializes a new NPC component with required fields.
     /// </summary>
-    public NpcComponent(string npcId, string displayName)
+    public NPCComponent(string npcId, string displayName)
     {
         NpcId = npcId;
         DisplayName = displayName;

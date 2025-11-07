@@ -1,4 +1,9 @@
-using PokeSharp.Core.Components;
+using PokeSharp.Core.Components.Maps;
+using PokeSharp.Core.Components.Movement;
+using PokeSharp.Core.Components.NPCs;
+using PokeSharp.Core.Components.Player;
+using PokeSharp.Core.Components.Rendering;
+using PokeSharp.Core.Components.Tiles;
 
 namespace PokeSharp.Input.Components;
 

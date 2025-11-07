@@ -1,9 +1,11 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Core.Components;
+using PokeSharp.Core.Components.Movement;
+using PokeSharp.Core.Components.NPCs;
+using PokeSharp.Core.Components.Player;
 using PokeSharp.Core.Systems;
 using PokeSharp.Core.Types;
-using PokeSharp.Scripting;
+using PokeSharp.Scripting.Runtime;
 
 namespace PokeSharp.Game.Systems;
 
@@ -17,13 +19,13 @@ namespace PokeSharp.Game.Systems;
 ///     Scripts are cached as singletons in TypeRegistry and executed with per-tick
 ///     ScriptContext instances to prevent state corruption.
 /// </remarks>
-public class NpcBehaviorSystem : BaseSystem
+public class NPCBehaviorSystem : BaseSystem
 {
-    private readonly ILogger<NpcBehaviorSystem> _logger;
+    private readonly ILogger<NPCBehaviorSystem> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private TypeRegistry<BehaviorDefinition>? _behaviorRegistry;
 
-    public NpcBehaviorSystem(ILogger<NpcBehaviorSystem> logger, ILoggerFactory loggerFactory)
+    public NPCBehaviorSystem(ILogger<NPCBehaviorSystem> logger, ILoggerFactory loggerFactory)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -46,26 +48,26 @@ public class NpcBehaviorSystem : BaseSystem
     public override void Initialize(World world)
     {
         base.Initialize(world);
-        _logger.LogInformation("NpcBehaviorSystem initialized");
+        _logger.LogInformation("NPCBehaviorSystem initialized");
     }
 
     public override void Update(World world, float deltaTime)
     {
         if (_behaviorRegistry == null)
         {
-            _logger.LogWarning("Behavior registry not set on NpcBehaviorSystem");
+            _logger.LogWarning("Behavior registry not set on NPCBehaviorSystem");
             return;
         }
 
         // Query all NPCs with behavior components
-        var query = new QueryDescription().WithAll<NpcComponent, BehaviorComponent, Position>();
+        var query = new QueryDescription().WithAll<NPCComponent, BehaviorComponent, Position>();
 
         var behaviorCount = 0;
         var errorCount = 0;
 
         world.Query(
             in query,
-            (Entity entity, ref NpcComponent npc, ref BehaviorComponent behavior) =>
+            (Entity entity, ref NPCComponent npc, ref BehaviorComponent behavior) =>
             {
                 try
                 {

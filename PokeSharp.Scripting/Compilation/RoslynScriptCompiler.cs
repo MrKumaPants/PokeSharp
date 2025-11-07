@@ -7,6 +7,8 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Scripting.HotReload;
+using PokeSharp.Scripting.HotReload.Compilation;
+using PokeSharp.Scripting.Runtime;
 
 namespace PokeSharp.Scripting.Compilation;
 
@@ -153,7 +155,7 @@ public class RoslynScriptCompiler : IScriptCompiler
                     "Compilation failed for {FileName} with {ErrorCount} errors",
                     Path.GetFileName(filePath),
                     diagnostics.Count(d =>
-                        d.Severity == PokeSharp.Scripting.HotReload.DiagnosticSeverity.Error
+                        d.Severity == PokeSharp.Scripting.HotReload.Compilation.DiagnosticSeverity.Error
                     )
                 );
 
@@ -163,7 +165,7 @@ public class RoslynScriptCompiler : IScriptCompiler
                     CompiledType = null,
                     Errors = diagnostics
                         .Where(d =>
-                            d.Severity == PokeSharp.Scripting.HotReload.DiagnosticSeverity.Error
+                            d.Severity == PokeSharp.Scripting.HotReload.Compilation.DiagnosticSeverity.Error
                         )
                         .Select(d => d.Message)
                         .ToList(),
@@ -293,21 +295,21 @@ public class RoslynScriptCompiler : IScriptCompiler
     /// <summary>
     ///     Map Roslyn DiagnosticSeverity to our DiagnosticSeverity enum.
     /// </summary>
-    private static PokeSharp.Scripting.HotReload.DiagnosticSeverity MapSeverity(
+    private static PokeSharp.Scripting.HotReload.Compilation.DiagnosticSeverity MapSeverity(
         Microsoft.CodeAnalysis.DiagnosticSeverity roslynSeverity
     )
     {
         return roslynSeverity switch
         {
             Microsoft.CodeAnalysis.DiagnosticSeverity.Hidden
-                => PokeSharp.Scripting.HotReload.DiagnosticSeverity.Hidden,
+                => PokeSharp.Scripting.HotReload.Compilation.DiagnosticSeverity.Hidden,
             Microsoft.CodeAnalysis.DiagnosticSeverity.Info
-                => PokeSharp.Scripting.HotReload.DiagnosticSeverity.Info,
+                => PokeSharp.Scripting.HotReload.Compilation.DiagnosticSeverity.Info,
             Microsoft.CodeAnalysis.DiagnosticSeverity.Warning
-                => PokeSharp.Scripting.HotReload.DiagnosticSeverity.Warning,
+                => PokeSharp.Scripting.HotReload.Compilation.DiagnosticSeverity.Warning,
             Microsoft.CodeAnalysis.DiagnosticSeverity.Error
-                => PokeSharp.Scripting.HotReload.DiagnosticSeverity.Error,
-            _ => PokeSharp.Scripting.HotReload.DiagnosticSeverity.Hidden,
+                => PokeSharp.Scripting.HotReload.Compilation.DiagnosticSeverity.Error,
+            _ => PokeSharp.Scripting.HotReload.Compilation.DiagnosticSeverity.Hidden,
         };
     }
 
@@ -360,7 +362,7 @@ public class RoslynScriptCompiler : IScriptCompiler
             ), // MonoGame.Framework
             MetadataReference.CreateFromFile(typeof(TypeScriptBase).Assembly.Location), // PokeSharp.Scripting
             MetadataReference.CreateFromFile(
-                typeof(Core.Components.Direction).Assembly.Location
+                typeof(Core.Components.Movement.Direction).Assembly.Location
             ), // PokeSharp.Core
             MetadataReference.CreateFromFile(
                 typeof(Microsoft.Extensions.Logging.ILogger).Assembly.Location
@@ -405,8 +407,16 @@ public class RoslynScriptCompiler : IScriptCompiler
             "Arch.Core",
             "Microsoft.Xna.Framework",
             "Microsoft.Extensions.Logging",
-            "PokeSharp.Scripting",
-            "PokeSharp.Core.Components",
+            "PokeSharp.Scripting.Runtime",
+            "PokeSharp.Core.ScriptingApi",
+            "PokeSharp.Core.Components.Maps",
+            "PokeSharp.Core.Components.Movement",
+            "PokeSharp.Core.Components.NPCs",
+            "PokeSharp.Core.Components.NPCs.States",
+            "PokeSharp.Core.Components.Player",
+            "PokeSharp.Core.Components.Rendering",
+            "PokeSharp.Core.Components.Tiles",
+            "PokeSharp.Core.Types",
         };
     }
 
@@ -434,21 +444,3 @@ public class RoslynScriptCompiler : IScriptCompiler
     }
 }
 
-/// <summary>
-///     Cached compilation entry with content hash and timestamp.
-/// </summary>
-internal class CachedCompilation
-{
-    public required Type CompiledType { get; init; }
-    public required string ContentHash { get; init; }
-    public DateTime CompiledAt { get; init; }
-}
-
-/// <summary>
-///     Statistics about the compilation cache.
-/// </summary>
-public class CompilationCacheStatistics
-{
-    public int CachedEntries { get; init; }
-    public int TotalSize { get; init; }
-}

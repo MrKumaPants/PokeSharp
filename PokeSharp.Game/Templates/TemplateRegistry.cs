@@ -1,6 +1,12 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Core.Components;
+using PokeSharp.Core.Components.Maps;
+using PokeSharp.Core.Components.Movement;
+using PokeSharp.Core.Components.NPCs;
+using PokeSharp.Core.Components.NPCs.States;
+using PokeSharp.Core.Components.Player;
+using PokeSharp.Core.Components.Rendering;
+using PokeSharp.Core.Components.Tiles;
 using PokeSharp.Core.Templates;
 using PokeSharp.Input.Components;
 
@@ -403,8 +409,8 @@ public static class TemplateRegistry
                 SourcePath = "TemplateRegistry.RegisterNpcTemplates",
             },
         };
-        // Add NpcComponent (will be overridden at spawn with specific NPC data)
-        patrolNpc.WithComponent(new NpcComponent("patrol_npc", "GUARD"));
+        // Add NPCComponent (will be overridden at spawn with specific NPC data)
+        patrolNpc.WithComponent(new NPCComponent("patrol_npc", "GUARD"));
         // Add PathComponent (will be overridden at spawn with actual waypoints)
         patrolNpc.WithComponent(
             new PathComponent(

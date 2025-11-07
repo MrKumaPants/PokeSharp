@@ -1,4 +1,4 @@
-using PokeSharp.Scripting.HotReload;
+using PokeSharp.Scripting.HotReload.Compilation;
 
 namespace PokeSharp.Scripting.Compilation;
 

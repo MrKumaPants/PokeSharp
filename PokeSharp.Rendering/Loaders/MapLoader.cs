@@ -1,10 +1,16 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Core.Components;
+using PokeSharp.Core.Components.Maps;
+using PokeSharp.Core.Components.Movement;
+using PokeSharp.Core.Components.NPCs;
+using PokeSharp.Core.Components.Player;
+using PokeSharp.Core.Components.Rendering;
+using PokeSharp.Core.Components.Tiles;
 using PokeSharp.Core.Factories;
 using PokeSharp.Core.Logging;
 using PokeSharp.Rendering.Assets;
+using PokeSharp.Rendering.Loaders.Tmx;
 
 namespace PokeSharp.Rendering.Loaders;
 
@@ -527,7 +533,7 @@ public class MapLoader
                             // Handle NPC-specific properties
                             if (templateId.StartsWith("npc/"))
                             {
-                                // NpcComponent properties
+                                // NPCComponent properties
                                 var hasNpcId = obj.Properties.TryGetValue(
                                     "npcId",
                                     out var npcIdProp
@@ -541,7 +547,7 @@ public class MapLoader
                                 {
                                     var npcId = npcIdProp?.ToString() ?? obj.Name;
                                     var displayName = displayNameProp?.ToString() ?? obj.Name;
-                                    builder.OverrideComponent(new NpcComponent(npcId, displayName));
+                                    builder.OverrideComponent(new NPCComponent(npcId, displayName));
                                 }
 
                                 // PathComponent properties (waypoints for patrol NPCs)

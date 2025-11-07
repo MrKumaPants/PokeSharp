@@ -2,7 +2,10 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Core.Components;
+using PokeSharp.Core.Components.Maps;
+using PokeSharp.Core.Components.Movement;
+using PokeSharp.Core.Components.Rendering;
+using PokeSharp.Core.Components.Tiles;
 using PokeSharp.Core.Logging;
 
 namespace PokeSharp.Core.Systems;

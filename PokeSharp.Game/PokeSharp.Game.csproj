@@ -13,7 +13,6 @@
     <ProjectReference Include="..\PokeSharp.Scripting\PokeSharp.Scripting.csproj" />
     <ProjectReference Include="..\PokeSharp.Rendering\PokeSharp.Rendering.csproj" />
     <ProjectReference Include="..\PokeSharp.Input\PokeSharp.Input.csproj" />
-    <ProjectReference Include="..\PokeSharp.Data\PokeSharp.Data.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Copy all assets to the output directory -->
@@ -23,15 +22,5 @@
     <None Update="Assets\Sprites\npc-spritesheet.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Remove="docs\WEATHER_ARCHITECTURE_SUMMARY.md" />
-    <None Remove="docs\WEATHER_ARCHITECTURE_DIAGRAM.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="Systems\WeatherSystem.cs" />
-    <Compile Remove="Systems\BattleTransitionManager.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Assets\Scripts\Weather\Examples\" />
-    <Folder Include="Assets\Types\Weather\" />
   </ItemGroup>
 </Project>

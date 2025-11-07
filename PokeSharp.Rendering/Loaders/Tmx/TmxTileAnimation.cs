@@ -1,0 +1,18 @@
+namespace PokeSharp.Rendering.Loaders.Tmx;
+
+/// <summary>
+///     Represents tile animation data.
+/// </summary>
+public class TmxTileAnimation
+{
+    /// <summary>
+    ///     Gets or sets the array of tile IDs for each animation frame.
+    /// </summary>
+    public int[] FrameTileIds { get; set; } = Array.Empty<int>();
+
+    /// <summary>
+    ///     Gets or sets the array of frame durations in seconds.
+    /// </summary>
+    public float[] FrameDurations { get; set; } = Array.Empty<float>();
+}
+
