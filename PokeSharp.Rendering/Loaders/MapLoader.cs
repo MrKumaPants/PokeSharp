@@ -69,17 +69,25 @@ public class MapLoader(
         var mapId = GetMapId(mapPath);
         var mapName = Path.GetFileNameWithoutExtension(mapPath);
 
-        // Load and setup tileset
-        var (tileset, tilesetId) = LoadTileset(tmxDoc, mapPath);
+        // Load and setup tileset (optional for image-layer-only maps)
+        TmxTileset? tileset = null;
+        string tilesetId = "none";
 
-        // Process all layers and create tile entities
-        var tilesCreated = ProcessLayers(world, tmxDoc, mapId, tileset);
+        if (tmxDoc.Tilesets.Count > 0)
+        {
+            var loadedTileset = LoadTileset(tmxDoc, mapPath);
+            tileset = loadedTileset.tileset;
+            tilesetId = loadedTileset.tilesetId;
+        }
+
+        // Process all layers and create tile entities (only if tileset exists)
+        var tilesCreated = tileset != null ? ProcessLayers(world, tmxDoc, mapId, tileset) : 0;
 
         // Create metadata entities
         var mapInfoEntity = CreateMapMetadata(world, tmxDoc, mapPath, mapId, mapName, tilesetId);
 
-        // Setup animations
-        var animatedTilesCreated = CreateAnimatedTileEntities(world, tmxDoc, tileset);
+        // Setup animations (only if tileset exists)
+        var animatedTilesCreated = tileset != null ? CreateAnimatedTileEntities(world, tmxDoc, tileset) : 0;
 
         // Create image layers
         var totalLayerCount = tmxDoc.Layers.Count + tmxDoc.ImageLayers.Count;
@@ -115,9 +123,12 @@ public class MapLoader(
 
         var tilesetId = ExtractTilesetId(tileset, mapPath);
 
-        // Ensure tileset texture is loaded
-        if (!_assetManager.HasTexture(tilesetId))
-            LoadTilesetTexture(tileset, mapPath, tilesetId);
+        // Ensure tileset texture is loaded (only if tileset has an image)
+        if (tileset.Image != null && !string.IsNullOrEmpty(tileset.Image.Source))
+        {
+            if (!_assetManager.HasTexture(tilesetId))
+                LoadTilesetTexture(tileset, mapPath, tilesetId);
+        }
 
         return (tileset, tilesetId);
     }
@@ -335,12 +346,19 @@ public class MapLoader(
         var mapDirectory = Path.GetDirectoryName(mapPath) ?? string.Empty;
         var tilesetPath = Path.Combine(mapDirectory, tileset.Image.Source);
 
-        // Make path relative to Assets root for AssetManager
-        // Cast to AssetManager to access AssetRoot property
-        var assetManager = (AssetManager)_assetManager;
-        var relativePath = Path.GetRelativePath(assetManager.AssetRoot, tilesetPath);
+        // If using AssetManager, make path relative to Assets root
+        // Otherwise (e.g., in tests with stub), use the path directly
+        string pathForLoader;
+        if (_assetManager is AssetManager assetManager)
+        {
+            pathForLoader = Path.GetRelativePath(assetManager.AssetRoot, tilesetPath);
+        }
+        else
+        {
+            pathForLoader = tileset.Image.Source;
+        }
 
-        _assetManager.LoadTexture(tilesetId, relativePath);
+        _assetManager.LoadTexture(tilesetId, pathForLoader);
     }
 
     private int GetMapId(string mapPath)
@@ -971,12 +989,19 @@ public class MapLoader(
                     // Resolve relative path from map directory
                     var fullImagePath = Path.Combine(mapDirectory, imagePath);
 
-                    // Make path relative to Assets root for AssetManager
-                    // Cast to AssetManager to access AssetRoot property
-                    var assetManager = (AssetManager)_assetManager;
-                    var relativePath = Path.GetRelativePath(assetManager.AssetRoot, fullImagePath);
+                    // If using AssetManager, make path relative to Assets root
+                    // Otherwise (e.g., in tests with stub), use the path directly
+                    string pathForLoader;
+                    if (_assetManager is AssetManager assetManager)
+                    {
+                        pathForLoader = Path.GetRelativePath(assetManager.AssetRoot, fullImagePath);
+                    }
+                    else
+                    {
+                        pathForLoader = imagePath;
+                    }
 
-                    _assetManager.LoadTexture(textureId, relativePath);
+                    _assetManager.LoadTexture(textureId, pathForLoader);
                 }
                 catch (Exception ex)
                 {
@@ -995,7 +1020,9 @@ public class MapLoader(
             // We need to determine where this image layer falls in the overall layer order
             var layerDepth = CalculateImageLayerDepth(imageLayer.Id, totalLayerCount);
 
-            // Create ImageLayer component
+            // Create entity with ImageLayer component
+            var entity = world.Create<ImageLayer>();
+
             var imageLayerComponent = new ImageLayer(
                 textureId,
                 imageLayer.X,
@@ -1005,8 +1032,7 @@ public class MapLoader(
                 imageLayer.Id
             );
 
-            // Create entity with ImageLayer component
-            var entity = world.Create(imageLayerComponent);
+            world.Set(entity, imageLayerComponent);
 
             _logger?.LogDebug(
                 "Created image layer '{LayerName}' with texture '{TextureId}' at ({X}, {Y}) depth {Depth:F2}",
