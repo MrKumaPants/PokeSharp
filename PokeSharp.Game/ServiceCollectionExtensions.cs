@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Core.Events;
 using PokeSharp.Core.Factories;
+using PokeSharp.Core.Mapping;
 using PokeSharp.Core.Scripting.Services;
 using PokeSharp.Core.ScriptingApi;
 using PokeSharp.Core.Systems;
@@ -60,6 +61,9 @@ public static class ServiceCollectionExtensions
             var logger = sp.GetRequiredService<ILogger<EventBus>>();
             return new EventBus(logger);
         });
+
+        // Property Mappers (for extensible Tiled property → ECS component mapping)
+        services.AddPropertyMappers();
 
         // Abstract Factory Pattern: Graphics services that depend on GraphicsDevice
         // The factory allows deferred creation of AssetManager and MapLoader until

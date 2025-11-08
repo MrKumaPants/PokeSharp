@@ -1,7 +1,10 @@
 using System.IO.Compression;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
+using PokeSharp.Rendering.Configuration;
 using PokeSharp.Rendering.Loaders.TiledJson;
 using PokeSharp.Rendering.Loaders.Tmx;
+using PokeSharp.Rendering.Validation;
 using ZstdSharp;
 
 namespace PokeSharp.Rendering.Loaders;
@@ -19,6 +22,27 @@ public static class TiledMapLoader
         AllowTrailingCommas = true,
     };
 
+    private static IMapValidator? _validator;
+    private static MapLoaderOptions? _options;
+    private static ILogger? _logger;
+
+    /// <summary>
+    ///     Configures the map loader with validation options.
+    /// </summary>
+    public static void Configure(MapLoaderOptions options, ILogger? logger = null)
+    {
+        _options = options;
+        _logger = logger;
+
+        if (options.ValidateMaps && logger != null)
+        {
+            _validator = new TmxDocumentValidator(
+                logger as ILogger<TmxDocumentValidator> ??
+                    Microsoft.Extensions.Logging.Abstractions.NullLogger<TmxDocumentValidator>.Instance,
+                options.ValidateFileReferences);
+        }
+    }
+
     /// <summary>
     ///     Loads a Tiled map from a JSON file.
     /// </summary>
@@ -26,6 +50,7 @@ public static class TiledMapLoader
     /// <returns>Parsed Tiled map document.</returns>
     /// <exception cref="FileNotFoundException">Map file not found.</exception>
     /// <exception cref="JsonException">Invalid JSON format.</exception>
+    /// <exception cref="MapValidationException">Map validation failed (if validation is enabled).</exception>
     public static TmxDocument Load(string mapPath)
     {
         if (!File.Exists(mapPath))
@@ -36,7 +61,34 @@ public static class TiledMapLoader
             JsonSerializer.Deserialize<TiledJsonMap>(json, JsonOptions)
             ?? throw new JsonException($"Failed to deserialize Tiled map: {mapPath}");
 
-        return ConvertToTmxDocument(tiledMap, mapPath);
+        var tmxDoc = ConvertToTmxDocument(tiledMap, mapPath);
+
+        // Validate map if validator is configured
+        if (_validator != null)
+        {
+            var validationResult = _validator.Validate(tmxDoc, mapPath);
+
+            // Log warnings
+            if (validationResult.Warnings.Count > 0 && _options?.LogValidationWarnings == true)
+            {
+                _logger?.LogWarning(validationResult.GetWarningMessage());
+            }
+
+            // Handle validation errors
+            if (!validationResult.IsValid)
+            {
+                if (_options?.ThrowOnValidationError == true)
+                {
+                    throw new MapValidationException(validationResult);
+                }
+                else
+                {
+                    _logger?.LogError(validationResult.GetErrorMessage());
+                }
+            }
+        }
+
+        return tmxDoc;
     }
 
     private static TmxDocument ConvertToTmxDocument(TiledJsonMap tiledMap, string mapPath)

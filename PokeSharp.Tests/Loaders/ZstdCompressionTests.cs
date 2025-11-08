@@ -34,7 +34,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_ZstdCompressedLayer_DecompressesSuccessfully()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
         var expectedTileCount = 16; // 4x4 map
 
         // Act
@@ -57,7 +57,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_ZstdBase64EncodedData_DecodesAndDecompresses()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -79,7 +79,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_MixedCompressionLayers_HandlesAllFormats()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -101,7 +101,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_ZstdCompressedTiles_CorrectTilePositions()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -125,7 +125,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_ZstdCompressedData_MatchesExpectedTileGids()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -150,7 +150,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_InvalidZstdData_HandlesGracefully()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
 
         // Act & Assert - Should not throw on valid Zstd data
         var act = () => _mapLoader.LoadMapEntities(_world, mapPath);
@@ -161,7 +161,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_ZstdCompression_MapDimensionsCorrect()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
         var expectedWidth = 4;
         var expectedHeight = 4;
         var expectedTileSize = 16;
@@ -180,7 +180,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_ZstdWithEmptyTiles_SkipsEmptyTiles()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -204,7 +204,7 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_ZstdCompressedLayer_LoadsTileset()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
+        var mapPath = "TestData/test-map-zstd.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -226,8 +226,8 @@ public class ZstdCompressionTests : IDisposable
     public void LoadMapEntities_ZstdVsUncompressed_ProducesSameResults()
     {
         // Arrange
-        var zstdMapPath = "PokeSharp.Tests/TestData/test-map-zstd.json";
-        var uncompressedMapPath = "PokeSharp.Tests/TestData/test-map.json";
+        var zstdMapPath = "TestData/test-map-zstd.json";
+        var uncompressedMapPath = "TestData/test-map.json";
 
         // Create separate worlds for comparison
         using var zstdWorld = World.Create();

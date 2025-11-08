@@ -33,7 +33,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_MapWithImageLayer_LoadsImageTexture()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -46,7 +46,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_ImageLayerWithProperties_ParsesAllProperties()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         var mapInfoEntity = _mapLoader.LoadMapEntities(_world, mapPath);
@@ -62,7 +62,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_ImageLayerWithOpacity_AppliesOpacity()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -85,7 +85,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_ImageLayerWithOffset_AppliesParallaxOffset()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -107,7 +107,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_MixedImageAndTileLayers_ProcessesBothTypes()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -130,7 +130,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_ImageLayerZOrder_MaintainsLayerOrder()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -158,7 +158,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_InvisibleImageLayer_SkipsRendering()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -180,7 +180,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_ImageLayerWithoutImage_HandlesGracefully()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -202,7 +202,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_ImageLayerWithCustomProperties_ParsesProperties()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -224,7 +224,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_MultipleImageLayers_LoadsAllImages()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -238,7 +238,7 @@ public class ImageLayerTests : IDisposable
     public void LoadMapEntities_ImageLayerPosition_AppliesXYOffsets()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-imagelayer.json";
+        var mapPath = "TestData/test-map-imagelayer.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);

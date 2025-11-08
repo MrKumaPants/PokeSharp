@@ -54,7 +54,7 @@ public class GraphicsServiceFactory : IGraphicsServiceFactory
         var entityFactory = _serviceProvider.GetRequiredService<IEntityFactoryService>();
         var logger = _loggerFactory.CreateLogger<MapLoader>();
 
-        return new MapLoader(assetManager, entityFactory, logger);
+        return new MapLoader(assetManager, propertyMapperRegistry: null, entityFactory: entityFactory, logger: logger);
     }
 
     /// <inheritdoc />

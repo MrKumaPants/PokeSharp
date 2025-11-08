@@ -34,7 +34,7 @@ public class LayerOffsetTests : IDisposable
     public void LoadMapEntities_LayerWithPositiveOffset_AppliesParallaxBackground()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-offsets.json";
+        var mapPath = "TestData/test-map-offsets.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -61,7 +61,7 @@ public class LayerOffsetTests : IDisposable
     public void LoadMapEntities_LayerWithNegativeOffset_AppliesParallaxForeground()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-offsets.json";
+        var mapPath = "TestData/test-map-offsets.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -86,7 +86,7 @@ public class LayerOffsetTests : IDisposable
     public void LoadMapEntities_LayerWithZeroOffset_NoParallaxEffect()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-offsets.json";
+        var mapPath = "TestData/test-map-offsets.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -111,7 +111,7 @@ public class LayerOffsetTests : IDisposable
     public void LoadMapEntities_MultipleLayersWithDifferentOffsets_AllLayersProcessed()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-offsets.json";
+        var mapPath = "TestData/test-map-offsets.json";
         var expectedLayers = new[] { TileLayer.Ground, TileLayer.Object, TileLayer.Overhead };
 
         // Act
@@ -133,7 +133,7 @@ public class LayerOffsetTests : IDisposable
     public void LoadMapEntities_LayerOffsetDoesNotAffectMapDimensions()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-offsets.json";
+        var mapPath = "TestData/test-map-offsets.json";
         var expectedWidth = 4;
         var expectedHeight = 4;
         var expectedTileSize = 16;
@@ -153,7 +153,7 @@ public class LayerOffsetTests : IDisposable
     public void LoadMapEntities_LayerWithOffsetAndOpacity_BothAttributesApplied()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-offsets.json";
+        var mapPath = "TestData/test-map-offsets.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -178,7 +178,7 @@ public class LayerOffsetTests : IDisposable
     public void LoadMapEntities_LayerOffsetWithEmptyTiles_SkipsEmptyTiles()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-offsets.json";
+        var mapPath = "TestData/test-map-offsets.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -200,7 +200,7 @@ public class LayerOffsetTests : IDisposable
     public void LoadMapEntities_LayerOffsetPreservesZOrder()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-offsets.json";
+        var mapPath = "TestData/test-map-offsets.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);

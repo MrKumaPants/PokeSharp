@@ -92,7 +92,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         var assetManager = new AssetManager(GraphicsDevice, "Assets", assetManagerLogger);
 
         var mapLoaderLogger = _logging.CreateLogger<MapLoader>();
-        var mapLoader = new MapLoader(assetManager, _gameServices.EntityFactory, mapLoaderLogger);
+        var mapLoader = new MapLoader(assetManager, propertyMapperRegistry: null, entityFactory: _gameServices.EntityFactory, logger: mapLoaderLogger);
 
         // Create initializers
         var gameInitializerLogger = _logging.CreateLogger<GameInitializer>();

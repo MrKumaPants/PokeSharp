@@ -1,0 +1,315 @@
+using Arch.Core;
+using NUnit.Framework;
+using PokeSharp.Core.Components.Maps;
+using PokeSharp.Core.Components.Movement;
+using PokeSharp.Core.Components.Tiles;
+using PokeSharp.Core.Mapping;
+
+namespace PokeSharp.Tests.Mapping;
+
+[TestFixture]
+public class PropertyMapperRegistryTests
+{
+    private PropertyMapperRegistry _registry = null!;
+    private World _world = null!;
+
+    [SetUp]
+    public void Setup()
+    {
+        _registry = new PropertyMapperRegistry();
+        _world = World.Create();
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        _world.Dispose();
+    }
+
+    [Test]
+    public void RegisterMapper_SingleMapper_CanBeRetrieved()
+    {
+        // Arrange
+        var mapper = new CollisionMapper();
+
+        // Act
+        _registry.RegisterMapper(mapper);
+        var mappers = _registry.GetMappers<Collision>();
+
+        // Assert
+        Assert.That(mappers, Is.Not.Empty);
+        Assert.That(mappers.Count(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void MapAndAddAll_SingleMatchingMapper_AddsComponent()
+    {
+        // Arrange
+        _registry.RegisterMapper(new CollisionMapper());
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "solid", true }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(1));
+        Assert.That(_world.Has<Collision>(entity), Is.True);
+    }
+
+    [Test]
+    public void MapAndAddAll_MultipleMatchingMappers_AddsAllComponents()
+    {
+        // Arrange
+        _registry.RegisterMapper(new CollisionMapper());
+        _registry.RegisterMapper(new LedgeMapper());
+        _registry.RegisterMapper(new TerrainTypeMapper());
+
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "solid", true },
+            { "ledge_direction", "down" },
+            { "terrain_type", "grass" }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(3));
+        Assert.That(_world.Has<Collision>(entity), Is.True);
+        Assert.That(_world.Has<TileLedge>(entity), Is.True);
+        Assert.That(_world.Has<TerrainType>(entity), Is.True);
+    }
+
+    [Test]
+    public void MapAndAddAll_NoMatchingMappers_ReturnsZero()
+    {
+        // Arrange
+        _registry.RegisterMapper(new CollisionMapper());
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "unknown_property", "value" }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void MapAndAddAll_LedgeTile_AppliesCollisionAndLedge()
+    {
+        // Arrange - Ledge tiles should be solid and have ledge component
+        _registry.RegisterMapper(new CollisionMapper());
+        _registry.RegisterMapper(new LedgeMapper());
+
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "ledge_direction", "down" }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(2), "Should add both Collision and TileLedge");
+        Assert.That(_world.Has<Collision>(entity), Is.True);
+        Assert.That(_world.Has<TileLedge>(entity), Is.True);
+
+        var collision = _world.Get<Collision>(entity);
+        Assert.That(collision.IsSolid, Is.True, "Ledges should be solid");
+
+        var ledge = _world.Get<TileLedge>(entity);
+        Assert.That(ledge.JumpDirection, Is.EqualTo(Direction.Down));
+    }
+
+    [Test]
+    public void MapAndAddAll_GrassTile_AppliesMultipleComponents()
+    {
+        // Arrange - Grass tiles typically have terrain type, encounter zone, and script
+        _registry.RegisterMapper(new TerrainTypeMapper());
+        _registry.RegisterMapper(new EncounterZoneMapper());
+        _registry.RegisterMapper(new ScriptMapper());
+
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "terrain_type", "grass" },
+            { "footstep_sound", "footstep_grass" },
+            { "encounter_rate", 25 },
+            { "encounter_table", "tall_grass" },
+            { "script", "scripts/grass_rustle.lua" }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(3), "Should add TerrainType, EncounterZone, and TileScript");
+        Assert.That(_world.Has<TerrainType>(entity), Is.True);
+        Assert.That(_world.Has<EncounterZone>(entity), Is.True);
+        Assert.That(_world.Has<TileScript>(entity), Is.True);
+
+        var terrain = _world.Get<TerrainType>(entity);
+        Assert.That(terrain.TypeId, Is.EqualTo("grass"));
+
+        var encounter = _world.Get<EncounterZone>(entity);
+        Assert.That(encounter.EncounterRate, Is.EqualTo(25));
+
+        var script = _world.Get<TileScript>(entity);
+        Assert.That(script.ScriptPath, Is.EqualTo("scripts/grass_rustle.lua"));
+    }
+
+    [Test]
+    public void MapAndAddAll_ComplexTile_AppliesAllRelevantComponents()
+    {
+        // Arrange - Test a tile with all possible properties
+        _registry.RegisterMapper(new CollisionMapper());
+        _registry.RegisterMapper(new LedgeMapper());
+        _registry.RegisterMapper(new TerrainTypeMapper());
+        _registry.RegisterMapper(new EncounterZoneMapper());
+        _registry.RegisterMapper(new ScriptMapper());
+
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "solid", true },
+            { "terrain_type", "cave" },
+            { "footstep_sound", "footstep_cave" },
+            { "encounter_rate", 15 },
+            { "encounter_table", "dark_cave" },
+            { "script", "scripts/cave_echo.lua" }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(4), "Should add Collision, TerrainType, EncounterZone, and TileScript");
+        Assert.That(_world.Has<Collision>(entity), Is.True);
+        Assert.That(_world.Has<TerrainType>(entity), Is.True);
+        Assert.That(_world.Has<EncounterZone>(entity), Is.True);
+        Assert.That(_world.Has<TileScript>(entity), Is.True);
+    }
+
+    [Test]
+    public void MapAndAddAll_EmptyProperties_ReturnsZero()
+    {
+        // Arrange
+        _registry.RegisterMapper(new CollisionMapper());
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>();
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void MapAndAddAll_InvalidMapper_ContinuesWithOtherMappers()
+    {
+        // Arrange - Even if one mapper fails, others should still work
+        _registry.RegisterMapper(new CollisionMapper());
+        _registry.RegisterMapper(new TerrainTypeMapper());
+
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "solid", true },
+            { "terrain_type", "grass" }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(2));
+        Assert.That(_world.Has<Collision>(entity), Is.True);
+        Assert.That(_world.Has<TerrainType>(entity), Is.True);
+    }
+
+    [Test]
+    public void MapAndAddAll_ZeroEncounterRate_DoesNotAddEncounterZone()
+    {
+        // Arrange
+        _registry.RegisterMapper(new EncounterZoneMapper());
+
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "encounter_rate", 0 }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert - EncounterZoneMapper returns 1 but doesn't add component for rate 0
+        Assert.That(_world.Has<EncounterZone>(entity), Is.False);
+    }
+
+    [Test]
+    public void RegisterMapper_MultipleMappers_AllAvailableForRetrieval()
+    {
+        // Arrange
+        var collisionMapper = new CollisionMapper();
+        var ledgeMapper = new LedgeMapper();
+        var terrainMapper = new TerrainTypeMapper();
+
+        // Act
+        _registry.RegisterMapper(collisionMapper);
+        _registry.RegisterMapper(ledgeMapper);
+        _registry.RegisterMapper(terrainMapper);
+
+        // Assert
+        Assert.That(_registry.GetMappers<Collision>().Count(), Is.EqualTo(1));
+        Assert.That(_registry.GetMappers<TileLedge>().Count(), Is.EqualTo(1));
+        Assert.That(_registry.GetMappers<TerrainType>().Count(), Is.EqualTo(1));
+    }
+
+    [Test]
+    public void MapAndAddAll_RealWorldScenario_PokemonGrassTile()
+    {
+        // Arrange - Simulate a typical Pokemon grass tile from Tiled
+        _registry.RegisterMapper(new TerrainTypeMapper());
+        _registry.RegisterMapper(new EncounterZoneMapper());
+        _registry.RegisterMapper(new ScriptMapper());
+
+        var entity = _world.Create();
+        var props = new Dictionary<string, object>
+        {
+            { "terrain_type", "grass" },
+            { "footstep_sound", "footstep_grass" },
+            { "encounter_rate", 20 },
+            { "encounter_table", "route_1_grass" },
+            { "on_step", "scripts/grass_animation.lua" }
+        };
+
+        // Act
+        var count = _registry.MapAndAddAll(_world, entity, props);
+
+        // Assert
+        Assert.That(count, Is.EqualTo(3));
+
+        var terrain = _world.Get<TerrainType>(entity);
+        Assert.That(terrain.TypeId, Is.EqualTo("grass"));
+        Assert.That(terrain.FootstepSound, Is.EqualTo("footstep_grass"));
+
+        var encounter = _world.Get<EncounterZone>(entity);
+        Assert.That(encounter.EncounterRate, Is.EqualTo(20));
+        Assert.That(encounter.EncounterTableId, Is.EqualTo("route_1_grass"));
+
+        var script = _world.Get<TileScript>(entity);
+        Assert.That(script.ScriptPath, Is.EqualTo("scripts/grass_animation.lua"));
+    }
+}

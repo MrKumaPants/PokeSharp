@@ -9,6 +9,7 @@ using PokeSharp.Core.Components.Rendering;
 using PokeSharp.Core.Components.Tiles;
 using PokeSharp.Core.Factories;
 using PokeSharp.Core.Logging;
+using PokeSharp.Core.Mapping;
 using PokeSharp.Rendering.Assets;
 using PokeSharp.Rendering.Loaders.Tmx;
 
@@ -17,9 +18,11 @@ namespace PokeSharp.Rendering.Loaders;
 /// <summary>
 ///     Loads Tiled maps and converts them to ECS components.
 ///     Supports template-based tile creation when EntityFactoryService is provided.
+///     Uses PropertyMapperRegistry for extensible property-to-component mapping.
 /// </summary>
 public class MapLoader(
     IAssetProvider assetManager,
+    PropertyMapperRegistry? propertyMapperRegistry = null,
     IEntityFactoryService? entityFactory = null,
     ILogger<MapLoader>? logger = null
 )
@@ -33,6 +36,7 @@ public class MapLoader(
     private readonly IAssetProvider _assetManager =
         assetManager ?? throw new ArgumentNullException(nameof(assetManager));
 
+    private readonly PropertyMapperRegistry? _propertyMapperRegistry = propertyMapperRegistry;
     private readonly IEntityFactoryService? _entityFactory = entityFactory;
     private readonly ILogger<MapLoader>? _logger = logger;
     private readonly Dictionary<string, int> _mapNameToId = new();
@@ -651,7 +655,8 @@ public class MapLoader(
 
     /// <summary>
     ///     Processes additional tile properties that aren't included in templates.
-    ///     Adds TerrainType and TileScript components if specified in properties.
+    ///     Delegates to PropertyMapperRegistry for extensible property-to-component mapping.
+    ///     Falls back to legacy hardcoded mapping if registry is not provided.
     /// </summary>
     private void ProcessTileProperties(
         World world,
@@ -662,6 +667,37 @@ public class MapLoader(
         if (props == null)
             return;
 
+        // Use PropertyMapperRegistry if available (new extensible approach)
+        if (_propertyMapperRegistry != null)
+        {
+            var componentsAdded = _propertyMapperRegistry.MapAndAddAll(world, entity, props);
+            if (componentsAdded > 0)
+            {
+                _logger?.LogTrace(
+                    "Applied {ComponentCount} components via property mappers to entity {EntityId}",
+                    componentsAdded,
+                    entity.Id
+                );
+            }
+        }
+        else
+        {
+            // Legacy fallback: hardcoded property mapping for backward compatibility
+            ProcessTilePropertiesLegacy(world, entity, props);
+        }
+    }
+
+    /// <summary>
+    ///     Legacy hardcoded property mapping for backward compatibility.
+    ///     Used when PropertyMapperRegistry is not provided.
+    ///     Adds TerrainType and TileScript components if specified in properties.
+    /// </summary>
+    private void ProcessTilePropertiesLegacy(
+        World world,
+        Entity entity,
+        Dictionary<string, object> props
+    )
+    {
         // Add TerrainType component if terrain type exists
         if (
             props.TryGetValue("terrain_type", out var terrainValue)

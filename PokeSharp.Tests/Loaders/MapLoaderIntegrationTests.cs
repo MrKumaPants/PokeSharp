@@ -38,7 +38,7 @@ public class MapLoaderIntegrationTests : IDisposable
     public void LoadMapEntities_ValidMap_CreatesMapInfo()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map.json";
+        var mapPath = "TestData/test-map.json";
         var expectedWidth = 3;
         var expectedHeight = 3;
         var expectedTileSize = 16;
@@ -63,7 +63,7 @@ public class MapLoaderIntegrationTests : IDisposable
     public void LoadMapEntities_ValidMap_CreatesTileEntities()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map.json";
+        var mapPath = "TestData/test-map.json";
         var expectedTileCount = 9; // 3x3 map, all tiles populated (IDs 1-9)
 
         // Act
@@ -95,7 +95,7 @@ public class MapLoaderIntegrationTests : IDisposable
     public void LoadMapEntities_NonStandardTileSize_UsesCorrectSize()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map-32x32.json";
+        var mapPath = "TestData/test-map-32x32.json";
         var expectedWidth = 5;
         var expectedHeight = 5;
         var expectedTileSize = 32; // Non-standard tile size
@@ -131,8 +131,8 @@ public class MapLoaderIntegrationTests : IDisposable
     public void LoadMapEntities_MultipleMaps_AssignsUniqueMapIds()
     {
         // Arrange
-        var map1Path = "PokeSharp.Tests/TestData/test-map.json";
-        var map2Path = "PokeSharp.Tests/TestData/test-map-32x32.json";
+        var map1Path = "TestData/test-map.json";
+        var map2Path = "TestData/test-map-32x32.json";
 
         // Act
         var mapInfo1Entity = _mapLoader.LoadMapEntities(_world, map1Path);
@@ -151,7 +151,7 @@ public class MapLoaderIntegrationTests : IDisposable
     public void LoadMapEntities_ValidMap_CreatesTilesetInfo()
     {
         // Arrange
-        var mapPath = "PokeSharp.Tests/TestData/test-map.json";
+        var mapPath = "TestData/test-map.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
@@ -176,7 +176,7 @@ public class MapLoaderIntegrationTests : IDisposable
     {
         // Arrange - test-map.json has all tiles populated (1-9)
         // For this test we verify that only non-zero GIDs create entities
-        var mapPath = "PokeSharp.Tests/TestData/test-map.json";
+        var mapPath = "TestData/test-map.json";
 
         // Act
         _mapLoader.LoadMapEntities(_world, mapPath);
