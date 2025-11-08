@@ -12,7 +12,7 @@ namespace PokeSharp.Rendering.Assets;
 /// </summary>
 public class AssetManager(
     GraphicsDevice graphicsDevice,
-    string assetRoot = "Assets",
+    string assetRoot = RenderingConstants.DefaultAssetRoot,
     ILogger<AssetManager>? logger = null
 ) : IAssetProvider, IDisposable
 {
@@ -25,6 +25,11 @@ public class AssetManager(
     private readonly Dictionary<string, Texture2D> _textures = new();
     private bool _disposed;
     private AssetManifest? _manifest;
+
+    /// <summary>
+    ///     Gets the root directory path where assets are stored.
+    /// </summary>
+    public string AssetRoot => _assetRoot;
 
     /// <summary>
     ///     Gets the number of loaded textures.

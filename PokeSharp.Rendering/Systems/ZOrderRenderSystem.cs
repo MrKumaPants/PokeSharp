@@ -27,11 +27,12 @@ public class ZOrderRenderSystem(
     ILogger<ZOrderRenderSystem>? logger = null
 ) : BaseSystem
 {
-    private const int TileSize = 16;
-    private const float MaxRenderDistance = 10000f; // Maximum Y coordinate for normalization
+    // Use centralized rendering constants
+    private const int TileSize = RenderingConstants.TileSize;
+    private const float MaxRenderDistance = RenderingConstants.MaxRenderDistance;
 
     // Layer indices where sprites should be rendered (between object and overhead layers)
-    private const int SpriteRenderAfterLayer = 1; // Render sprites after layer index 1 (Objects)
+    private const int SpriteRenderAfterLayer = RenderingConstants.SpriteRenderAfterLayer;
 
     private readonly AssetManager _assetManager =
         assetManager ?? throw new ArgumentNullException(nameof(assetManager));
@@ -159,7 +160,7 @@ public class ZOrderRenderSystem(
 
             totalTilesRendered += RenderTileLayer(world, TileLayer.Overhead);
 
-            if (_frameCounter % 300 == 0)
+            if (_frameCounter % RenderingConstants.PerformanceLogInterval == 0)
             {
                 var totalEntities = totalTilesRendered + spriteCount + imageLayerCount;
                 _logger?.LogRenderStats(

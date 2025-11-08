@@ -52,6 +52,7 @@ public static class TiledMapLoader
             Tilesets = ConvertTilesets(tiledMap.Tilesets, mapPath),
             Layers = ConvertLayers(tiledMap.Layers, tiledMap.Width, tiledMap.Height),
             ObjectGroups = ConvertObjectGroups(tiledMap.Layers),
+            ImageLayers = ConvertImageLayers(tiledMap.Layers),
         };
 
         return doc;
@@ -397,6 +398,51 @@ public static class TiledMapLoader
         foreach (var prop in properties)
             if (prop.Value != null)
                 result[prop.Name] = prop.Value;
+
+        return result;
+    }
+
+    /// <summary>
+    ///     Converts image layers from Tiled JSON format to TMX format.
+    /// </summary>
+    private static List<TmxImageLayer> ConvertImageLayers(List<TiledJsonLayer>? layers)
+    {
+        if (layers == null)
+            return new List<TmxImageLayer>();
+
+        var result = new List<TmxImageLayer>();
+
+        foreach (var tiledLayer in layers)
+        {
+            // Only process image layers
+            if (tiledLayer.Type != "imagelayer")
+                continue;
+
+            var imageLayer = new TmxImageLayer
+            {
+                Id = tiledLayer.Id,
+                Name = tiledLayer.Name,
+                Visible = tiledLayer.Visible,
+                Opacity = tiledLayer.Opacity,
+                X = tiledLayer.X,
+                Y = tiledLayer.Y,
+                OffsetX = tiledLayer.OffsetX,
+                OffsetY = tiledLayer.OffsetY,
+            };
+
+            // Parse image source if present
+            if (!string.IsNullOrEmpty(tiledLayer.Image))
+            {
+                imageLayer.Image = new TmxImage
+                {
+                    Source = tiledLayer.Image,
+                    Width = 0, // Image dimensions will be determined when texture is loaded
+                    Height = 0,
+                };
+            }
+
+            result.Add(imageLayer);
+        }
 
         return result;
     }

@@ -27,6 +27,16 @@ public class TmxImageLayer
     public float Y { get; set; }
 
     /// <summary>
+    ///     Gets or sets the X offset for parallax scrolling.
+    /// </summary>
+    public float OffsetX { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the Y offset for parallax scrolling.
+    /// </summary>
+    public float OffsetY { get; set; }
+
+    /// <summary>
     ///     Gets or sets whether the layer is visible.
     /// </summary>
     public bool Visible { get; set; } = true;

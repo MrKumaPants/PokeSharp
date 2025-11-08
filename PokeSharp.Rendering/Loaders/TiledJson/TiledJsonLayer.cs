@@ -74,4 +74,10 @@ public class TiledJsonLayer
 
     [JsonPropertyName("properties")]
     public List<TiledJsonProperty>? Properties { get; set; }
+
+    /// <summary>
+    ///     Image path for image layers (type="imagelayer").
+    /// </summary>
+    [JsonPropertyName("image")]
+    public string? Image { get; set; }
 }

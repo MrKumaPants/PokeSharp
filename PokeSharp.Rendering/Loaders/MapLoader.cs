@@ -55,10 +55,56 @@ public class MapLoader(
         }
     }
 
+    /// <summary>
+    ///     Internal implementation for loading map entities.
+    ///     Orchestrates tileset loading, layer processing, and entity creation.
+    /// </summary>
     private Entity LoadMapEntitiesInternal(World world, string mapPath)
     {
         var tmxDoc = TiledMapLoader.Load(mapPath);
         var mapId = GetMapId(mapPath);
+        var mapName = Path.GetFileNameWithoutExtension(mapPath);
+
+        // Load and setup tileset
+        var (tileset, tilesetId) = LoadTileset(tmxDoc, mapPath);
+
+        // Process all layers and create tile entities
+        var tilesCreated = ProcessLayers(world, tmxDoc, mapId, tileset);
+
+        // Create metadata entities
+        var mapInfoEntity = CreateMapMetadata(world, tmxDoc, mapPath, mapId, mapName, tilesetId);
+
+        // Setup animations
+        var animatedTilesCreated = CreateAnimatedTileEntities(world, tmxDoc, tileset);
+
+        // Create image layers
+        var totalLayerCount = tmxDoc.Layers.Count + tmxDoc.ImageLayers.Count;
+        var imageLayersCreated = CreateImageLayerEntities(world, tmxDoc, mapPath, totalLayerCount);
+
+        // Spawn map objects (NPCs, items, etc.)
+        var objectsCreated = SpawnMapObjects(world, tmxDoc, mapId, tmxDoc.TileHeight);
+
+        // Log summary
+        LogLoadingSummary(
+            mapName,
+            tmxDoc,
+            tilesCreated,
+            objectsCreated,
+            imageLayersCreated,
+            animatedTilesCreated,
+            mapId,
+            tilesetId
+        );
+
+        return mapInfoEntity;
+    }
+
+    /// <summary>
+    ///     Loads and validates the tileset, ensuring texture is available.
+    /// </summary>
+    /// <returns>Tuple of (tileset, tilesetId)</returns>
+    private (TmxTileset tileset, string tilesetId) LoadTileset(TmxDocument tmxDoc, string mapPath)
+    {
         var tileset =
             tmxDoc.Tilesets.FirstOrDefault()
             ?? throw new InvalidOperationException($"Map '{mapPath}' has no tilesets");
@@ -69,10 +115,17 @@ public class MapLoader(
         if (!_assetManager.HasTexture(tilesetId))
             LoadTilesetTexture(tileset, mapPath, tilesetId);
 
-        var tilesCreated = 0;
-        var totalLayerCount = tmxDoc.Layers.Count + tmxDoc.ImageLayers.Count;
+        return (tileset, tilesetId);
+    }
 
-        // Create entity for each non-empty tile across all layers
+    /// <summary>
+    ///     Processes all tile layers and creates tile entities.
+    /// </summary>
+    /// <returns>Total number of tiles created</returns>
+    private int ProcessLayers(World world, TmxDocument tmxDoc, int mapId, TmxTileset tileset)
+    {
+        var tilesCreated = 0;
+
         for (var layerIndex = 0; layerIndex < tmxDoc.Layers.Count; layerIndex++)
         {
             var layer = tmxDoc.Layers[layerIndex];
@@ -87,62 +140,114 @@ public class MapLoader(
                 ? new LayerOffset(layer.OffsetX, layer.OffsetY)
                 : (LayerOffset?)null;
 
-            for (var y = 0; y < tmxDoc.Height; y++)
-            for (var x = 0; x < tmxDoc.Width; x++)
-            {
-                // Extract flip flags from GID
-                var rawGid = (uint)layer.Data[y, x];
-                var tileGid = (int)(rawGid & TILE_ID_MASK);
-                var flipH = (rawGid & FLIPPED_HORIZONTALLY_FLAG) != 0;
-                var flipV = (rawGid & FLIPPED_VERTICALLY_FLAG) != 0;
-                var flipD = (rawGid & FLIPPED_DIAGONALLY_FLAG) != 0;
-
-                if (tileGid == 0)
-                    continue; // Skip empty tiles
-
-                CreateTileEntity(
-                    world,
-                    x,
-                    y,
-                    mapId,
-                    tileGid,
-                    tileset,
-                    tileLayer,
-                    layerOffset,
-                    flipH,
-                    flipV,
-                    flipD
-                );
-                tilesCreated++;
-            }
+            tilesCreated += CreateTileEntities(
+                world,
+                tmxDoc,
+                mapId,
+                tileset,
+                layer,
+                tileLayer,
+                layerOffset
+            );
         }
 
+        return tilesCreated;
+    }
+
+    /// <summary>
+    ///     Creates tile entities for a single layer.
+    /// </summary>
+    private int CreateTileEntities(
+        World world,
+        TmxDocument tmxDoc,
+        int mapId,
+        TmxTileset tileset,
+        TmxLayer layer,
+        TileLayer tileLayer,
+        LayerOffset? layerOffset
+    )
+    {
+        var tilesCreated = 0;
+
+        for (var y = 0; y < tmxDoc.Height; y++)
+        for (var x = 0; x < tmxDoc.Width; x++)
+        {
+            // Extract flip flags from GID
+            var rawGid = (uint)layer.Data![y, x];
+            var tileGid = (int)(rawGid & TILE_ID_MASK);
+            var flipH = (rawGid & FLIPPED_HORIZONTALLY_FLAG) != 0;
+            var flipV = (rawGid & FLIPPED_VERTICALLY_FLAG) != 0;
+            var flipD = (rawGid & FLIPPED_DIAGONALLY_FLAG) != 0;
+
+            if (tileGid == 0)
+                continue; // Skip empty tiles
+
+            CreateTileEntity(
+                world,
+                x,
+                y,
+                mapId,
+                tileGid,
+                tileset,
+                tileLayer,
+                layerOffset,
+                flipH,
+                flipV,
+                flipD
+            );
+            tilesCreated++;
+        }
+
+        return tilesCreated;
+    }
+
+    /// <summary>
+    ///     Creates MapInfo and TilesetInfo metadata entities.
+    /// </summary>
+    private Entity CreateMapMetadata(
+        World world,
+        TmxDocument tmxDoc,
+        string mapPath,
+        int mapId,
+        string mapName,
+        string tilesetId
+    )
+    {
         // Create MapInfo entity for map metadata
-        var mapName = Path.GetFileNameWithoutExtension(mapPath);
         var mapInfo = new MapInfo(mapId, mapName, tmxDoc.Width, tmxDoc.Height, tmxDoc.TileWidth);
         var mapInfoEntity = world.Create(mapInfo);
 
         // Create TilesetInfo entity for tileset metadata
+        var tileset = tmxDoc.Tilesets.First();
         var tilesetInfo = new TilesetInfo(
             tilesetId,
             tileset.FirstGid,
             tileset.TileWidth,
             tileset.TileHeight,
-            tileset.Image?.Width ?? 256,
-            tileset.Image?.Height ?? 256
+            tileset.Image?.Width ?? RenderingConstants.DefaultImageWidth,
+            tileset.Image?.Height ?? RenderingConstants.DefaultImageHeight
         );
-        var tilesetEntity = world.Create(tilesetInfo);
+        world.Create(tilesetInfo);
 
-        // Create animated tile entities
-        var animatedTilesCreated = CreateAnimatedTileEntities(world, tmxDoc, tileset);
+        return mapInfoEntity;
+    }
 
-        // Create image layer entities
-        var imageLayersCreated = CreateImageLayerEntities(world, tmxDoc, mapPath, totalLayerCount);
-
-        // Spawn entities from map objects (NPCs, items, etc.)
-        var objectsCreated = SpawnMapObjects(world, tmxDoc, mapId, tmxDoc.TileHeight);
-
+    /// <summary>
+    ///     Logs a summary of the map loading operation.
+    /// </summary>
+    private void LogLoadingSummary(
+        string mapName,
+        TmxDocument tmxDoc,
+        int tilesCreated,
+        int objectsCreated,
+        int imageLayersCreated,
+        int animatedTilesCreated,
+        int mapId,
+        string tilesetId
+    )
+    {
         _logger?.LogMapLoaded(mapName, tmxDoc.Width, tmxDoc.Height, tilesCreated, objectsCreated);
+
         if (imageLayersCreated > 0)
         {
             _logger?.LogDebug(
@@ -150,14 +255,13 @@ public class MapLoader(
                 imageLayersCreated
             );
         }
+
         _logger?.LogDebug(
             "[dim]MapId:[/] [grey]{MapId}[/] [dim]|[/] [dim]Animated:[/] [yellow]{AnimatedCount}[/] [dim]|[/] [dim]Tileset:[/] [cyan]{TilesetId}[/]",
             mapId,
             animatedTilesCreated,
             tilesetId
         );
-
-        return mapInfoEntity;
     }
 
     private int CreateAnimatedTileEntities(World world, TmxDocument tmxDoc, TmxTileset tileset)
@@ -228,8 +332,9 @@ public class MapLoader(
         var tilesetPath = Path.Combine(mapDirectory, tileset.Image.Source);
 
         // Make path relative to Assets root for AssetManager
-        var assetsRoot = "Assets";
-        var relativePath = Path.GetRelativePath(assetsRoot, tilesetPath);
+        // Cast to AssetManager to access AssetRoot property
+        var assetManager = (AssetManager)_assetManager;
+        var relativePath = Path.GetRelativePath(assetManager.AssetRoot, tilesetPath);
 
         _assetManager.LoadTexture(tilesetId, relativePath);
     }
@@ -363,6 +468,10 @@ public class MapLoader(
         return "tile/ground";
     }
 
+    /// <summary>
+    ///     Creates a tile entity at the specified position with optional flip flags.
+    ///     Delegates to template-based or manual creation based on entity factory availability.
+    /// </summary>
     private void CreateTileEntity(
         World world,
         int x,
@@ -383,145 +492,192 @@ public class MapLoader(
         if (localTileId >= 0)
             tileset.TileProperties.TryGetValue(localTileId, out props);
 
+        // Create base components
+        var position = new TilePosition(x, y, mapId);
+        var sprite = CreateTileSprite(tileGid, tileset, layer, flipH, flipV, flipD);
+
         // Determine which template to use (if entity factory is available)
         string? templateId = null;
         if (_entityFactory != null && props != null)
             templateId = DetermineTileTemplate(props);
 
-        // Create the entity - use template if available, otherwise manual creation
-        Entity entity;
-        if (_entityFactory != null && templateId != null && _entityFactory.HasTemplate(templateId))
-        {
-            // Template-based creation
-            var position = new TilePosition(x, y, mapId);
-            var sprite = new TileSprite(
-                tileset.Name ?? "default",
-                tileGid,
-                layer,
-                CalculateSourceRect(tileGid, tileset),
-                flipH,
-                flipV,
-                flipD
-            );
-
-            entity = _entityFactory.SpawnFromTemplate(
-                templateId,
-                world,
-                builder =>
-                {
-                    builder.OverrideComponent(position);
-                    builder.OverrideComponent(sprite);
-                }
-            );
-        }
-        else
-        {
-            // Fallback: Manual creation (backward compatible)
-            var position = new TilePosition(x, y, mapId);
-            var sprite = new TileSprite(
-                tileset.Name ?? "default",
-                tileGid,
-                layer,
-                CalculateSourceRect(tileGid, tileset),
-                flipH,
-                flipV,
-                flipD
-            );
-
-            entity = world.Create(position, sprite);
-
-            // Add components based on properties (old behavior)
-            if (props != null)
-            {
-                // Check if this is a ledge tile (needs special handling)
-                var isLedge = props.ContainsKey("ledge_direction");
-
-                // Add Collision component if tile is solid OR is a ledge
-                if (props.TryGetValue("solid", out var solidValue) || isLedge)
-                {
-                    var isSolid = false;
-
-                    if (solidValue != null)
-                        isSolid = solidValue switch
-                        {
-                            bool b => b,
-                            string s => bool.TryParse(s, out var result) && result,
-                            _ => false,
-                        };
-                    else if (isLedge)
-                        isSolid = true;
-
-                    if (isSolid)
-                        world.Add(entity, new Collision(true));
-                }
-
-                // Add TileLedge component for ledges
-                if (props.TryGetValue("ledge_direction", out var ledgeValue))
-                {
-                    var ledgeDir = ledgeValue switch
-                    {
-                        string s => s,
-                        _ => ledgeValue?.ToString(),
-                    };
-
-                    if (!string.IsNullOrEmpty(ledgeDir))
-                    {
-                        var jumpDirection = ledgeDir.ToLower() switch
-                        {
-                            "down" => Direction.Down,
-                            "up" => Direction.Up,
-                            "left" => Direction.Left,
-                            "right" => Direction.Right,
-                            _ => Direction.None,
-                        };
-
-                        if (jumpDirection != Direction.None)
-                            world.Add(entity, new TileLedge(jumpDirection));
-                    }
-                }
-
-                // Add EncounterZone component if encounter rate exists
-                if (
-                    props.TryGetValue("encounter_rate", out var encounterRateValue)
-                    && encounterRateValue is int encounterRate
-                    && encounterRate > 0
-                )
-                {
-                    var encounterTableId = props.TryGetValue("encounter_table", out var tableValue)
-                        ? tableValue.ToString() ?? ""
-                        : "";
-
-                    world.Add(entity, new EncounterZone(encounterTableId, encounterRate));
-                }
-            }
-        }
+        // Create entity using appropriate method
+        Entity entity = ShouldUseTemplate(templateId)
+            ? CreateFromTemplate(world, templateId!, position, sprite)
+            : CreateManually(world, position, sprite, props);
 
         // Add additional components that aren't in templates (both paths)
-        if (props != null)
-        {
-            // Add TerrainType component if terrain type exists
-            if (
-                props.TryGetValue("terrain_type", out var terrainValue)
-                && terrainValue is string terrainType
-            )
-            {
-                var footstepSound = props.TryGetValue("footstep_sound", out var soundValue)
-                    ? soundValue.ToString() ?? ""
-                    : "";
-
-                world.Add(entity, new TerrainType(terrainType, footstepSound));
-            }
-
-            // Add TileScript component if script path exists
-            if (
-                props.TryGetValue("script", out var scriptValue) && scriptValue is string scriptPath
-            )
-                world.Add(entity, new TileScript(scriptPath));
-        }
+        ProcessTileProperties(world, entity, props);
 
         // Add LayerOffset component if layer has offset (for parallax scrolling)
         if (layerOffset.HasValue)
             world.Add(entity, layerOffset.Value);
+    }
+
+    /// <summary>
+    ///     Creates a TileSprite component with flip flags applied.
+    /// </summary>
+    private TileSprite CreateTileSprite(
+        int tileGid,
+        TmxTileset tileset,
+        TileLayer layer,
+        bool flipH,
+        bool flipV,
+        bool flipD
+    )
+    {
+        return new TileSprite(
+            tileset.Name ?? "default",
+            tileGid,
+            layer,
+            CalculateSourceRect(tileGid, tileset),
+            flipH,
+            flipV,
+            flipD
+        );
+    }
+
+    /// <summary>
+    ///     Checks if template-based creation should be used.
+    /// </summary>
+    private bool ShouldUseTemplate(string? templateId)
+    {
+        return _entityFactory != null
+            && templateId != null
+            && _entityFactory.HasTemplate(templateId);
+    }
+
+    /// <summary>
+    ///     Creates a tile entity from a template with component overrides.
+    /// </summary>
+    private Entity CreateFromTemplate(
+        World world,
+        string templateId,
+        TilePosition position,
+        TileSprite sprite
+    )
+    {
+        return _entityFactory!.SpawnFromTemplate(
+            templateId,
+            world,
+            builder =>
+            {
+                builder.OverrideComponent(position);
+                builder.OverrideComponent(sprite);
+            }
+        );
+    }
+
+    /// <summary>
+    ///     Creates a tile entity manually without templates (backward compatible).
+    ///     Applies collision, ledge, and encounter zone components based on properties.
+    /// </summary>
+    private Entity CreateManually(
+        World world,
+        TilePosition position,
+        TileSprite sprite,
+        Dictionary<string, object>? props
+    )
+    {
+        var entity = world.Create(position, sprite);
+
+        // Add components based on properties (old behavior)
+        if (props == null)
+            return entity;
+
+        // Check if this is a ledge tile (needs special handling)
+        var isLedge = props.ContainsKey("ledge_direction");
+
+        // Add Collision component if tile is solid OR is a ledge
+        if (props.TryGetValue("solid", out var solidValue) || isLedge)
+        {
+            var isSolid = false;
+
+            if (solidValue != null)
+                isSolid = solidValue switch
+                {
+                    bool b => b,
+                    string s => bool.TryParse(s, out var result) && result,
+                    _ => false,
+                };
+            else if (isLedge)
+                isSolid = true;
+
+            if (isSolid)
+                world.Add(entity, new Collision(true));
+        }
+
+        // Add TileLedge component for ledges
+        if (props.TryGetValue("ledge_direction", out var ledgeValue))
+        {
+            var ledgeDir = ledgeValue switch
+            {
+                string s => s,
+                _ => ledgeValue?.ToString(),
+            };
+
+            if (!string.IsNullOrEmpty(ledgeDir))
+            {
+                var jumpDirection = ledgeDir.ToLower() switch
+                {
+                    "down" => Direction.Down,
+                    "up" => Direction.Up,
+                    "left" => Direction.Left,
+                    "right" => Direction.Right,
+                    _ => Direction.None,
+                };
+
+                if (jumpDirection != Direction.None)
+                    world.Add(entity, new TileLedge(jumpDirection));
+            }
+        }
+
+        // Add EncounterZone component if encounter rate exists
+        if (
+            props.TryGetValue("encounter_rate", out var encounterRateValue)
+            && encounterRateValue is int encounterRate
+            && encounterRate > 0
+        )
+        {
+            var encounterTableId = props.TryGetValue("encounter_table", out var tableValue)
+                ? tableValue.ToString() ?? ""
+                : "";
+
+            world.Add(entity, new EncounterZone(encounterTableId, encounterRate));
+        }
+
+        return entity;
+    }
+
+    /// <summary>
+    ///     Processes additional tile properties that aren't included in templates.
+    ///     Adds TerrainType and TileScript components if specified in properties.
+    /// </summary>
+    private void ProcessTileProperties(
+        World world,
+        Entity entity,
+        Dictionary<string, object>? props
+    )
+    {
+        if (props == null)
+            return;
+
+        // Add TerrainType component if terrain type exists
+        if (
+            props.TryGetValue("terrain_type", out var terrainValue)
+            && terrainValue is string terrainType
+        )
+        {
+            var footstepSound = props.TryGetValue("footstep_sound", out var soundValue)
+                ? soundValue.ToString() ?? ""
+                : "";
+
+            world.Add(entity, new TerrainType(terrainType, footstepSound));
+        }
+
+        // Add TileScript component if script path exists
+        if (props.TryGetValue("script", out var scriptValue) && scriptValue is string scriptPath)
+            world.Add(entity, new TileScript(scriptPath));
     }
 
     /// <summary>
@@ -712,7 +868,7 @@ public class MapLoader(
         var spacing = tileset.Spacing; // Space between tiles
         var margin = tileset.Margin; // Border around tileset
 
-        var imageWidth = tileset.Image?.Width ?? 256;
+        var imageWidth = tileset.Image?.Width ?? RenderingConstants.DefaultImageWidth;
         var tilesPerRow = (imageWidth - margin) / (tileWidth + spacing);
 
         // Calculate tile position in the grid
@@ -780,8 +936,9 @@ public class MapLoader(
                     var fullImagePath = Path.Combine(mapDirectory, imagePath);
 
                     // Make path relative to Assets root for AssetManager
-                    var assetsRoot = "Assets";
-                    var relativePath = Path.GetRelativePath(assetsRoot, fullImagePath);
+                    // Cast to AssetManager to access AssetRoot property
+                    var assetManager = (AssetManager)_assetManager;
+                    var relativePath = Path.GetRelativePath(assetManager.AssetRoot, fullImagePath);
 
                     _assetManager.LoadTexture(textureId, relativePath);
                 }
