@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 
 namespace PokeSharp.Core.Components.Tiles;
@@ -60,6 +61,13 @@ public struct TilesetInfo
         int imageHeight
     )
     {
+        ArgumentException.ThrowIfNullOrEmpty(tilesetId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(firstGid);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(tileWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(tileHeight);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(imageWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(imageHeight);
+
         TilesetId = tilesetId;
         FirstGid = firstGid;
         TileWidth = tileWidth;

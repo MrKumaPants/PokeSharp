@@ -1,3 +1,5 @@
+using System;
+
 namespace PokeSharp.Core.Components.Tiles;
 
 /// <summary>
@@ -33,16 +35,73 @@ public struct AnimatedTile
     public int BaseTileId { get; set; }
 
     /// <summary>
+    ///     Gets or sets the first global tile ID for the tileset that owns this animation.
+    ///     Used to convert global frame IDs back to local indices.
+    /// </summary>
+    public int TilesetFirstGid { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the number of tiles per row in the tileset image.
+    /// </summary>
+    public int TilesPerRow { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the tile width in pixels for this animation.
+    /// </summary>
+    public int TileWidth { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the tile height in pixels for this animation.
+    /// </summary>
+    public int TileHeight { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the spacing between tiles in pixels.
+    /// </summary>
+    public int TileSpacing { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the margin around the tileset in pixels.
+    /// </summary>
+    public int TileMargin { get; set; }
+
+    /// <summary>
     ///     Initializes a new instance of the AnimatedTile struct.
     /// </summary>
     /// <param name="baseTileId">The base tile ID.</param>
     /// <param name="frameTileIds">Array of animation frame tile IDs.</param>
     /// <param name="frameDurations">Array of frame durations in seconds.</param>
-    public AnimatedTile(int baseTileId, int[] frameTileIds, float[] frameDurations)
+    /// <param name="tilesetFirstGid">First global ID for the owning tileset.</param>
+    /// <param name="tilesPerRow">Number of tiles per row in the tileset.</param>
+    /// <param name="tileWidth">Tile width in pixels.</param>
+    /// <param name="tileHeight">Tile height in pixels.</param>
+    /// <param name="tileSpacing">Spacing between tiles in pixels.</param>
+    /// <param name="tileMargin">Margin around tiles in pixels.</param>
+    public AnimatedTile(
+        int baseTileId,
+        int[] frameTileIds,
+        float[] frameDurations,
+        int tilesetFirstGid,
+        int tilesPerRow,
+        int tileWidth,
+        int tileHeight,
+        int tileSpacing,
+        int tileMargin
+    )
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(tileWidth);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(tileHeight);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(tilesPerRow);
+
         BaseTileId = baseTileId;
         FrameTileIds = frameTileIds;
         FrameDurations = frameDurations;
+        TilesetFirstGid = tilesetFirstGid;
+        TilesPerRow = tilesPerRow;
+        TileWidth = tileWidth;
+        TileHeight = tileHeight;
+        TileSpacing = tileSpacing;
+        TileMargin = tileMargin;
         CurrentFrameIndex = 0;
         FrameTimer = 0f;
     }

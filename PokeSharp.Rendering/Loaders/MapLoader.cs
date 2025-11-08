@@ -1,3 +1,4 @@
+using System;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
@@ -232,15 +233,30 @@ public class MapLoader(
         var mapInfo = new MapInfo(mapId, mapName, tmxDoc.Width, tmxDoc.Height, tmxDoc.TileWidth);
         var mapInfoEntity = world.Create(mapInfo);
 
-        // Create TilesetInfo entity for tileset metadata
+        if (!tmxDoc.Tilesets.Any())
+            throw new InvalidOperationException($"Map '{mapPath}' does not declare a tileset.");
+
         var tileset = tmxDoc.Tilesets.First();
+        if (tileset.FirstGid <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? tilesetId}' in '{mapPath}' has invalid firstgid {tileset.FirstGid}."
+            );
+        if (tileset.TileWidth <= 0 || tileset.TileHeight <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? tilesetId}' in '{mapPath}' has invalid tile size {tileset.TileWidth}x{tileset.TileHeight}."
+            );
+        if (tileset.Image == null || tileset.Image.Width <= 0 || tileset.Image.Height <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? tilesetId}' in '{mapPath}' is missing valid image dimensions."
+            );
+
         var tilesetInfo = new TilesetInfo(
             tilesetId,
             tileset.FirstGid,
             tileset.TileWidth,
             tileset.TileHeight,
-            tileset.Image?.Width ?? RenderingConstants.DefaultImageWidth,
-            tileset.Image?.Height ?? RenderingConstants.DefaultImageHeight
+            tileset.Image.Width,
+            tileset.Image.Height
         );
         world.Create(tilesetInfo);
 
@@ -286,6 +302,28 @@ public class MapLoader(
 
         var created = 0;
 
+        var tilesPerRow = CalculateTilesPerRow(tileset);
+        var tileWidth = tileset.TileWidth;
+        var tileHeight = tileset.TileHeight;
+        var tileSpacing = tileset.Spacing;
+        var tileMargin = tileset.Margin;
+        var firstGid = tileset.FirstGid;
+
+        if (tileSpacing < 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has negative spacing value {tileSpacing}."
+            );
+
+        if (tileMargin < 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has negative margin value {tileMargin}."
+            );
+
+        if (firstGid <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has invalid firstgid {firstGid}."
+            );
+
         foreach (var kvp in tileset.Animations)
         {
             var localTileId = kvp.Key;
@@ -303,7 +341,13 @@ public class MapLoader(
             var animatedTile = new AnimatedTile(
                 globalTileId,
                 globalFrameIds,
-                animation.FrameDurations
+                animation.FrameDurations,
+                firstGid,
+                tilesPerRow,
+                tileWidth,
+                tileHeight,
+                tileSpacing,
+                tileMargin
             );
 
             // Find all tile entities with this tile ID and add AnimatedTile component
@@ -322,6 +366,51 @@ public class MapLoader(
         }
 
         return created;
+    }
+
+    private static int CalculateTilesPerRow(TmxTileset tileset)
+    {
+        if (tileset.TileWidth <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has invalid tile width {tileset.TileWidth}."
+            );
+
+        if (tileset.Image == null || tileset.Image.Width <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' is missing a valid image width."
+            );
+
+        var spacing = tileset.Spacing;
+        var margin = tileset.Margin;
+
+        if (spacing < 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has negative spacing value {spacing}."
+            );
+        if (margin < 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has negative margin value {margin}."
+            );
+
+        var usableWidth = tileset.Image.Width - margin * 2;
+        if (usableWidth <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has unusable image width after margins."
+            );
+
+        var step = tileset.TileWidth + spacing;
+        if (step <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has invalid step size {step}."
+            );
+
+        var tilesPerRow = (usableWidth + spacing) / step;
+        if (tilesPerRow <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' produced non-positive tiles-per-row."
+            );
+
+        return tilesPerRow;
     }
 
     // Obsolete methods removed - they referenced TileMap and TileProperties components which no longer exist
@@ -919,11 +1008,44 @@ public class MapLoader(
             );
         }
 
-        var spacing = tileset.Spacing; // Space between tiles
-        var margin = tileset.Margin; // Border around tileset
+        if (tileset.Image == null || tileset.Image.Width <= 0 || tileset.Image.Height <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' is missing valid image dimensions."
+            );
 
-        var imageWidth = tileset.Image?.Width ?? RenderingConstants.DefaultImageWidth;
-        var tilesPerRow = (imageWidth - margin) / (tileWidth + spacing);
+        var spacing = tileset.Spacing;
+        var margin = tileset.Margin;
+
+        if (spacing < 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has negative spacing value {spacing}."
+            );
+        if (margin < 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has negative margin value {margin}."
+            );
+
+        var usableWidth = tileset.Image.Width - margin * 2;
+        if (usableWidth <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has unusable image width after margins."
+            );
+
+        var step = tileWidth + spacing;
+        if (step <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' has invalid step size {step}."
+            );
+
+        var tilesPerRow = (usableWidth + spacing) / step;
+        if (tilesPerRow <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' produced non-positive tiles-per-row."
+            );
+        if (tilesPerRow <= 0)
+            throw new InvalidOperationException(
+                $"Tileset '{tileset.Name ?? "unnamed"}' produced non-positive tiles-per-row."
+            );
 
         // Calculate tile position in the grid
         var tileX = localTileId % tilesPerRow;

@@ -1,3 +1,4 @@
+using System;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
@@ -92,7 +93,7 @@ public class TileAnimationSystem(ILogger<TileAnimationSystem>? logger = null) : 
 
             // Update sprite's source rectangle for the new frame
             var newFrameTileId = animTile.FrameTileIds[animTile.CurrentFrameIndex];
-            sprite.SourceRect = CalculateTileSourceRect(newFrameTileId, sprite);
+            sprite.SourceRect = CalculateTileSourceRect(newFrameTileId, ref animTile, ref sprite);
         }
     }
 
@@ -100,44 +101,45 @@ public class TileAnimationSystem(ILogger<TileAnimationSystem>? logger = null) : 
     ///     Calculates the source rectangle for a tile ID using tileset info.
     ///     Falls back to assumptions if tileset info not found.
     /// </summary>
-    private static Rectangle CalculateTileSourceRect(int tileGid, TileSprite sprite)
+    private static Rectangle CalculateTileSourceRect(
+        int tileGid,
+        ref AnimatedTile animTile,
+        ref TileSprite sprite
+    )
     {
-        // Try to use existing SourceRect dimensions if valid
-        if (sprite.SourceRect.Width > 0 && sprite.SourceRect.Height > 0)
-        {
-            // Just update the position based on new tile ID
-            // Assume the dimensions stay the same (all tiles in set are same size)
-            const int tilesPerRow = 16; // Fallback assumption
-            var tileIndex = tileGid - 1;
-            if (tileIndex < 0)
-                tileIndex = 0;
+        if (animTile.TilesetFirstGid <= 0)
+            throw new InvalidOperationException("AnimatedTile missing tileset first GID.");
 
-            var tileX = tileIndex % tilesPerRow;
-            var tileY = tileIndex / tilesPerRow;
-
-            return new Rectangle(
-                tileX * sprite.SourceRect.Width,
-                tileY * sprite.SourceRect.Height,
-                sprite.SourceRect.Width,
-                sprite.SourceRect.Height
+        var firstGid = animTile.TilesetFirstGid;
+        var localId = tileGid - firstGid;
+        if (localId < 0)
+            throw new InvalidOperationException(
+                $"Tile GID {tileGid} is not part of tileset starting at {firstGid}."
             );
-        }
 
-        // Fallback for invalid SourceRect
-        const int fallbackTileSize = 16;
-        const int fallbackTilesPerRow = 16;
-        var fallbackIndex = tileGid - 1;
-        if (fallbackIndex < 0)
-            fallbackIndex = 0;
+        var tileWidth = animTile.TileWidth;
+        var tileHeight = animTile.TileHeight;
+        var tilesPerRow = animTile.TilesPerRow;
 
-        var fallbackX = fallbackIndex % fallbackTilesPerRow;
-        var fallbackY = fallbackIndex / fallbackTilesPerRow;
+        if (tileWidth <= 0 || tileHeight <= 0)
+            throw new InvalidOperationException(
+                $"AnimatedTile missing tile dimensions for TilesetFirstGid={animTile.TilesetFirstGid}"
+            );
 
-        return new Rectangle(
-            fallbackX * fallbackTileSize,
-            fallbackY * fallbackTileSize,
-            fallbackTileSize,
-            fallbackTileSize
-        );
+        if (tilesPerRow <= 0)
+            throw new InvalidOperationException(
+                $"AnimatedTile missing tiles-per-row for TilesetFirstGid={animTile.TilesetFirstGid}"
+            );
+
+        var spacing = Math.Max(0, animTile.TileSpacing);
+        var margin = Math.Max(0, animTile.TileMargin);
+
+        var tileX = localId % tilesPerRow;
+        var tileY = localId / tilesPerRow;
+
+        var sourceX = margin + tileX * (tileWidth + spacing);
+        var sourceY = margin + tileY * (tileHeight + spacing);
+
+        return new Rectangle(sourceX, sourceY, tileWidth, tileHeight);
     }
 }
