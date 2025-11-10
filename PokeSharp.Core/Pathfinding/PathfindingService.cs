@@ -20,14 +20,14 @@ public class PathfindingService
     /// <param name="start">Starting tile position</param>
     /// <param name="goal">Goal tile position</param>
     /// <param name="mapId">Map identifier</param>
-    /// <param name="spatialHashSystem">Spatial hash system for collision detection</param>
+    /// <param name="spatialQuery">Spatial query interface for collision detection</param>
     /// <param name="maxSearchNodes">Maximum nodes to search before giving up (default 1000)</param>
     /// <returns>Queue of waypoints from start to goal, or null if no path found</returns>
     public Queue<Point>? FindPath(
         Point start,
         Point goal,
         int mapId,
-        SpatialHashSystem spatialHashSystem,
+        ISpatialQuery spatialQuery,
         int maxSearchNodes = 1000
     )
     {
@@ -71,7 +71,7 @@ public class PathfindingService
                     continue;
 
                 // Skip if not walkable (check collision)
-                if (!IsWalkable(neighborPos, mapId, spatialHashSystem))
+                if (!IsWalkable(neighborPos, mapId, spatialQuery))
                     continue;
 
                 var tentativeG = current.G + 1f; // Each step costs 1
@@ -106,12 +106,12 @@ public class PathfindingService
     /// </summary>
     /// <param name="path">Path to validate</param>
     /// <param name="mapId">Map identifier</param>
-    /// <param name="spatialHashSystem">Spatial hash system for collision detection</param>
+    /// <param name="spatialQuery">Spatial query interface for collision detection</param>
     /// <returns>True if path is clear, false if blocked</returns>
-    public bool IsPathValid(Queue<Point> path, int mapId, SpatialHashSystem spatialHashSystem)
+    public bool IsPathValid(Queue<Point> path, int mapId, ISpatialQuery spatialQuery)
     {
         foreach (var point in path)
-            if (!IsWalkable(point, mapId, spatialHashSystem))
+            if (!IsWalkable(point, mapId, spatialQuery))
                 return false;
 
         return true;
@@ -123,12 +123,12 @@ public class PathfindingService
     /// </summary>
     /// <param name="path">Original path</param>
     /// <param name="mapId">Map identifier</param>
-    /// <param name="spatialHashSystem">Spatial hash system for collision detection</param>
+    /// <param name="spatialQuery">Spatial query interface for collision detection</param>
     /// <returns>Smoothed path with fewer waypoints</returns>
     public Queue<Point> SmoothPath(
         Queue<Point> path,
         int mapId,
-        SpatialHashSystem spatialHashSystem
+        ISpatialQuery spatialQuery
     )
     {
         if (path.Count <= 2)
@@ -146,7 +146,7 @@ public class PathfindingService
 
             // Find the farthest point we can see from current
             for (var i = currentIndex + 2; i < pathArray.Length; i++)
-                if (HasLineOfSight(pathArray[currentIndex], pathArray[i], mapId, spatialHashSystem))
+                if (HasLineOfSight(pathArray[currentIndex], pathArray[i], mapId, spatialQuery))
                     farthestVisible = i;
                 else
                     break; // Can't see beyond this point
@@ -165,14 +165,14 @@ public class PathfindingService
         Point from,
         Point to,
         int mapId,
-        SpatialHashSystem spatialHashSystem
+        ISpatialQuery spatialQuery
     )
     {
         // Use Bresenham's line algorithm to check all tiles in the line
         var points = GetLinePoints(from, to);
 
         foreach (var point in points)
-            if (!IsWalkable(point, mapId, spatialHashSystem))
+            if (!IsWalkable(point, mapId, spatialQuery))
                 return false;
 
         return true;
@@ -252,12 +252,12 @@ public class PathfindingService
     /// <summary>
     ///     Checks if a position is walkable (no collision).
     /// </summary>
-    private bool IsWalkable(Point position, int mapId, SpatialHashSystem spatialHashSystem)
+    private bool IsWalkable(Point position, int mapId, ISpatialQuery spatialQuery)
     {
         // Use the same collision detection as MovementSystem
         // Check all four directions to be thorough
         return CollisionSystem.IsPositionWalkable(
-            spatialHashSystem,
+            spatialQuery,
             mapId,
             position.X,
             position.Y,

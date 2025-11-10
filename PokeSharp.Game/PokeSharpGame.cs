@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using PokeSharp.Core.Mapping;
 using PokeSharp.Core.Scripting.Services;
 using PokeSharp.Core.ScriptingApi;
+using PokeSharp.Core.Services;
 using PokeSharp.Core.Systems;
 using PokeSharp.Game.Services;
 using PokeSharp.Game.Diagnostics;
@@ -24,6 +25,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
     private readonly IScriptingApiProvider _apiProvider;
     private readonly ILoggingProvider _logging;
     private readonly IInitializationProvider _initialization;
+    private readonly IGameTimeService _gameTime;
     private readonly GraphicsDeviceManager _graphics;
 
     // Services that depend on GraphicsDevice (created in Initialize)
@@ -43,7 +45,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         SystemManager systemManager,
         IGameServicesProvider gameServices,
         IInitializationProvider initialization,
-        IScriptingApiProvider apiProvider
+        IScriptingApiProvider apiProvider,
+        IGameTimeService gameTime
     )
     {
         _logging = logging ?? throw new ArgumentNullException(nameof(logging));
@@ -52,6 +55,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         _gameServices = gameServices ?? throw new ArgumentNullException(nameof(gameServices));
         _initialization = initialization ?? throw new ArgumentNullException(nameof(initialization));
         _apiProvider = apiProvider ?? throw new ArgumentNullException(nameof(apiProvider));
+        _gameTime = gameTime ?? throw new ArgumentNullException(nameof(gameTime));
 
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
@@ -114,8 +118,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         // Initialize core game systems
         _gameInitializer.Initialize(GraphicsDevice);
 
-        // Set SpatialHashSystem on the MapApiService that was created by DI (used by ScriptService)
-        _apiProvider.Map.SetSpatialHashSystem(_gameInitializer.SpatialHashSystem);
+        // Set SpatialQuery on the MapApiService that was created by DI (used by ScriptService)
+        _apiProvider.Map.SetSpatialQuery(_gameInitializer.SpatialHashSystem);
 
         var mapInitializerLogger = _logging.CreateLogger<MapInitializer>();
         _mapInitializer = new MapInitializer(
@@ -166,7 +170,11 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
     protected override void Update(GameTime gameTime)
     {
         var deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        var totalSeconds = (float)gameTime.TotalGameTime.TotalSeconds;
         var frameTimeMs = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
+
+        // Update game time service
+        _gameTime.Update(totalSeconds, deltaTime);
 
         // Update performance monitoring
         _initialization.PerformanceMonitor.Update(frameTimeMs);
@@ -176,8 +184,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         _initialization.InputManager.ProcessInput(_world, deltaTime, _gameInitializer.RenderSystem);
 
         // ✅ FIXED: Removed GraphicsDevice.Clear() from here
-        // ✅ FIXED: Call UpdateSystems() instead of Update()
-        _systemManager.UpdateSystems(_world, deltaTime);
+        // Update all systems
+        _systemManager.Update(_world, deltaTime);
 
         base.Update(gameTime);
     }
@@ -191,8 +199,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         // ✅ FIXED: Clear happens in Draw() now (correct MonoGame pattern)
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        // ✅ FIXED: Call RenderSystems() to execute rendering
-        _systemManager.RenderSystems(_world);
+        // ✅ FIXED: Call Render() to execute rendering
+        _systemManager.Render(_world);
 
         base.Draw(gameTime);
     }

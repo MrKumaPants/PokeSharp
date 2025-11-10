@@ -14,7 +14,7 @@ namespace PokeSharp.Core.Systems;
 ///     Runs very early (Priority: 25) to ensure spatial data is available for other systems.
 ///     Uses dirty tracking to avoid rebuilding index for static tiles every frame.
 /// </summary>
-public class SpatialHashSystem(ILogger<SpatialHashSystem>? logger = null) : ParallelSystemBase, IUpdateSystem
+public class SpatialHashSystem(ILogger<SpatialHashSystem>? logger = null) : ParallelSystemBase, IUpdateSystem, ISpatialQuery
 {
     private readonly SpatialHash _dynamicHash = new(); // For entities with Position (cleared each frame)
     private readonly ILogger<SpatialHashSystem>? _logger = logger;

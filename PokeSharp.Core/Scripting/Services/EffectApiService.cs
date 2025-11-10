@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using PokeSharp.Core.Events;
 using PokeSharp.Core.Logging;
 using PokeSharp.Core.ScriptingApi;
+using PokeSharp.Core.Services;
 using PokeSharp.Core.Types.Events;
 
 namespace PokeSharp.Core.Scripting.Services;
@@ -12,8 +13,12 @@ namespace PokeSharp.Core.Scripting.Services;
 ///     Visual effect management service implementation.
 ///     Publishes effect events to the event bus for rendering systems to handle.
 /// </summary>
-public class EffectApiService(World world, IEventBus eventBus, ILogger<EffectApiService> logger)
-    : IEffectApi
+public class EffectApiService(
+    World world,
+    IEventBus eventBus,
+    ILogger<EffectApiService> logger,
+    IGameTimeService gameTime
+) : IEffectApi
 {
     private readonly IEventBus _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
@@ -21,6 +26,8 @@ public class EffectApiService(World world, IEventBus eventBus, ILogger<EffectApi
         logger ?? throw new ArgumentNullException(nameof(logger));
 
     private readonly World _world = world ?? throw new ArgumentNullException(nameof(world));
+    private readonly IGameTimeService _gameTime =
+        gameTime ?? throw new ArgumentNullException(nameof(gameTime));
 
     /// <inheritdoc />
     public void SpawnEffect(
@@ -40,7 +47,7 @@ public class EffectApiService(World world, IEventBus eventBus, ILogger<EffectApi
         var effectEvent = new EffectRequestedEvent
         {
             TypeId = "effect-api",
-            Timestamp = 0f, // TODO: Get from game time service
+            Timestamp = _gameTime.TotalSeconds,
             EffectId = effectId,
             Position = position,
             Duration = duration,

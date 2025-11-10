@@ -11,13 +11,13 @@ namespace PokeSharp.Core.Systems;
 ///     Uses spatial hash to query entities with Collision components.
 /// </summary>
 public class CollisionSystem(
-    SpatialHashSystem spatialHashSystem,
+    ISpatialQuery spatialQuery,
     ILogger<CollisionSystem>? logger = null
 ) : ParallelSystemBase, IUpdateSystem
 {
     private readonly ILogger<CollisionSystem>? _logger = logger;
-    private readonly SpatialHashSystem _spatialHashSystem =
-        spatialHashSystem ?? throw new ArgumentNullException(nameof(spatialHashSystem));
+    private readonly ISpatialQuery _spatialQuery =
+        spatialQuery ?? throw new ArgumentNullException(nameof(spatialQuery));
 
     /// <summary>
     /// Gets the update priority. Lower values execute first.
@@ -55,19 +55,19 @@ public class CollisionSystem(
     /// <summary>
     ///     Checks if a tile position is walkable (not blocked by collision).
     /// </summary>
-    /// <param name="spatialHash">The spatial hash system for entity lookups.</param>
+    /// <param name="spatialQuery">The spatial query interface for entity lookups.</param>
     /// <param name="mapId">The map identifier.</param>
     /// <param name="tileX">The X coordinate in tile space.</param>
     /// <param name="tileY">The Y coordinate in tile space.</param>
     /// <returns>True if the position is walkable, false if blocked.</returns>
     public static bool IsPositionWalkable(
-        SpatialHashSystem spatialHash,
+        ISpatialQuery spatialQuery,
         int mapId,
         int tileX,
         int tileY
     )
     {
-        return IsPositionWalkable(spatialHash, mapId, tileX, tileY, Direction.None);
+        return IsPositionWalkable(spatialQuery, mapId, tileX, tileY, Direction.None);
     }
 
     /// <summary>
@@ -75,25 +75,25 @@ public class CollisionSystem(
     ///     Queries spatial hash for entities with Collision components.
     ///     Supports Pokemon-style directional blocking (ledges).
     /// </summary>
-    /// <param name="spatialHash">The spatial hash system for entity lookups.</param>
+    /// <param name="spatialQuery">The spatial query interface for entity lookups.</param>
     /// <param name="mapId">The map identifier.</param>
     /// <param name="tileX">The X coordinate in tile space.</param>
     /// <param name="tileY">The Y coordinate in tile space.</param>
     /// <param name="fromDirection">Direction moving FROM (player's movement direction).</param>
     /// <returns>True if the position is walkable from this direction, false if blocked.</returns>
     public static bool IsPositionWalkable(
-        SpatialHashSystem spatialHash,
+        ISpatialQuery spatialQuery,
         int mapId,
         int tileX,
         int tileY,
         Direction fromDirection
     )
     {
-        if (spatialHash == null)
+        if (spatialQuery == null)
             return false;
 
         // Get all entities at this position from spatial hash
-        var entities = spatialHash.GetEntitiesAt(mapId, tileX, tileY);
+        var entities = spatialQuery.GetEntitiesAt(mapId, tileX, tileY);
 
         foreach (var entity in entities)
             // Check if entity has Collision component
@@ -127,7 +127,7 @@ public class CollisionSystem(
     }
 
     /// <summary>
-    ///     Instance method that uses the system's spatial hash.
+    ///     Instance method that uses the system's spatial query.
     ///     Legacy compatibility wrapper.
     /// </summary>
     public bool IsPositionWalkableInstance(
@@ -137,23 +137,23 @@ public class CollisionSystem(
         Direction fromDirection = Direction.None
     )
     {
-        return IsPositionWalkable(_spatialHashSystem, mapId, tileX, tileY, fromDirection);
+        return IsPositionWalkable(_spatialQuery, mapId, tileX, tileY, fromDirection);
     }
 
     /// <summary>
     ///     Checks if a tile is a Pokemon-style ledge (has TileLedge component).
     /// </summary>
-    /// <param name="spatialHash">The spatial hash system for entity lookups.</param>
+    /// <param name="spatialQuery">The spatial query interface for entity lookups.</param>
     /// <param name="mapId">The map identifier.</param>
     /// <param name="tileX">The X coordinate in tile space.</param>
     /// <param name="tileY">The Y coordinate in tile space.</param>
     /// <returns>True if the tile is a ledge, false otherwise.</returns>
-    public static bool IsLedge(SpatialHashSystem spatialHash, int mapId, int tileX, int tileY)
+    public static bool IsLedge(ISpatialQuery spatialQuery, int mapId, int tileX, int tileY)
     {
-        if (spatialHash == null)
+        if (spatialQuery == null)
             return false;
 
-        var entities = spatialHash.GetEntitiesAt(mapId, tileX, tileY);
+        var entities = spatialQuery.GetEntitiesAt(mapId, tileX, tileY);
 
         foreach (var entity in entities)
             if (entity.Has<TileLedge>())
@@ -165,22 +165,22 @@ public class CollisionSystem(
     /// <summary>
     ///     Gets the allowed jump direction for a ledge tile.
     /// </summary>
-    /// <param name="spatialHash">The spatial hash system for entity lookups.</param>
+    /// <param name="spatialQuery">The spatial query interface for entity lookups.</param>
     /// <param name="mapId">The map identifier.</param>
     /// <param name="tileX">The X coordinate in tile space.</param>
     /// <param name="tileY">The Y coordinate in tile space.</param>
     /// <returns>The direction you can jump across this ledge, or None if not a ledge.</returns>
     public static Direction GetLedgeJumpDirection(
-        SpatialHashSystem spatialHash,
+        ISpatialQuery spatialQuery,
         int mapId,
         int tileX,
         int tileY
     )
     {
-        if (spatialHash == null)
+        if (spatialQuery == null)
             return Direction.None;
 
-        var entities = spatialHash.GetEntitiesAt(mapId, tileX, tileY);
+        var entities = spatialQuery.GetEntitiesAt(mapId, tileX, tileY);
 
         foreach (var entity in entities)
             if (entity.Has<TileLedge>())

@@ -3,6 +3,7 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Core.Components.Movement;
 using PokeSharp.Core.Components.NPCs;
+using PokeSharp.Core.Configuration;
 using PokeSharp.Core.Logging;
 using PokeSharp.Core.Scripting.Services;
 using PokeSharp.Core.ScriptingApi;
@@ -24,6 +25,7 @@ namespace PokeSharp.Core.Systems;
 /// </remarks>
 public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
 {
+    private readonly PerformanceConfiguration _config;
     private readonly ILogger<NPCBehaviorSystem> _logger;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IScriptingApiProvider _apis;
@@ -35,12 +37,14 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
     public NPCBehaviorSystem(
         ILogger<NPCBehaviorSystem> logger,
         ILoggerFactory loggerFactory,
-        IScriptingApiProvider apis
+        IScriptingApiProvider apis,
+        PerformanceConfiguration? config = null
     )
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _apis = apis ?? throw new ArgumentNullException(nameof(apis));
+        _config = config ?? PerformanceConfiguration.Default;
     }
 
     /// <summary>
@@ -79,6 +83,40 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
     {
         _behaviorRegistry = registry;
         _logger.LogWorkflowStatus("Behavior registry linked", ("behaviors", registry.Count));
+    }
+
+    /// <summary>
+    ///     Gets or creates a logger for a specific NPC behavior.
+    ///     Implements size limit to prevent unbounded memory growth.
+    /// </summary>
+    /// <param name="key">Logger key (behavior type + NPC ID)</param>
+    /// <returns>Cached or newly created logger</returns>
+    private ILogger GetOrCreateLogger(string key)
+    {
+        return _scriptLoggerCache.GetOrAdd(key, k =>
+        {
+            // Check if we've hit the cache limit
+            if (_scriptLoggerCache.Count >= _config.MaxCachedLoggers)
+            {
+                _logger.LogWarning(
+                    "Script logger cache limit reached ({Limit}). Consider increasing limit or checking for leaks.",
+                    _config.MaxCachedLoggers
+                );
+            }
+
+            return _loggerFactory.CreateLogger($"Script.{k}");
+        });
+    }
+
+    /// <summary>
+    ///     Removes a logger from the cache when a behavior is deactivated.
+    /// </summary>
+    /// <param name="behaviorTypeId">Behavior type ID</param>
+    /// <param name="npcId">NPC ID</param>
+    private void RemoveLogger(string behaviorTypeId, string npcId)
+    {
+        var key = $"{behaviorTypeId}.{npcId}";
+        _scriptLoggerCache.TryRemove(key, out _);
     }
 
     public override void Initialize(World world)
@@ -121,7 +159,7 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
                         $"script not found ({behavior.BehaviorTypeId})"
                     );
                         // Deactivate behavior (with cleanup if needed)
-                        DeactivateBehavior(null, ref behavior, null, "script not found");
+                        DeactivateBehavior(null, ref behavior, null, npc.NpcId, "script not found");
                         return;
                     }
 
@@ -134,15 +172,13 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
                         $"script type mismatch ({scriptObj.GetType().Name})"
                     );
                         // Deactivate behavior (with cleanup if needed)
-                        DeactivateBehavior(null, ref behavior, null, "wrong script type");
+                        DeactivateBehavior(null, ref behavior, null, npc.NpcId, "wrong script type");
                         return;
                     }
 
                     // Create ScriptContext for this entity (with cached logger and API services)
-                    var scriptLogger = _scriptLoggerCache.GetOrAdd(
-                        $"{behavior.BehaviorTypeId}.{npc.NpcId}",
-                        key => _loggerFactory.CreateLogger($"Script.{key}")
-                    );
+                    var loggerKey = $"{behavior.BehaviorTypeId}.{npc.NpcId}";
+                    var scriptLogger = GetOrCreateLogger(loggerKey);
                     var context = new ScriptContext(
                         world,
                         entity,
@@ -181,16 +217,16 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
                     var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
                     if (scriptObj is TypeScriptBase script)
                     {
-                        var scriptLogger = _scriptLoggerCache.GetOrAdd(
-                            $"{behavior.BehaviorTypeId}.{npc.NpcId}",
-                            key => _loggerFactory.CreateLogger($"Script.{key}")
-                        );
+                        var loggerKey = $"{behavior.BehaviorTypeId}.{npc.NpcId}";
+                        var scriptLogger = GetOrCreateLogger(loggerKey);
                         var context = new ScriptContext(world, entity, scriptLogger, _apis);
-                        DeactivateBehavior(script, ref behavior, context, $"error: {ex.Message}");
+                        DeactivateBehavior(script, ref behavior, context, npc.NpcId, $"error: {ex.Message}");
                     }
                     else
                     {
                         behavior.IsActive = false;
+                        // Still clean up logger even if script is wrong type
+                        RemoveLogger(behavior.BehaviorTypeId, npc.NpcId);
                     }
                 }
             }
@@ -217,15 +253,18 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
 
     /// <summary>
     ///     Safely deactivates a behavior by calling OnDeactivated and cleaning up state.
+    ///     Also removes the logger from cache to prevent memory leaks.
     /// </summary>
     /// <param name="script">The behavior script instance (null if not available).</param>
     /// <param name="behavior">Reference to the behavior component.</param>
     /// <param name="context">Script context for cleanup (null if not available).</param>
+    /// <param name="npcId">NPC ID for logger cleanup.</param>
     /// <param name="reason">Reason for deactivation (for logging).</param>
     private void DeactivateBehavior(
         TypeScriptBase? script,
         ref Behavior behavior,
         ScriptContext? context,
+        string npcId,
         string reason
     )
     {
@@ -235,8 +274,9 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
             {
                 script.OnDeactivated(context);
                 _logger.LogInformation(
-                    "Deactivated behavior {TypeId}: {Reason}",
+                    "Deactivated behavior {TypeId} for NPC {NpcId}: {Reason}",
                     behavior.BehaviorTypeId,
+                    npcId,
                     reason
                 );
             }
@@ -244,8 +284,9 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
             {
                 _logger.LogError(
                     ex,
-                    "Error during OnDeactivated for {TypeId}: {Message}",
+                    "Error during OnDeactivated for {TypeId} on NPC {NpcId}: {Message}",
                     behavior.BehaviorTypeId,
+                    npcId,
                     ex.Message
                 );
             }
@@ -254,5 +295,8 @@ public class NPCBehaviorSystem : ParallelSystemBase, IUpdateSystem
         }
 
         behavior.IsActive = false;
+
+        // Clean up logger to prevent memory leak
+        RemoveLogger(behavior.BehaviorTypeId, npcId);
     }
 }

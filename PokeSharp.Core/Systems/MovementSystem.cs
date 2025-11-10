@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
@@ -22,18 +23,19 @@ public class MovementSystem : ParallelSystemBase, IUpdateSystem
     private readonly ILogger<MovementSystem>? _logger;
 
     // Cache for tile sizes per map (reduces redundant queries)
-    private readonly Dictionary<int, int> _tileSizeCache = new();
+    // Thread-safe for parallel query execution
+    private readonly ConcurrentDictionary<int, int> _tileSizeCache = new();
 
-    private readonly SpatialHashSystem _spatialHashSystem;
+    private readonly ISpatialQuery _spatialQuery;
 
     /// <summary>
-    ///     Creates a new MovementSystem with required spatial hash system and optional logger.
+    ///     Creates a new MovementSystem with required spatial query interface and optional logger.
     /// </summary>
-    /// <param name="spatialHashSystem">Spatial hash system for collision detection (required).</param>
+    /// <param name="spatialQuery">Spatial query service for collision detection (required).</param>
     /// <param name="logger">Optional logger for system diagnostics.</param>
-    public MovementSystem(SpatialHashSystem spatialHashSystem, ILogger<MovementSystem>? logger = null)
+    public MovementSystem(ISpatialQuery spatialQuery, ILogger<MovementSystem>? logger = null)
     {
-        _spatialHashSystem = spatialHashSystem ?? throw new ArgumentNullException(nameof(spatialHashSystem));
+        _spatialQuery = spatialQuery ?? throw new ArgumentNullException(nameof(spatialQuery));
         _logger = logger;
     }
 
@@ -280,11 +282,11 @@ public class MovementSystem : ParallelSystemBase, IUpdateSystem
         }
 
         // Check if target tile is a Pokemon ledge
-        if (CollisionSystem.IsLedge(_spatialHashSystem, position.MapId, targetX, targetY))
+        if (CollisionSystem.IsLedge(_spatialQuery, position.MapId, targetX, targetY))
         {
             // Get the allowed jump direction for this ledge
             var allowedJumpDir = CollisionSystem.GetLedgeJumpDirection(
-                _spatialHashSystem,
+                _spatialQuery,
                 position.MapId,
                 targetX,
                 targetY
@@ -323,7 +325,7 @@ public class MovementSystem : ParallelSystemBase, IUpdateSystem
                 // Check if landing position is valid (not blocked)
                 if (
                     !CollisionSystem.IsPositionWalkable(
-                        _spatialHashSystem,
+                        _spatialQuery,
                         position.MapId,
                         jumpLandX,
                         jumpLandY,
@@ -356,7 +358,7 @@ public class MovementSystem : ParallelSystemBase, IUpdateSystem
         // Check collision with directional blocking (for Pokemon ledges)
         if (
             !CollisionSystem.IsPositionWalkable(
-                _spatialHashSystem,
+                _spatialQuery,
                 position.MapId,
                 targetX,
                 targetY,
@@ -384,31 +386,28 @@ public class MovementSystem : ParallelSystemBase, IUpdateSystem
 
     /// <summary>
     ///     Gets the tile size for a specific map from MapInfo component.
-    ///     Uses caching to minimize redundant queries.
+    ///     Uses thread-safe caching to minimize redundant queries.
     /// </summary>
     /// <param name="world">The ECS world.</param>
     /// <param name="mapId">The map identifier.</param>
     /// <returns>Tile size in pixels (default: 16).</returns>
     private int GetTileSize(World world, int mapId)
     {
-        // Check cache first
-        if (_tileSizeCache.TryGetValue(mapId, out var cached))
-            return cached;
-
-        // Query MapInfo for tile size using centralized query
-        var tileSize = 16; // default
-        world.Query(
-            in Queries.Queries.MapInfo,
-            (ref MapInfo mapInfo) =>
-            {
-                if (mapInfo.MapId == mapId)
-                    tileSize = mapInfo.TileSize;
-            }
-        );
-
-        // Cache the result
-        _tileSizeCache[mapId] = tileSize;
-        return tileSize;
+        // Thread-safe cache lookup with lazy initialization
+        return _tileSizeCache.GetOrAdd(mapId, id =>
+        {
+            // Query MapInfo for tile size using centralized query
+            var tileSize = 16; // default
+            world.Query(
+                in Queries.Queries.MapInfo,
+                (ref MapInfo mapInfo) =>
+                {
+                    if (mapInfo.MapId == id)
+                        tileSize = mapInfo.TileSize;
+                }
+            );
+            return tileSize;
+        });
     }
 
     /// <summary>

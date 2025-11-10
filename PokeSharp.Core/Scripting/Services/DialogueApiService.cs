@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Core.Events;
 using PokeSharp.Core.Logging;
 using PokeSharp.Core.ScriptingApi;
+using PokeSharp.Core.Services;
 using PokeSharp.Core.Types.Events;
 
 namespace PokeSharp.Core.Scripting.Services;
@@ -11,8 +12,12 @@ namespace PokeSharp.Core.Scripting.Services;
 ///     Dialogue management service implementation.
 ///     Publishes dialogue events to the event bus for UI systems to handle.
 /// </summary>
-public class DialogueApiService(World world, IEventBus eventBus, ILogger<DialogueApiService> logger)
-    : IDialogueApi
+public class DialogueApiService(
+    World world,
+    IEventBus eventBus,
+    ILogger<DialogueApiService> logger,
+    IGameTimeService gameTime
+) : IDialogueApi
 {
     private readonly IEventBus _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
@@ -20,6 +25,8 @@ public class DialogueApiService(World world, IEventBus eventBus, ILogger<Dialogu
         logger ?? throw new ArgumentNullException(nameof(logger));
 
     private readonly World _world = world ?? throw new ArgumentNullException(nameof(world));
+    private readonly IGameTimeService _gameTime =
+        gameTime ?? throw new ArgumentNullException(nameof(gameTime));
     private bool _isDialogueActive;
 
     /// <inheritdoc />
@@ -37,7 +44,7 @@ public class DialogueApiService(World world, IEventBus eventBus, ILogger<Dialogu
         var dialogueEvent = new DialogueRequestedEvent
         {
             TypeId = "dialogue-api",
-            Timestamp = 0f, // TODO: Get from game time service
+            Timestamp = _gameTime.TotalSeconds,
             Message = message,
             SpeakerName = speakerName,
             Priority = priority,

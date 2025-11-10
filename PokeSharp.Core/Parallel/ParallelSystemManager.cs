@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Core.Configuration;
 using PokeSharp.Core.Logging;
 using PokeSharp.Core.Systems;
 
@@ -26,8 +27,14 @@ public class ParallelSystemManager : SystemManager
     /// <param name="world">The ECS world.</param>
     /// <param name="enableParallel">Enable parallel execution (default: true).</param>
     /// <param name="logger">Optional logger instance.</param>
-    public ParallelSystemManager(World world, bool enableParallel = true, ILogger<ParallelSystemManager>? logger = null)
-        : base(logger)
+    /// <param name="config">Optional performance configuration.</param>
+    public ParallelSystemManager(
+        World world,
+        bool enableParallel = true,
+        ILogger<ParallelSystemManager>? logger = null,
+        PerformanceConfiguration? config = null
+    )
+        : base(logger, config)
     {
         ArgumentNullException.ThrowIfNull(world);
 
@@ -59,69 +66,6 @@ public class ParallelSystemManager : SystemManager
     public IReadOnlyList<IReadOnlyList<ISystem>>? ExecutionStages =>
         _executionStages?.Select(stage => (IReadOnlyList<ISystem>)stage.AsReadOnly()).ToList();
 
-    /// <summary>
-    ///     Register a system with metadata for parallel execution analysis.
-    /// </summary>
-    public void RegisterSystemWithMetadata<TSystem>(
-        SystemMetadata metadata,
-        int priority = SystemPriority.Movement
-    ) where TSystem : ISystem
-    {
-        ArgumentNullException.ThrowIfNull(metadata);
-
-        // Set priority if not already set
-        if (metadata.Priority == 0)
-        {
-            metadata.Priority = priority;
-        }
-
-        // Register in dependency graph
-        _dependencyGraph.RegisterSystem<TSystem>(metadata);
-
-        // Register in base system manager
-        RegisterSystem<TSystem>();
-
-        _executionPlanBuilt = false; // Invalidate execution plan
-        _logger?.LogDebug(
-            "System {SystemName} registered with metadata (Reads: {Reads}, Writes: {Writes})",
-            typeof(TSystem).Name,
-            metadata.ReadsComponents.Count,
-            metadata.WritesComponents.Count
-        );
-    }
-
-    /// <summary>
-    ///     Register a system instance with inferred metadata.
-    /// </summary>
-    public override void RegisterSystem(ISystem system)
-    {
-        ArgumentNullException.ThrowIfNull(system);
-
-        // Extract and register metadata before calling base
-        RegisterSystemMetadata(system, system.Priority);
-
-        base.RegisterSystem(system);
-        _executionPlanBuilt = false;
-    }
-
-    /// <summary>
-    ///     Register an update system with type parameter (with DI).
-    /// </summary>
-    public override void RegisterUpdateSystem<T>()
-    {
-        // First call base to create and register the system
-        base.RegisterUpdateSystem<T>();
-
-        // Then extract metadata from the registered system
-        var system = RegisteredUpdateSystems.OfType<T>().FirstOrDefault();
-        if (system != null)
-        {
-            int priority = system is ISystem s ? s.Priority : (system as IUpdateSystem)?.UpdatePriority ?? SystemPriority.Movement;
-            RegisterSystemMetadata(system, priority);
-        }
-
-        _executionPlanBuilt = false;
-    }
 
     /// <summary>
     ///     Register an update system instance.
@@ -138,24 +82,6 @@ public class ParallelSystemManager : SystemManager
         _executionPlanBuilt = false;
     }
 
-    /// <summary>
-    ///     Register a render system with type parameter (with DI).
-    /// </summary>
-    public override void RegisterRenderSystem<T>()
-    {
-        // First call base to create and register the system
-        base.RegisterRenderSystem<T>();
-
-        // Then extract metadata from the registered system
-        var system = RegisteredRenderSystems.OfType<T>().FirstOrDefault();
-        if (system != null)
-        {
-            int priority = system is ISystem s ? s.Priority : (system as IRenderSystem)?.RenderOrder ?? SystemPriority.Render;
-            RegisterSystemMetadata(system, priority);
-        }
-
-        _executionPlanBuilt = false;
-    }
 
     /// <summary>
     ///     Register a render system instance.
@@ -255,24 +181,13 @@ public class ParallelSystemManager : SystemManager
             allSystemObjects.Add(renderSystem);
         }
 
-        // Add legacy systems that aren't already included
-        foreach (var system in Systems)
-        {
-            // Only add if not already in the list (avoid duplicates)
-            if (!allSystemObjects.Any(s => s.GetType() == system.GetType()))
-            {
-                allSystemObjects.Add(system);
-            }
-        }
-
         var systemTypes = allSystemObjects.Select(s => s.GetType()).Distinct().ToList();
 
         _logger?.LogWorkflowStatus(
             "Building execution plan",
             ("total", systemTypes.Count),
             ("update", RegisteredUpdateSystems.Count),
-            ("render", RegisteredRenderSystems.Count),
-            ("legacy", Systems.Count)
+            ("render", RegisteredRenderSystems.Count)
         );
 
         foreach (var type in systemTypes)
@@ -360,6 +275,9 @@ public class ParallelSystemManager : SystemManager
                         _logger?.LogError(ex, "System {SystemName} threw exception during update", system.GetType().Name);
                     }
                     stopwatch.Stop();
+
+                    // Track performance metrics
+                    TrackSystemPerformance(system.GetType().Name, stopwatch.Elapsed.TotalMilliseconds);
                 }
             }
             else
@@ -380,6 +298,9 @@ public class ParallelSystemManager : SystemManager
                             _logger?.LogError(ex, "System {SystemName} threw exception during parallel update", system.GetType().Name);
                         }
                         stopwatch.Stop();
+
+                        // Track performance metrics (thread-safe)
+                        TrackSystemPerformance(system.GetType().Name, stopwatch.Elapsed.TotalMilliseconds);
                     }
                 );
             }

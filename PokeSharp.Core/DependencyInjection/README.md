@@ -1,186 +1,112 @@
-# PokeSharp Dependency Injection System
+# PokeSharp Dependency Injection
 
-Lightweight dependency injection (DI) framework for the PokeSharp ECS architecture.
+## ⚠️ Deprecated - Custom DI Removed
 
-## Quick Start
+**As of 2025-01-10**: The custom `ServiceContainer` and `SystemFactory` have been removed in favor of using **Microsoft.Extensions.DependencyInjection** throughout the codebase.
+
+### Why the Change?
+
+The custom DI infrastructure was:
+1. **Never actually used** in the codebase - all systems were created with explicit constructor injection
+2. **A Service Locator anti-pattern** - Made dependencies implicit instead of explicit
+3. **Redundant** - Microsoft's DI container was already being used in `Program.cs`
+4. **Violating Single Responsibility Principle** - `SystemManager` was managing both system lifecycle AND dependency injection
+
+### Current Approach ✅
+
+PokeSharp now uses a **single DI container** (Microsoft.Extensions.DependencyInjection) configured in `Program.cs`:
 
 ```csharp
-// Create system manager
-var systemManager = new SystemManager(logger);
-
-// Register shared services
-systemManager.RegisterService(spatialHashSystem);
-systemManager.RegisterService(collisionSystem);
-
-// Register systems with automatic DI
-systemManager.RegisterSystem<MovementSystem>();
-systemManager.RegisterSystem<PathfindingSystem>();
-
-// Initialize
-systemManager.Initialize(world);
+// In Program.cs
+var services = new ServiceCollection();
+services.AddSingleton<ILoggerFactory>(loggerFactory);
+services.AddGameServices();  // Extension method
+var serviceProvider = services.BuildServiceProvider();
 ```
 
-## Components
+### How Systems Are Created
 
-### ServiceContainer
-Thread-safe container for managing service registrations and lifetimes.
+Systems are created with **explicit constructor injection**:
 
 ```csharp
-var container = new ServiceContainer();
+// In GameInitializer.cs
+var spatialHashLogger = _loggerFactory.CreateLogger<SpatialHashSystem>();
+var spatialHashSystem = new SpatialHashSystem(spatialHashLogger);
+_systemManager.RegisterUpdateSystem(spatialHashSystem);
 
-// Singleton (one instance shared)
-container.RegisterSingleton<IPathfinder>(pathfinder);
-
-// Transient (new instance each time)
-container.RegisterTransient<IRequest>(c => new Request());
-
-// Resolve
-var service = container.Resolve<IPathfinder>();
+var movementLogger = _loggerFactory.CreateLogger<MovementSystem>();
+var movementSystem = new MovementSystem(spatialHashSystem, movementLogger);
+_systemManager.RegisterUpdateSystem(movementSystem);
 ```
 
-### SystemFactory
-Creates system instances with automatic constructor injection.
+### Benefits of This Approach
+
+✅ **Explicit Dependencies** - All dependencies visible in constructors
+✅ **Compile-Time Safety** - Missing dependencies cause build errors, not runtime failures
+✅ **Easy Testing** - Dependencies can be mocked/stubbed directly
+✅ **Single DI Container** - No confusion about which container manages what
+✅ **SOLID Compliance** - Follows Dependency Inversion Principle properly
+✅ **Standard .NET Pattern** - Uses familiar Microsoft.Extensions.DependencyInjection
+
+### Creating New Systems
+
+Systems should declare all dependencies in their constructor:
 
 ```csharp
-var factory = new SystemFactory(container);
-
-// Create with dependency resolution
-var system = factory.CreateSystem<MovementSystem>();
-
-// Validate before creation
-var (canResolve, missing) = factory.ValidateDependencies<MovementSystem>();
-```
-
-### SystemManager Integration
-Enhanced `SystemManager` with built-in DI support.
-
-```csharp
-// Register services
-systemManager.RegisterService(spatialHashSystem);
-systemManager.RegisterService<ILogger>(c => loggerFactory.CreateLogger());
-
-// Register systems (automatic DI)
-systemManager.RegisterSystem<MovementSystem>();
-
-// Validate dependencies
-var (ok, missing) = systemManager.ValidateSystemDependencies<MySystem>();
-```
-
-## Creating DI-Enabled Systems
-
-Inherit from `SystemBase` and declare dependencies in constructor:
-
-```csharp
-public class MySystem : SystemBase
+public class MySystem : SystemBase, IUpdateSystem
 {
     private readonly SpatialHashSystem _spatialHash;
     private readonly ILogger<MySystem>? _logger;
 
     public MySystem(
-        World world,
         SpatialHashSystem spatialHash,
         ILogger<MySystem>? logger = null)
-        : base(world)
     {
-        _spatialHash = spatialHash
-            ?? throw new ArgumentNullException(nameof(spatialHash));
+        _spatialHash = spatialHash ?? throw new ArgumentNullException(nameof(spatialHash));
         _logger = logger;
     }
 
-    public override int Priority => SystemPriority.Custom;
+    public int UpdatePriority => SystemPriority.Movement;
+    public override int Priority => SystemPriority.Movement;
 
     public override void Update(World world, float deltaTime)
     {
         EnsureInitialized();
-        // Use dependencies...
+        // Use _spatialHash and _logger...
     }
 }
 ```
 
-## Features
+Then instantiate in an initializer with dependencies:
 
-- ✅ **Constructor Injection**: Automatic dependency resolution
-- ✅ **Type Safety**: Compile-time dependency validation
-- ✅ **Thread-Safe**: Concurrent service registration and resolution
-- ✅ **Backward Compatible**: Old manual registration still works
-- ✅ **Zero Overhead**: No runtime reflection or allocation
-- ✅ **Clear Errors**: Descriptive exception messages
-- ✅ **Testable**: Easy to inject mocks
+```csharp
+// In GameInitializer or similar
+var mySystem = new MySystem(spatialHashSystem, logger);
+systemManager.RegisterUpdateSystem(mySystem);
+```
 
-## Documentation
+## Documentation References
 
-- [Migration Guide](/docs/DI_MIGRATION_GUIDE.md) - Complete migration instructions
-- [Examples](/docs/EXAMPLES_DI_MIGRATION.md) - Code examples and patterns
-- [Architecture Decision Record](/docs/ARCHITECTURE_DECISION_DI.md) - Design rationale
+For historical context, see:
+- [Migration Guide](/docs/DI_MIGRATION_GUIDE.md) - Original migration plan (now obsolete)
+- [Architecture Decision Record](/docs/ARCHITECTURE_DECISION_DI.md) - Original design rationale
 
-## API Reference
+## Current Best Practices
 
-### ServiceContainer
+1. ✅ Use `Microsoft.Extensions.DependencyInjection` for all service registration
+2. ✅ Create systems with explicit constructor injection
+3. ✅ Use `ILogger<T>` for logging (from Microsoft.Extensions.Logging)
+4. ✅ Validate required dependencies with `ArgumentNullException.ThrowIfNull()`
+5. ✅ Use nullable types (`T?`) for optional dependencies
+6. ✅ Register systems by passing instances: `RegisterUpdateSystem(system)`
+7. ✅ Inherit from `SystemBase` or `ParallelSystemBase` for new systems
 
-| Method | Description |
-|--------|-------------|
-| `RegisterSingleton<T>(instance)` | Register singleton instance |
-| `RegisterSingleton<T>(factory)` | Register singleton with factory |
-| `RegisterTransient<T>(factory)` | Register transient service |
-| `Resolve<T>()` | Resolve service |
-| `TryResolve<T>(out service)` | Try resolve without exception |
-| `IsRegistered<T>()` | Check if service is registered |
+## Migration Notes
 
-### SystemFactory
+If you have old documentation or examples referencing:
+- `ServiceContainer` → Use `IServiceCollection` / `IServiceProvider`
+- `SystemFactory` → Create systems manually with `new`
+- `systemManager.RegisterSystem<T>()` → Use `systemManager.RegisterUpdateSystem(new T(...))`
+- `systemManager.RegisterService()` → Use `services.AddSingleton()` in `Program.cs`
 
-| Method | Description |
-|--------|-------------|
-| `CreateSystem<T>()` | Create system with DI |
-| `CreateSystem(type)` | Create system by type |
-| `ValidateDependencies<T>()` | Check if dependencies can be resolved |
-
-### SystemManager (New Methods)
-
-| Method | Description |
-|--------|-------------|
-| `RegisterSystem<T>()` | Register system with automatic DI |
-| `RegisterService<T>(instance)` | Register singleton service |
-| `RegisterService<T>(factory)` | Register singleton with factory |
-| `RegisterTransientService<T>(factory)` | Register transient service |
-| `ValidateSystemDependencies<T>()` | Validate system dependencies |
-| `ServiceContainer` | Access underlying container |
-
-## Best Practices
-
-1. **Use readonly fields for injected dependencies**
-   ```csharp
-   private readonly SpatialHashSystem _spatialHash;
-   ```
-
-2. **Validate required dependencies in constructor**
-   ```csharp
-   _service = service ?? throw new ArgumentNullException(nameof(service));
-   ```
-
-3. **Use nullable types for optional dependencies**
-   ```csharp
-   private readonly ILogger<MySystem>? _logger;
-   ```
-
-4. **Register services before dependent systems**
-   ```csharp
-   systemManager.RegisterService(spatialHash);
-   systemManager.RegisterSystem<MovementSystem>(); // Uses spatialHash
-   ```
-
-5. **Inherit from SystemBase for new systems**
-   ```csharp
-   public class MySystem : SystemBase { ... }
-   ```
-
-## Performance
-
-- **Registration**: O(1) - Hash table lookup
-- **Resolution**: O(1) for singletons, O(n) for transients (n = constructor params)
-- **Memory**: Minimal overhead (dictionary storage only)
-- **Runtime**: Zero allocation after initialization
-- **Thread-Safety**: Lock-free reads, synchronized writes
-
-## License
-
-Part of the PokeSharp project. See main LICENSE file.
+These patterns are no longer supported.

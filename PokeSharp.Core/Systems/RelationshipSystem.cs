@@ -26,7 +26,7 @@ namespace PokeSharp.Core.Systems;
 /// their work before relationship validation occurs.
 /// </para>
 /// </remarks>
-public class RelationshipSystem : BaseSystem
+public class RelationshipSystem : SystemBase
 {
     private readonly ILogger<RelationshipSystem> _logger;
     private QueryDescription _parentQuery;

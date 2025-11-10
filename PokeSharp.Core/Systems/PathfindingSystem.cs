@@ -17,15 +17,15 @@ namespace PokeSharp.Core.Systems;
 ///     This system runs after SpatialHashSystem but before MovementSystem.
 ///     It generates MovementRequest components based on the current path state.
 /// </remarks>
-public class PathfindingSystem : BaseSystem, IUpdateSystem
+public class PathfindingSystem : SystemBase, IUpdateSystem
 {
     private readonly ILogger<PathfindingSystem>? _logger;
     private readonly PathfindingService _pathfindingService;
-    private readonly SpatialHashSystem _spatialHashSystem;
+    private readonly ISpatialQuery _spatialQuery;
 
-    public PathfindingSystem(SpatialHashSystem spatialHashSystem, ILogger<PathfindingSystem>? logger = null)
+    public PathfindingSystem(ISpatialQuery spatialQuery, ILogger<PathfindingSystem>? logger = null)
     {
-        _spatialHashSystem = spatialHashSystem ?? throw new ArgumentNullException(nameof(spatialHashSystem));
+        _spatialQuery = spatialQuery ?? throw new ArgumentNullException(nameof(spatialQuery));
         _logger = logger;
         _pathfindingService = new PathfindingService();
     }
@@ -178,11 +178,11 @@ public class PathfindingSystem : BaseSystem, IUpdateSystem
         int mapId
     )
     {
-        if (_spatialHashSystem == null)
+        if (_spatialQuery == null)
             return;
 
         // Use A* to find path
-        var path = _pathfindingService.FindPath(current, target, mapId, _spatialHashSystem, 500);
+        var path = _pathfindingService.FindPath(current, target, mapId, _spatialQuery, 500);
 
         if (path == null || path.Count == 0)
         {
@@ -196,7 +196,7 @@ public class PathfindingSystem : BaseSystem, IUpdateSystem
         }
 
         // Smooth the path to reduce waypoints
-        path = _pathfindingService.SmoothPath(path, mapId, _spatialHashSystem);
+        path = _pathfindingService.SmoothPath(path, mapId, _spatialQuery);
 
         // Update the NPC path with the new calculated path
         var newWaypoints = path.ToArray();

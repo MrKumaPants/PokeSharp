@@ -15,24 +15,24 @@ namespace PokeSharp.Core.Scripting.Services;
 public class MapApiService(
     World world,
     ILogger<MapApiService> logger,
-    SpatialHashSystem? spatialHashSystem = null
+    ISpatialQuery? spatialQuery = null
 ) : IMapApi
 {
     private readonly ILogger<MapApiService> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
 
     private readonly World _world = world ?? throw new ArgumentNullException(nameof(world));
-    private SpatialHashSystem? _spatialHashSystem = spatialHashSystem;
+    private ISpatialQuery? _spatialQuery = spatialQuery;
 
     public bool IsPositionWalkable(int mapId, int x, int y)
     {
-        if (_spatialHashSystem == null)
+        if (_spatialQuery == null)
         {
-            _logger.LogSystemUnavailable("SpatialHashSystem", "not initialized yet");
+            _logger.LogSystemUnavailable("SpatialQuery", "not initialized yet");
             return true; // Default to walkable if system not ready
         }
 
-        var entities = _spatialHashSystem.GetEntitiesAt(mapId, x, y);
+        var entities = _spatialQuery.GetEntitiesAt(mapId, x, y);
         foreach (var entity in entities)
             if (_world.Has<Collision>(entity))
             {
@@ -46,13 +46,13 @@ public class MapApiService(
 
     public Entity[] GetEntitiesAt(int mapId, int x, int y)
     {
-        if (_spatialHashSystem == null)
+        if (_spatialQuery == null)
         {
-            _logger.LogSystemUnavailable("SpatialHashSystem", "not initialized yet");
+            _logger.LogSystemUnavailable("SpatialQuery", "not initialized yet");
             return [];
         }
 
-        return [.. _spatialHashSystem.GetEntitiesAt(mapId, x, y)];
+        return [.. _spatialQuery.GetEntitiesAt(mapId, x, y)];
     }
 
     public int GetCurrentMapId()
@@ -112,12 +112,12 @@ public class MapApiService(
     }
 
     /// <summary>
-    ///     Sets the spatial hash system. This is called after initialization when SpatialHashSystem is available.
+    ///     Sets the spatial query service. This is called after initialization when SpatialHashSystem is available.
     /// </summary>
-    public void SetSpatialHashSystem(SpatialHashSystem spatialHashSystem)
+    public void SetSpatialQuery(ISpatialQuery spatialQuery)
     {
-        _spatialHashSystem =
-            spatialHashSystem ?? throw new ArgumentNullException(nameof(spatialHashSystem));
+        _spatialQuery =
+            spatialQuery ?? throw new ArgumentNullException(nameof(spatialQuery));
     }
 
     private Entity? GetPlayerEntity()

@@ -8,6 +8,7 @@ using PokeSharp.Core.Parallel;
 using PokeSharp.Core.Pooling;
 using PokeSharp.Core.Scripting.Services;
 using PokeSharp.Core.ScriptingApi;
+using PokeSharp.Core.Services;
 using PokeSharp.Core.Systems;
 using PokeSharp.Core.Templates;
 using PokeSharp.Core.Types;
@@ -91,6 +92,9 @@ public static class ServiceCollectionExtensions
         // GraphicsDevice is available at runtime (in PokeSharpGame.Initialize)
         services.AddSingleton<IGraphicsServiceFactory, GraphicsServiceFactory>();
 
+        // Game Time Service
+        services.AddSingleton<IGameTimeService, GameTimeService>();
+
         // Scripting API Services
         services.AddSingleton<PlayerApiService>();
         services.AddSingleton<NpcApiService>();
@@ -99,7 +103,7 @@ public static class ServiceCollectionExtensions
             var world = sp.GetRequiredService<World>();
             var logger = sp.GetRequiredService<ILogger<MapApiService>>();
             // SpatialHashSystem is initialized later in GameInitializer
-            // It will be set via SetSpatialHashSystem method after initialization
+            // It will be set via SetSpatialQuery method after initialization
             return new MapApiService(world, logger);
         });
         services.AddSingleton<GameStateApiService>();
