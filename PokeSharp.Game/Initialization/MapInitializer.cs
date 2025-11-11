@@ -2,12 +2,13 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Core.Components.Maps;
-using PokeSharp.Core.Components.Movement;
-using PokeSharp.Core.Logging;
-using PokeSharp.Core.Systems;
-using PokeSharp.Rendering.Loaders;
-using PokeSharp.Rendering.Systems;
+using PokeSharp.Game.Components.Maps;
+using PokeSharp.Game.Components.Movement;
+using PokeSharp.Engine.Common.Logging;
+using PokeSharp.Game.Systems;
+using PokeSharp.Game.Data.MapLoading.Tiled;
+using PokeSharp.Engine.Rendering.Systems;
+using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 
 namespace PokeSharp.Game.Initialization;
 
@@ -47,9 +48,8 @@ public class MapInitializer(
             logger.LogWorkflowStatus("Render assets preloaded");
 
             // Set camera bounds from MapInfo
-            var mapInfoQuery = QueryCache.Get<MapInfo>();
             world.Query(
-                in mapInfoQuery,
+                in EcsQueries.MapInfo,
                 (ref MapInfo mapInfo) =>
                 {
                     logger.LogWorkflowStatus(

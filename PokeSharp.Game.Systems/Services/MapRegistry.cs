@@ -1,0 +1,93 @@
+using System.Collections.Concurrent;
+
+namespace PokeSharp.Game.Systems.Services;
+
+/// <summary>
+///     Registry for managing map identifiers and loaded maps.
+///     Provides unique IDs for each map and tracks which maps are currently loaded.
+///     Thread-safe implementation using concurrent collections.
+/// </summary>
+public class MapRegistry
+{
+    private readonly ConcurrentDictionary<int, string> _mapIdToName = new();
+    private readonly ConcurrentDictionary<string, int> _mapNameToId = new();
+    private readonly ConcurrentDictionary<int, byte> _loadedMaps = new();
+    private int _nextMapId;
+
+    /// <summary>
+    ///     Gets or creates a unique ID for a map name.
+    ///     Thread-safe using ConcurrentDictionary.GetOrAdd pattern.
+    /// </summary>
+    /// <param name="mapName">The map name (without extension).</param>
+    /// <returns>Unique map ID.</returns>
+    public int GetOrCreateMapId(string mapName)
+    {
+        return _mapNameToId.GetOrAdd(mapName, name =>
+        {
+            var newId = Interlocked.Increment(ref _nextMapId) - 1;
+            _mapIdToName.TryAdd(newId, name);
+            return newId;
+        });
+    }
+
+    /// <summary>
+    ///     Gets the map ID for a map name.
+    /// </summary>
+    /// <param name="mapName">The map name.</param>
+    /// <returns>Map ID if found, -1 if not registered.</returns>
+    public int GetMapId(string mapName)
+    {
+        return _mapNameToId.TryGetValue(mapName, out var id) ? id : -1;
+    }
+
+    /// <summary>
+    ///     Gets the map name for a map ID.
+    /// </summary>
+    /// <param name="mapId">The map ID.</param>
+    /// <returns>Map name if found, null if not registered.</returns>
+    public string? GetMapName(int mapId)
+    {
+        return _mapIdToName.TryGetValue(mapId, out var name) ? name : null;
+    }
+
+    /// <summary>
+    ///     Marks a map as loaded.
+    ///     Thread-safe using ConcurrentDictionary.
+    /// </summary>
+    /// <param name="mapId">The map ID.</param>
+    public void MarkMapLoaded(int mapId)
+    {
+        _loadedMaps.TryAdd(mapId, 0);
+    }
+
+    /// <summary>
+    ///     Marks a map as unloaded.
+    ///     Thread-safe using ConcurrentDictionary.
+    /// </summary>
+    /// <param name="mapId">The map ID.</param>
+    public void MarkMapUnloaded(int mapId)
+    {
+        _loadedMaps.TryRemove(mapId, out _);
+    }
+
+    /// <summary>
+    ///     Checks if a map is currently loaded.
+    ///     Thread-safe using ConcurrentDictionary.
+    /// </summary>
+    /// <param name="mapId">The map ID.</param>
+    /// <returns>True if loaded, false otherwise.</returns>
+    public bool IsMapLoaded(int mapId)
+    {
+        return _loadedMaps.ContainsKey(mapId);
+    }
+
+    /// <summary>
+    ///     Gets all currently loaded map IDs.
+    ///     Thread-safe snapshot using ConcurrentDictionary.Keys.
+    /// </summary>
+    /// <returns>Collection of loaded map IDs.</returns>
+    public IEnumerable<int> GetLoadedMapIds()
+    {
+        return _loadedMaps.Keys;
+    }
+}

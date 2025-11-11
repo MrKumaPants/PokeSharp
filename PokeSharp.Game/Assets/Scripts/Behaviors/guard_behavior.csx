@@ -1,7 +1,7 @@
 using Arch.Core;
 using Microsoft.Xna.Framework;
-using PokeSharp.Core.Components;
-using PokeSharp.Scripting;
+using PokeSharp.Game.Components.Movement;
+using PokeSharp.Game.Scripting.Runtime;
 
 /// <summary>
 /// Guard behavior - NPC stays at position, scans for threats.

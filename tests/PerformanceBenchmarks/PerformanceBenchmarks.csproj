@@ -10,7 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../PokeSharp.Core/PokeSharp.Core.csproj" />
+    <ProjectReference Include="../../PokeSharp.Engine.Common/PokeSharp.Engine.Common.csproj" />
+    <ProjectReference Include="../../PokeSharp.Engine.Core/PokeSharp.Engine.Core.csproj" />
+    <ProjectReference Include="../../PokeSharp.Engine.Systems/PokeSharp.Engine.Systems.csproj" />
+    <ProjectReference Include="../../PokeSharp.Game.Components/PokeSharp.Game.Components.csproj" />
   </ItemGroup>
 
   <ItemGroup>

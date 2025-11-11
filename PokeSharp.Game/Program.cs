@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Core.Logging;
+using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game;
 
 // Ensure glyph-heavy logging renders correctly

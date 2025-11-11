@@ -1,24 +1,23 @@
 using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Core.Events;
-using PokeSharp.Core.Factories;
-using PokeSharp.Core.Mapping;
-using PokeSharp.Core.Parallel;
-using PokeSharp.Core.Pooling;
-using PokeSharp.Core.Scripting.Services;
-using PokeSharp.Core.ScriptingApi;
-using PokeSharp.Core.Services;
-using PokeSharp.Core.Systems;
-using PokeSharp.Core.Templates;
-using PokeSharp.Core.Types;
+using PokeSharp.Engine.Core.Events;
+using PokeSharp.Engine.Systems.Factories;
+using PokeSharp.Game.Data.PropertyMapping;
+using PokeSharp.Engine.Systems.Parallel;
+using PokeSharp.Engine.Systems.Pooling;
+using PokeSharp.Game.Scripting.Services;
+using PokeSharp.Game.Scripting.Api;
+using PokeSharp.Game.Systems.Services;
+using PokeSharp.Engine.Systems.Management;
+using PokeSharp.Engine.Core.Templates;
+using PokeSharp.Engine.Core.Types;
 using PokeSharp.Game.Diagnostics;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
 using PokeSharp.Game.Services;
 using PokeSharp.Game.Templates;
-using PokeSharp.Rendering.Factories;
-using PokeSharp.Scripting.Services;
+using PokeSharp.Game.Data.Factories;
 
 namespace PokeSharp.Game;
 

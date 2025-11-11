@@ -1,6 +1,6 @@
-using PokeSharp.Core.Components.Movement;
-using PokeSharp.Core.Components.Rendering;
-using PokeSharp.Core.Pooling;
+using PokeSharp.Engine.Core.Components.Movement;
+using PokeSharp.Engine.Core.Components.Rendering;
+using PokeSharp.Engine.Core.Pooling;
 using Xunit;
 
 namespace PokeSharp.Tests.Pooling;

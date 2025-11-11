@@ -1,14 +1,14 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Core.Components.Common;
-using PokeSharp.Core.Components.Maps;
-using PokeSharp.Core.Components.Movement;
-using PokeSharp.Core.Components.NPCs;
-using PokeSharp.Core.Components.Player;
-using PokeSharp.Core.Components.Rendering;
-using PokeSharp.Core.Components.Tiles;
-using PokeSharp.Core.Templates;
-using PokeSharp.Input.Components;
+using PokeSharp.Game.Components.Common;
+using PokeSharp.Game.Components.Maps;
+using PokeSharp.Game.Components.Movement;
+using PokeSharp.Game.Components.NPCs;
+using PokeSharp.Game.Components.Player;
+using PokeSharp.Game.Components.Rendering;
+using PokeSharp.Game.Components.Tiles;
+using PokeSharp.Engine.Core.Templates;
+using PokeSharp.Engine.Input.Components;
 
 namespace PokeSharp.Game.Templates;
 

@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
-using PokeSharp.Core.Logging;
-using PokeSharp.Core.Utilities;
+using PokeSharp.Engine.Common.Logging;
+using PokeSharp.Engine.Common.Utilities;
 
 namespace PokeSharp.Game.Diagnostics;
 

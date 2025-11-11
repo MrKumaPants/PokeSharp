@@ -1,6 +1,6 @@
-using PokeSharp.Core.Factories;
-using PokeSharp.Core.Types;
-using PokeSharp.Scripting.Services;
+using PokeSharp.Engine.Systems.Factories;
+using PokeSharp.Engine.Core.Types;
+using PokeSharp.Game.Scripting.Services;
 
 namespace PokeSharp.Game.Services;
 

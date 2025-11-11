@@ -1,10 +1,11 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Core.Logging;
-using PokeSharp.Core.ScriptingApi;
-using PokeSharp.Core.Systems;
-using PokeSharp.Core.Types;
+using PokeSharp.Engine.Common.Logging;
+using PokeSharp.Game.Scripting.Api;
+using PokeSharp.Engine.Systems.Management;
+using PokeSharp.Engine.Core.Types;
 using PokeSharp.Game.Services;
+using PokeSharp.Game.Scripting.Systems;
 
 namespace PokeSharp.Game.Initialization;
 

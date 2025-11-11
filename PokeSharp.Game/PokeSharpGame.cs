@@ -1,17 +1,17 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Core.Mapping;
-using PokeSharp.Core.Scripting.Services;
-using PokeSharp.Core.ScriptingApi;
-using PokeSharp.Core.Services;
-using PokeSharp.Core.Systems;
+using PokeSharp.Game.Data.PropertyMapping;
+using PokeSharp.Game.Scripting.Services;
+using PokeSharp.Game.Scripting.Api;
+using PokeSharp.Game.Systems.Services;
+using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Services;
 using PokeSharp.Game.Diagnostics;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
-using PokeSharp.Rendering.Assets;
-using PokeSharp.Rendering.Loaders;
+using PokeSharp.Engine.Rendering.Assets;
+using PokeSharp.Game.Data.MapLoading.Tiled;
 
 namespace PokeSharp.Game;
 

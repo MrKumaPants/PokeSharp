@@ -1,11 +1,13 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Input;
-using PokeSharp.Core.Components.Player;
-using PokeSharp.Core.Logging;
-using PokeSharp.Core.Systems;
-using PokeSharp.Rendering.Components;
-using PokeSharp.Rendering.Systems;
+using PokeSharp.Game.Components.Player;
+using PokeSharp.Engine.Common.Logging;
+using PokeSharp.Engine.Core.Systems;
+using PokeSharp.Engine.Rendering.Components;
+using PokeSharp.Engine.Rendering.Systems;
+using PokeSharp.Engine.Systems.Management;
+using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 
 namespace PokeSharp.Game.Input;
 
@@ -42,10 +44,10 @@ public class InputManager(ILogger<InputManager> logger)
     {
         var currentKeyboardState = Keyboard.GetState();
 
-        var query = QueryCache.Get<Player, Camera>();
+        var query = new QueryDescription().WithAll<Player, Camera>();
         world.Query(
             in query,
-            (ref Camera camera) =>
+            (Entity entity, ref Player player, ref Camera camera) =>
             {
                 // Zoom in with + or = key (since + requires shift)
                 if (
