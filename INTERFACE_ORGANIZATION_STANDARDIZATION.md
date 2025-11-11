@@ -1,5 +1,10 @@
 # Interface Organization Standardization - Complete ✅
 
+> **⚠️ HISTORICAL DOCUMENT NOTICE:**
+> This document references the project structure before the Engine/Game split.
+> File paths shown use old naming (e.g., "PokeSharp.Engine.Core" now exists as shown).
+> The principles and patterns described remain valid for the current structure.
+
 **Date:** November 11, 2025
 **Status:** Successfully Completed
 

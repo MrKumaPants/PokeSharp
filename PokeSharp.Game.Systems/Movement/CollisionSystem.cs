@@ -22,12 +22,9 @@ public class CollisionSystem(
         spatialQuery ?? throw new ArgumentNullException(nameof(spatialQuery));
 
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
+    /// Gets the priority for execution order. Lower values execute first.
     /// Collision executes at priority 200, after movement (100).
     /// </summary>
-    public int UpdatePriority => SystemPriority.Collision;
-
-    /// <inheritdoc />
     public override int Priority => SystemPriority.Collision;
 
     /// <summary>

@@ -10,7 +10,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PokeSharp.Engine.Common\PokeSharp.Engine.Common.csproj" />
-    <ProjectReference Include="..\PokeSharp.Game.Components\PokeSharp.Game.Components.csproj" />
   </ItemGroup>
 </Project>
 

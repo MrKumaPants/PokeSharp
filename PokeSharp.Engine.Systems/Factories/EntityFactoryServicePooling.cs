@@ -4,6 +4,7 @@ using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
+using PokeSharp.Engine.Common.Validation;
 using PokeSharp.Engine.Systems.Pooling;
 using PokeSharp.Engine.Core.Templates;
 
@@ -226,13 +227,13 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
     }
 
     /// <inheritdoc />
-    public TemplateValidationResult ValidateTemplate(string templateId)
+    public ValidationResult ValidateTemplate(string templateId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
 
         var template = _templateCache.Get(templateId);
         if (template == null)
-            return TemplateValidationResult.Failure(
+            return ValidationResult.Failure(
                 templateId,
                 $"Template '{templateId}' not found in cache"
             );
@@ -439,12 +440,12 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
         );
     }
 
-    private static TemplateValidationResult ValidateTemplateInternal(EntityTemplate template)
+    private static ValidationResult ValidateTemplateInternal(EntityTemplate template)
     {
         var isValid = template.Validate(out var errors);
         return isValid
-            ? TemplateValidationResult.Success(template.TemplateId)
-            : TemplateValidationResult.Failure(template.TemplateId, errors.ToArray());
+            ? ValidationResult.Success(template.TemplateId)
+            : ValidationResult.Failure(template.TemplateId, errors.ToArray());
     }
 
     private EntityTemplate ResolveTemplateInheritance(EntityTemplate template)

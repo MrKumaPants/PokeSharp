@@ -7,14 +7,12 @@ namespace PokeSharp.Engine.Core.Systems;
 /// Update systems modify component data and game state.
 /// These systems execute during the Update() phase of the game loop.
 /// </summary>
+/// <remarks>
+/// Update systems use the Priority property inherited from ISystem for execution ordering.
+/// Lower values execute first. Typical range: 0-1000.
+/// </remarks>
 public interface IUpdateSystem : ISystem
 {
-    /// <summary>
-    /// Gets the priority for update execution order.
-    /// Lower values execute first. Typical range: 0-1000.
-    /// </summary>
-    int UpdatePriority { get; }
-
     /// <summary>
     /// Updates the system logic for the current frame.
     /// This method is called during the Update phase of the game loop.

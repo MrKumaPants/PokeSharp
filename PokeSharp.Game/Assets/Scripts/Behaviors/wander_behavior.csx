@@ -50,7 +50,17 @@ public class WanderBehavior : TypeScriptBase
             };
             var randomDir = directions[ctx.GameState.RandomRange(0, directions.Length)];
 
-            ctx.World.Add(ctx.Entity.Value, new MovementRequest(randomDir));
+            // Use component pooling: reuse existing component or add new one
+            if (ctx.World.Has<MovementRequest>(ctx.Entity.Value))
+            {
+                ref var request = ref ctx.World.Get<MovementRequest>(ctx.Entity.Value);
+                request.Direction = randomDir;
+                request.Active = true;
+            }
+            else
+            {
+                ctx.World.Add(ctx.Entity.Value, new MovementRequest(randomDir));
+            }
 
             // Next movement in 1-4 seconds
             state.MoveTimer =

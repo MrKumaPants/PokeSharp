@@ -34,12 +34,9 @@ public class AnimationSystem : ParallelSystemBase, IUpdateSystem
     }
 
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
+    /// Gets the priority for execution order. Lower values execute first.
     /// Animation executes at priority 800, after movement (100) and collision (200).
     /// </summary>
-    public int UpdatePriority => SystemPriority.Animation;
-
-    /// <inheritdoc />
     public override int Priority => SystemPriority.Animation;
 
     /// <inheritdoc />

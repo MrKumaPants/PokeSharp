@@ -1,6 +1,12 @@
 # PokeSharp Project Reorganization Plan
 ## Phased Implementation Guide
 
+> **⚠️ HISTORICAL DOCUMENT NOTICE:**
+> This document was created during an earlier reorganization phase and references an outdated project structure.
+> The project has since been reorganized into **Engine.\*** and **Game.\*** namespaces.
+> Current project structure: Engine.Common, Engine.Core, Engine.Systems, Engine.Rendering, Engine.Input,
+> Game, Game.Components, Game.Systems, Game.Data, Game.Scripting
+
 **Version:** 1.0
 **Date:** November 11, 2025
 **Risk Level:** ✅ LOW (All changes are non-breaking)

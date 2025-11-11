@@ -79,7 +79,17 @@ public class PatrolBehavior : TypeScriptBase
         // Move toward waypoint
         var direction = ctx.Map.GetDirectionTo(position.X, position.Y, target.X, target.Y);
 
-        ctx.World.Add(ctx.Entity.Value, new MovementRequest(direction));
+        // Use component pooling: reuse existing component or add new one
+        if (ctx.World.Has<MovementRequest>(ctx.Entity.Value))
+        {
+            ref var request = ref ctx.World.Get<MovementRequest>(ctx.Entity.Value);
+            request.Direction = direction;
+            request.Active = true;
+        }
+        else
+        {
+            ctx.World.Add(ctx.Entity.Value, new MovementRequest(direction));
+        }
     }
 
     public override void OnDeactivated(ScriptContext ctx)

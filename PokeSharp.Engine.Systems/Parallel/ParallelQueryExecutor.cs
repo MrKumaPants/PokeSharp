@@ -26,6 +26,12 @@ public class ParallelQueryExecutor
     private readonly object _statsLock = new();
 
     /// <summary>
+    /// Minimum entity count to use parallel processing.
+    /// Below this threshold, sequential processing is faster due to parallel overhead.
+    /// </summary>
+    private const int PARALLEL_THRESHOLD = 32;
+
+    /// <summary>
     ///     Creates a new parallel query executor.
     /// </summary>
     /// <param name="world">The ECS world to execute queries on.</param>
@@ -67,14 +73,26 @@ public class ParallelQueryExecutor
             var index = 0;
             _world.Query(in query, (Entity entity) => entityArray[index++] = entity);
 
-            // Process in parallel (array is safe because we only access [0..entityCount))
-            var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
-            var count = entityCount; // Capture for lambda
-            System.Threading.Tasks.Parallel.For(0, count, options, i =>
+            // Use sequential processing for small counts (parallel overhead not worth it)
+            if (entityCount < PARALLEL_THRESHOLD)
             {
-                ref var component = ref entityArray[i].Get<T>();
-                action(entityArray[i], ref component);
-            });
+                for (int i = 0; i < entityCount; i++)
+                {
+                    ref var component = ref entityArray[i].Get<T>();
+                    action(entityArray[i], ref component);
+                }
+            }
+            else
+            {
+                // Process in parallel for large counts
+                var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
+                var count = entityCount;
+                System.Threading.Tasks.Parallel.For(0, count, options, i =>
+                {
+                    ref var component = ref entityArray[i].Get<T>();
+                    action(entityArray[i], ref component);
+                });
+            }
 
             stopwatch.Stop();
             RecordExecution(entityCount, stopwatch.Elapsed.TotalMilliseconds);
@@ -113,14 +131,28 @@ public class ParallelQueryExecutor
             var index = 0;
             _world.Query(in query, (Entity entity) => entityArray[index++] = entity);
 
-            var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
-            var count = entityCount;
-            System.Threading.Tasks.Parallel.For(0, count, options, i =>
+            // Use sequential processing for small counts
+            if (entityCount < PARALLEL_THRESHOLD)
             {
-                ref var c1 = ref entityArray[i].Get<T1>();
-                ref var c2 = ref entityArray[i].Get<T2>();
-                action(entityArray[i], ref c1, ref c2);
-            });
+                for (int i = 0; i < entityCount; i++)
+                {
+                    ref var c1 = ref entityArray[i].Get<T1>();
+                    ref var c2 = ref entityArray[i].Get<T2>();
+                    action(entityArray[i], ref c1, ref c2);
+                }
+            }
+            else
+            {
+                // Process in parallel for large counts
+                var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
+                var count = entityCount;
+                System.Threading.Tasks.Parallel.For(0, count, options, i =>
+                {
+                    ref var c1 = ref entityArray[i].Get<T1>();
+                    ref var c2 = ref entityArray[i].Get<T2>();
+                    action(entityArray[i], ref c1, ref c2);
+                });
+            }
 
             stopwatch.Stop();
             RecordExecution(entityCount, stopwatch.Elapsed.TotalMilliseconds);
@@ -158,15 +190,30 @@ public class ParallelQueryExecutor
             var index = 0;
             _world.Query(in query, (Entity entity) => entityArray[index++] = entity);
 
-            var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
-            var count = entityCount;
-            System.Threading.Tasks.Parallel.For(0, count, options, i =>
+            // Use sequential processing for small counts
+            if (entityCount < PARALLEL_THRESHOLD)
             {
-                ref var c1 = ref entityArray[i].Get<T1>();
-                ref var c2 = ref entityArray[i].Get<T2>();
-                ref var c3 = ref entityArray[i].Get<T3>();
-                action(entityArray[i], ref c1, ref c2, ref c3);
-            });
+                for (int i = 0; i < entityCount; i++)
+                {
+                    ref var c1 = ref entityArray[i].Get<T1>();
+                    ref var c2 = ref entityArray[i].Get<T2>();
+                    ref var c3 = ref entityArray[i].Get<T3>();
+                    action(entityArray[i], ref c1, ref c2, ref c3);
+                }
+            }
+            else
+            {
+                // Process in parallel for large counts
+                var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
+                var count = entityCount;
+                System.Threading.Tasks.Parallel.For(0, count, options, i =>
+                {
+                    ref var c1 = ref entityArray[i].Get<T1>();
+                    ref var c2 = ref entityArray[i].Get<T2>();
+                    ref var c3 = ref entityArray[i].Get<T3>();
+                    action(entityArray[i], ref c1, ref c2, ref c3);
+                });
+            }
 
             stopwatch.Stop();
             RecordExecution(entityCount, stopwatch.Elapsed.TotalMilliseconds);
@@ -204,16 +251,32 @@ public class ParallelQueryExecutor
             var index = 0;
             _world.Query(in query, (Entity entity) => entityArray[index++] = entity);
 
-            var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
-            var count = entityCount;
-            System.Threading.Tasks.Parallel.For(0, count, options, i =>
+            // Use sequential processing for small counts
+            if (entityCount < PARALLEL_THRESHOLD)
             {
-                ref var c1 = ref entityArray[i].Get<T1>();
-                ref var c2 = ref entityArray[i].Get<T2>();
-                ref var c3 = ref entityArray[i].Get<T3>();
-                ref var c4 = ref entityArray[i].Get<T4>();
-                action(entityArray[i], ref c1, ref c2, ref c3, ref c4);
-            });
+                for (int i = 0; i < entityCount; i++)
+                {
+                    ref var c1 = ref entityArray[i].Get<T1>();
+                    ref var c2 = ref entityArray[i].Get<T2>();
+                    ref var c3 = ref entityArray[i].Get<T3>();
+                    ref var c4 = ref entityArray[i].Get<T4>();
+                    action(entityArray[i], ref c1, ref c2, ref c3, ref c4);
+                }
+            }
+            else
+            {
+                // Process in parallel for large counts
+                var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
+                var count = entityCount;
+                System.Threading.Tasks.Parallel.For(0, count, options, i =>
+                {
+                    ref var c1 = ref entityArray[i].Get<T1>();
+                    ref var c2 = ref entityArray[i].Get<T2>();
+                    ref var c3 = ref entityArray[i].Get<T3>();
+                    ref var c4 = ref entityArray[i].Get<T4>();
+                    action(entityArray[i], ref c1, ref c2, ref c3, ref c4);
+                });
+            }
 
             stopwatch.Stop();
             RecordExecution(entityCount, stopwatch.Elapsed.TotalMilliseconds);
@@ -254,14 +317,28 @@ public class ParallelQueryExecutor
             var index = 0;
             _world.Query(in query, (Entity entity) => entityArray[index++] = entity);
 
-            var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
-            var count = entityCount;
-            System.Threading.Tasks.Parallel.For(0, count, options, i =>
+            // Use sequential processing for small counts
+            if (entityCount < PARALLEL_THRESHOLD)
             {
-                ref var component = ref entityArray[i].Get<T>();
-                var result = map(entityArray[i], ref component);
-                results.Add(result);
-            });
+                for (int i = 0; i < entityCount; i++)
+                {
+                    ref var component = ref entityArray[i].Get<T>();
+                    var result = map(entityArray[i], ref component);
+                    results.Add(result);
+                }
+            }
+            else
+            {
+                // Process in parallel for large counts
+                var options = new ParallelOptions { MaxDegreeOfParallelism = _maxDegreeOfParallelism };
+                var count = entityCount;
+                System.Threading.Tasks.Parallel.For(0, count, options, i =>
+                {
+                    ref var component = ref entityArray[i].Get<T>();
+                    var result = map(entityArray[i], ref component);
+                    results.Add(result);
+                });
+            }
 
             stopwatch.Stop();
             RecordExecution(entityCount, stopwatch.Elapsed.TotalMilliseconds);

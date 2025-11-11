@@ -29,9 +29,10 @@ public class NpcApiService(World world, ILogger<NpcApiService> logger) : INPCApi
 
         if (_world.Has<MovementRequest>(npc))
         {
+            // Reuse existing component (component pooling)
             ref var movement = ref _world.Get<MovementRequest>(npc);
             movement.Direction = direction;
-            movement.Processed = false;
+            movement.Active = true;
         }
         else
         {

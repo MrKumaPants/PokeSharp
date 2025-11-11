@@ -41,7 +41,19 @@ public class GuardBehavior : TypeScriptBase
                 state.GuardPosition.X,
                 state.GuardPosition.Y
             );
-            ctx.World.Add(ctx.Entity.Value, new MovementRequest(dir));
+
+            // Use component pooling: reuse existing component or add new one
+            if (ctx.World.Has<MovementRequest>(ctx.Entity.Value))
+            {
+                ref var request = ref ctx.World.Get<MovementRequest>(ctx.Entity.Value);
+                request.Direction = dir;
+                request.Active = true;
+            }
+            else
+            {
+                ctx.World.Add(ctx.Entity.Value, new MovementRequest(dir));
+            }
+
             ctx.Logger.LogDebug(
                 "Guard returning to post from ({X}, {Y}) to ({GuardX}, {GuardY})",
                 position.X,

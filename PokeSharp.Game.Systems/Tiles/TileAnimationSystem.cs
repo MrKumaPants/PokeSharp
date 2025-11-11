@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
@@ -17,19 +18,23 @@ namespace PokeSharp.Game.Systems;
 ///     Handles Pokemon-style tile animations (water ripples, grass swaying, flowers).
 ///     Priority: 850 (after Animation:800, before Render:1000).
 ///     Uses parallel execution for optimal performance with many animated tiles.
+///     Optimized with source rectangle caching to eliminate expensive calculations.
 /// </summary>
 public class TileAnimationSystem(ILogger<TileAnimationSystem>? logger = null) : ParallelSystemBase, IUpdateSystem
 {
     private readonly ILogger<TileAnimationSystem>? _logger = logger;
     private int _animatedTileCount = -1; // Track for logging on first update
 
+    // Cache for source rectangles (thread-safe for parallel queries)
+    // Key: (tilesetFirstGid, tileGid, tileWidth, tileHeight, tilesPerRow, spacing, margin)
+    // Value: Pre-calculated Rectangle
+    // Eliminates expensive division/modulo per frame change
+    private readonly ConcurrentDictionary<TileRectKey, Rectangle> _sourceRectCache = new();
+
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
+    /// Gets the priority for execution order. Lower values execute first.
     /// Tile animation executes at priority 850, after animation (800) and camera follow (825).
     /// </summary>
-    public int UpdatePriority => SystemPriority.TileAnimation;
-
-    /// <inheritdoc />
     public override int Priority => SystemPriority.TileAnimation;
 
     /// <inheritdoc />
@@ -71,7 +76,7 @@ public class TileAnimationSystem(ILogger<TileAnimationSystem>? logger = null) : 
     /// <param name="animTile">The animated tile data.</param>
     /// <param name="sprite">The tile sprite to update.</param>
     /// <param name="deltaTime">Time elapsed since last frame in seconds.</param>
-    private static void UpdateTileAnimation(
+    private void UpdateTileAnimation(
         ref AnimatedTile animTile,
         ref TileSprite sprite,
         float deltaTime
@@ -106,48 +111,72 @@ public class TileAnimationSystem(ILogger<TileAnimationSystem>? logger = null) : 
             animTile.CurrentFrameIndex = (currentIndex + 1) % animTile.FrameTileIds.Length;
             animTile.FrameTimer = 0f;
 
-            // Update sprite's source rectangle for the new frame
+            // Update sprite's source rectangle for the new frame (using cache)
             var newFrameTileId = animTile.FrameTileIds[animTile.CurrentFrameIndex];
-            sprite.SourceRect = CalculateTileSourceRect(newFrameTileId, ref animTile, ref sprite);
+            sprite.SourceRect = GetOrCalculateTileSourceRect(newFrameTileId, ref animTile);
         }
     }
 
     /// <summary>
+    ///     Gets a cached source rectangle or calculates and caches it if not present.
+    ///     Thread-safe for parallel execution.
+    /// </summary>
+    private Rectangle GetOrCalculateTileSourceRect(int tileGid, ref AnimatedTile animTile)
+    {
+        // Create cache key from all relevant tile properties
+        var key = new TileRectKey(
+            animTile.TilesetFirstGid,
+            tileGid,
+            animTile.TileWidth,
+            animTile.TileHeight,
+            animTile.TilesPerRow,
+            animTile.TileSpacing,
+            animTile.TileMargin
+        );
+
+        // Thread-safe cache lookup with lazy calculation
+        return _sourceRectCache.GetOrAdd(key, static k =>
+        {
+            return CalculateTileSourceRect(k.TileGid, k.FirstGid, k.TileWidth, k.TileHeight,
+                k.TilesPerRow, k.Spacing, k.Margin);
+        });
+    }
+
+    /// <summary>
     ///     Calculates the source rectangle for a tile ID using tileset info.
-    ///     Falls back to assumptions if tileset info not found.
+    ///     This is only called once per unique tile configuration, then cached.
     /// </summary>
     private static Rectangle CalculateTileSourceRect(
         int tileGid,
-        ref AnimatedTile animTile,
-        ref TileSprite sprite
+        int firstGid,
+        int tileWidth,
+        int tileHeight,
+        int tilesPerRow,
+        int spacing,
+        int margin
     )
     {
-        if (animTile.TilesetFirstGid <= 0)
+        if (firstGid <= 0)
             throw new InvalidOperationException("AnimatedTile missing tileset first GID.");
 
-        var firstGid = animTile.TilesetFirstGid;
         var localId = tileGid - firstGid;
         if (localId < 0)
             throw new InvalidOperationException(
                 $"Tile GID {tileGid} is not part of tileset starting at {firstGid}."
             );
 
-        var tileWidth = animTile.TileWidth;
-        var tileHeight = animTile.TileHeight;
-        var tilesPerRow = animTile.TilesPerRow;
-
         if (tileWidth <= 0 || tileHeight <= 0)
             throw new InvalidOperationException(
-                $"AnimatedTile missing tile dimensions for TilesetFirstGid={animTile.TilesetFirstGid}"
+                $"AnimatedTile missing tile dimensions for TilesetFirstGid={firstGid}"
             );
 
         if (tilesPerRow <= 0)
             throw new InvalidOperationException(
-                $"AnimatedTile missing tiles-per-row for TilesetFirstGid={animTile.TilesetFirstGid}"
+                $"AnimatedTile missing tiles-per-row for TilesetFirstGid={firstGid}"
             );
 
-        var spacing = Math.Max(0, animTile.TileSpacing);
-        var margin = Math.Max(0, animTile.TileMargin);
+        spacing = Math.Max(0, spacing);
+        margin = Math.Max(0, margin);
 
         var tileX = localId % tilesPerRow;
         var tileY = localId / tilesPerRow;
@@ -175,3 +204,17 @@ public class TileAnimationSystem(ILogger<TileAnimationSystem>? logger = null) : 
         typeof(TileSprite)
     };
 }
+
+/// <summary>
+/// Cache key for tile source rectangles.
+/// Immutable record for thread-safe dictionary key.
+/// </summary>
+internal readonly record struct TileRectKey(
+    int FirstGid,
+    int TileGid,
+    int TileWidth,
+    int TileHeight,
+    int TilesPerRow,
+    int Spacing,
+    int Margin
+);

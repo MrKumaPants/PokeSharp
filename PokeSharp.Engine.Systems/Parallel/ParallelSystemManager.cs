@@ -76,7 +76,8 @@ public class ParallelSystemManager : SystemManager
         ArgumentNullException.ThrowIfNull(system);
 
         // Extract and register metadata before calling base
-        int priority = system is ISystem s ? s.Priority : system.UpdatePriority;
+        // IUpdateSystem inherits from ISystem, so Priority is always available
+        int priority = system.Priority;
         RegisterSystemMetadata(system, priority);
 
         base.RegisterUpdateSystem(system);

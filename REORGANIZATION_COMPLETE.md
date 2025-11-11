@@ -1,7 +1,12 @@
 # PokeSharp Project Reorganization - COMPLETE ✅
 
+> **⚠️ HISTORICAL DOCUMENT NOTICE:**
+> This document was created during an earlier reorganization phase and references an outdated project structure.
+> The project has since been reorganized into **Engine.\*** and **Game.\*** namespaces.
+> See the current project structure at the end of this document for accurate information.
+
 **Date:** November 11, 2025
-**Status:** ✅ ALL PHASES COMPLETED SUCCESSFULLY
+**Status:** ✅ ALL PHASES COMPLETED SUCCESSFULLY (Historical)
 **Build Status:** ✅ SUCCESS (0 Errors, 4 Warnings - intentional TODOs)
 **Test Status:** ✅ ALL TESTS PASSING (15/15)
 
@@ -253,6 +258,46 @@ The PokeSharp project reorganization was **completed successfully** in approxima
 - **Cleanup Risk:** LOW (non-breaking changes)
 - **Post-cleanup Risk:** LOW (verified working)
 - **Future Maintenance Risk:** REDUCED ✅
+
+---
+
+## CURRENT PROJECT STRUCTURE (As of Architecture Review)
+
+### Active Projects (11)
+
+**Engine Layer** (Core, reusable engine components):
+1. **PokeSharp.Engine.Common** - Common utilities, logging, extensions
+2. **PokeSharp.Engine.Core** - Core ECS types, templates, events
+3. **PokeSharp.Engine.Systems** - ECS system management, pooling, bulk operations
+4. **PokeSharp.Engine.Rendering** - Rendering systems, asset loading
+5. **PokeSharp.Engine.Input** - Input handling
+
+**Game Layer** (Game-specific logic):
+6. **PokeSharp.Game** - Main executable, game initialization
+7. **PokeSharp.Game.Components** - Game-specific ECS components
+8. **PokeSharp.Game.Systems** - Game-specific systems (movement, collision, etc.)
+9. **PokeSharp.Game.Data** - Data loading, map loaders, validation
+10. **PokeSharp.Game.Scripting** - Script compilation, hot-reload, Roslyn integration
+
+**Test Layer**:
+11. **PokeSharp.Engine.Systems.Tests** - Unit tests for engine systems
+
+### Dependency Flow
+```
+PokeSharp.Game
+  ├── PokeSharp.Game.Scripting
+  ├── PokeSharp.Game.Systems
+  ├── PokeSharp.Game.Data
+  ├── PokeSharp.Game.Components
+  └── Engine Layer ↓
+
+Engine Layer
+  ├── PokeSharp.Engine.Systems
+  ├── PokeSharp.Engine.Rendering
+  ├── PokeSharp.Engine.Input
+  ├── PokeSharp.Engine.Core
+  └── PokeSharp.Engine.Common
+```
 
 ---
 

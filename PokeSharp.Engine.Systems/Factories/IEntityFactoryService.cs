@@ -1,4 +1,5 @@
 using Arch.Core;
+using PokeSharp.Engine.Common.Validation;
 
 namespace PokeSharp.Engine.Systems.Factories;
 
@@ -42,8 +43,8 @@ public interface IEntityFactoryService
     ///     Checks template existence, component compatibility, and data correctness.
     /// </summary>
     /// <param name="templateId">Template identifier</param>
-    /// <returns>Validation result</returns>
-    TemplateValidationResult ValidateTemplate(string templateId);
+    /// <returns>Validation result with Context set to templateId</returns>
+    ValidationResult ValidateTemplate(string templateId);
 
     /// <summary>
     ///     Check if a template exists and is ready for spawning.

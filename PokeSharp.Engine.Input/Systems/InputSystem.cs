@@ -142,17 +142,32 @@ public class InputSystem(
                     || _gamepadState.Buttons.A == ButtonState.Pressed;
 
                 // Try to consume buffered input if not currently moving
-                // For single player games, Has<> check is cheaper than running two queries
+                // Check if there's buffered input and no active movement request
                 if (
                     !movement.IsMoving
                     && _inputBuffer.TryConsumeInput(_totalTime, out var bufferedDirection)
-                    && !entity.Has<MovementRequest>()
                 )
                 {
-                    _inputEventsProcessed++;
-                    _logger?.LogTrace("Consumed buffered input: {Direction}", bufferedDirection);
-                    world.Add(entity, new MovementRequest(bufferedDirection));
-                    _lastBufferedDirection = Direction.None; // Reset after consuming
+                    // Use component pooling: reuse existing component or add new one
+                    if (entity.Has<MovementRequest>())
+                    {
+                        ref var request = ref entity.Get<MovementRequest>();
+                        if (!request.Active)
+                        {
+                            request.Direction = bufferedDirection;
+                            request.Active = true;
+                            _inputEventsProcessed++;
+                            _logger?.LogTrace("Consumed buffered input: {Direction}", bufferedDirection);
+                            _lastBufferedDirection = Direction.None;
+                        }
+                    }
+                    else
+                    {
+                        world.Add(entity, new MovementRequest(bufferedDirection));
+                        _inputEventsProcessed++;
+                        _logger?.LogTrace("Consumed buffered input: {Direction}", bufferedDirection);
+                        _lastBufferedDirection = Direction.None;
+                    }
                 }
             }
         );

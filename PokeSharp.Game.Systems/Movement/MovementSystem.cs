@@ -42,12 +42,9 @@ public class MovementSystem : ParallelSystemBase, IUpdateSystem
     }
 
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
+    /// Gets the priority for execution order. Lower values execute first.
     /// Movement executes at priority 100, after input (0) and spatial hash (25).
     /// </summary>
-    public int UpdatePriority => SystemPriority.Movement;
-
-    /// <inheritdoc />
     public override int Priority => SystemPriority.Movement;
 
     /// <inheritdoc />
@@ -194,10 +191,12 @@ public class MovementSystem : ParallelSystemBase, IUpdateSystem
     /// <summary>
     ///     Processes pending movement requests and validates them with collision checking.
     ///     This allows any entity (player, NPC, AI) to request movement.
+    ///     OPTIMIZED: Uses component pooling - marks requests inactive instead of removing them.
+    ///     This eliminates expensive ECS archetype transitions that caused 186ms spikes.
     /// </summary>
     private void ProcessMovementRequests(World world)
     {
-        // Use centralized query cache (zero allocation per frame)
+        // Process all active movement requests
         world.Query(
             in EcsQueries.MovementRequests,
             (
@@ -207,36 +206,17 @@ public class MovementSystem : ParallelSystemBase, IUpdateSystem
                 ref MovementRequest request
             ) =>
             {
-                // Skip if already processed or entity is currently moving
-                if (request.Processed || movement.IsMoving)
+                // Only process active requests for entities that aren't already moving
+                if (request.Active && !movement.IsMoving)
                 {
-                    request.Processed = true;
-                    return;
+                    // Process the movement request
+                    TryStartMovement(world, entity, ref position, ref movement, request.Direction);
+
+                    // Mark as inactive (component pooling - no removal!)
+                    request.Active = false;
                 }
-
-                // Process the movement request
-                TryStartMovement(world, entity, ref position, ref movement, request.Direction);
-
-                // Mark as processed
-                request.Processed = true;
             }
         );
-
-        // Remove processed requests - reuse list to avoid allocation
-        _entitiesToRemove.Clear();
-
-        world.Query(
-            in EcsQueries.MovementRequestsOnly,
-            (Entity entity, ref MovementRequest request) =>
-            {
-                if (request.Processed)
-                    _entitiesToRemove.Add(entity);
-            }
-        );
-
-        // Remove in separate loop to avoid modifying collection during iteration
-        foreach (var entity in _entitiesToRemove)
-            world.Remove<MovementRequest>(entity);
     }
 
     /// <summary>

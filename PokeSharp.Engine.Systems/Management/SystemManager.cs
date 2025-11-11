@@ -96,11 +96,11 @@ public class SystemManager
         lock (_lock)
         {
             _updateSystems.Add(system);
-            _updateSystems.Sort((a, b) => a.UpdatePriority.CompareTo(b.UpdatePriority));
+            _updateSystems.Sort((a, b) => a.Priority.CompareTo(b.Priority));
 
             _logger?.LogWorkflowStatus(
                 $"Registered update: {system.GetType().Name}",
-                ("priority", system.UpdatePriority)
+                ("priority", system.Priority)
             );
         }
     }
