@@ -34,6 +34,19 @@ chmod +x convert_map_8x8.py
     --tileset-name "general"
 ```
 
+### Tile Layer Compression
+
+Tile layers now default to **base64 + zlib compression**, matching the Tiled editor recommendations and keeping map files compact. You can change or disable compression via `--compression`:
+
+```bash
+./convert_map_8x8.py layout.json tileset.json output_map.json \
+    --compression zlib   # default
+
+# Alternatives:
+#   --compression gzip   (base64 + gzip)
+#   --compression none   (legacy uncompressed JSON arrays)
+```
+
 ## Input Format
 
 ### layout.json (Pokemon Emerald Format)

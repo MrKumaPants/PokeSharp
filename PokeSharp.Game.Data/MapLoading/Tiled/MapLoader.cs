@@ -19,6 +19,7 @@ using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 using PokeSharp.Game.Data.Services;
 using PokeSharp.Game.Data.Entities;
+using PokeSharp.Game.Data.MapLoading.Tiled.TiledJson;
 
 namespace PokeSharp.Game.Data.MapLoading.Tiled;
 
@@ -97,16 +98,13 @@ public class MapLoader(
             AllowTrailingCommas = true
         };
 
-        var tmxDoc = JsonSerializer.Deserialize<TmxDocument>(mapDef.TiledDataJson, jsonOptions);
-        if (tmxDoc == null)
-        {
-            throw new InvalidOperationException(
-                $"Failed to parse Tiled JSON for map: {mapId}"
-            );
-        }
+        var mapDirectoryBase = ResolveMapDirectoryBase();
+
+        var syntheticMapPath = Path.Combine(mapDirectoryBase, $"{mapDef.MapId}.json");
+        var tmxDoc = TiledMapLoader.LoadFromJson(mapDef.TiledDataJson, syntheticMapPath);
 
         // Load external tileset files (Tiled JSON format supports external tilesets)
-        LoadExternalTilesets(tmxDoc, $"Assets/Data/Maps");
+        LoadExternalTilesets(tmxDoc, mapDirectoryBase);
 
         // Parse mixed layer types from JSON (Tiled stores all layers in one array)
         ParseMixedLayers(tmxDoc, mapDef.TiledDataJson, jsonOptions);
@@ -259,12 +257,7 @@ public class MapLoader(
 
     private List<LoadedTileset> LoadTilesetsFromDefinition(TmxDocument tmxDoc, string mapId)
     {
-        string mapDirectoryBase;
-        if (_assetManager is AssetManager assetManager)
-            mapDirectoryBase = Path.Combine(assetManager.AssetRoot, "Data", "Maps");
-        else
-            mapDirectoryBase = Path.Combine("Assets", "Data", "Maps");
-
+        var mapDirectoryBase = ResolveMapDirectoryBase();
         var syntheticMapPath = Path.Combine(mapDirectoryBase, $"{mapId}.json");
         return LoadTilesetsInternal(tmxDoc, syntheticMapPath);
     }
@@ -484,10 +477,17 @@ public class MapLoader(
                 switch (layerType)
                 {
                     case "tilelayer":
-                        var tileLayer = JsonSerializer.Deserialize<TmxLayer>(
+                        var tiledLayer = JsonSerializer.Deserialize<TiledJsonLayer>(
                             layerElement.GetRawText(), jsonOptions);
-                        if (tileLayer != null)
-                            tilelayers.Add(tileLayer);
+                        if (tiledLayer != null)
+                        {
+                            var converted = TiledMapLoader.ConvertTileLayer(
+                                tiledLayer,
+                                tmxDoc.Width,
+                                tmxDoc.Height
+                            );
+                            tilelayers.Add(converted);
+                        }
                         break;
 
                     case "objectgroup":
@@ -1193,6 +1193,33 @@ public class MapLoader(
 
         // Fallback to index-based elevation
         return DetermineElevationFromIndex(layerIndex);
+    }
+
+    private string ResolveMapDirectoryBase()
+    {
+        var assetRoot = ResolveAssetRoot();
+        return Path.Combine(assetRoot, "Data", "Maps");
+    }
+
+    private string ResolveAssetRoot()
+    {
+        string basePath;
+
+        if (_assetManager is AssetManager concreteAssetManager)
+        {
+            basePath = concreteAssetManager.AssetRoot;
+        }
+        else
+        {
+            basePath = Path.Combine(AppContext.BaseDirectory, "Assets");
+        }
+
+        if (!Path.IsPathRooted(basePath))
+        {
+            basePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, basePath));
+        }
+
+        return basePath;
     }
 
     /// <summary>

@@ -58,6 +58,28 @@ public static class TiledMapLoader
             throw new FileNotFoundException($"Tiled map file not found: {mapPath}");
 
         var json = File.ReadAllText(mapPath);
+        return LoadFromJson(json, mapPath);
+    }
+
+    /// <summary>
+    ///     Loads a Tiled map from a JSON string (used for definition-based maps stored in a database).
+    /// </summary>
+    /// <param name="json">Raw Tiled JSON.</param>
+    /// <param name="mapPath">
+    ///     Synthetic map path used for resolving relative tileset references and validation logging.
+    ///     If null, a placeholder path within the current working directory is used.
+    /// </param>
+    public static TmxDocument LoadFromJson(string json, string? mapPath = null)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            throw new JsonException("Tiled map JSON cannot be empty.");
+
+        var resolvedPath = mapPath ?? Path.Combine(Directory.GetCurrentDirectory(), "inline_map.json");
+        return DeserializeAndValidate(json, resolvedPath);
+    }
+
+    private static TmxDocument DeserializeAndValidate(string json, string mapPath)
+    {
         var tiledMap =
             JsonSerializer.Deserialize<TiledJsonMap>(json, JsonOptions)
             ?? throw new JsonException($"Failed to deserialize Tiled map: {mapPath}");
@@ -181,12 +203,20 @@ public static class TiledMapLoader
                 tileset.Margin = tiledTileset.Margin ?? tileset.Margin;
 
                 if (!string.IsNullOrEmpty(tiledTileset.Image))
+                {
+                    var imagePath = tiledTileset.Image;
+                    var tilesetDirectory = Path.GetDirectoryName(tilesetPath) ?? string.Empty;
+                    string resolvedImagePath = Path.IsPathRooted(imagePath)
+                        ? imagePath
+                        : Path.GetFullPath(Path.Combine(tilesetDirectory, imagePath));
+
                     tileset.Image = new TmxImage
                     {
-                        Source = tiledTileset.Image,
+                        Source = resolvedImagePath,
                         Width = tiledTileset.ImageWidth ?? 0,
                         Height = tiledTileset.ImageHeight ?? 0,
                     };
+                }
 
                 // Parse tile animations and properties from external tileset
                 if (tiledTileset.Tiles != null)
@@ -257,27 +287,36 @@ public static class TiledMapLoader
             if (tiledLayer.Type != "tilelayer")
                 continue;
 
-            var layer = new TmxLayer
-            {
-                Id = tiledLayer.Id,
-                Name = tiledLayer.Name,
-                Width = tiledLayer.Width > 0 ? tiledLayer.Width : mapWidth,
-                Height = tiledLayer.Height > 0 ? tiledLayer.Height : mapHeight,
-                Visible = tiledLayer.Visible,
-                Opacity = tiledLayer.Opacity,
-                OffsetX = tiledLayer.OffsetX,
-                OffsetY = tiledLayer.OffsetY,
-            };
-
-            // Decode layer data (handles plain arrays, base64, and compression)
-            var flatData = DecodeLayerData(tiledLayer);
-            if (flatData.Length > 0)
-                layer.Data = flatData; // Store as flat array (row-major order)
-
+            var layer = ConvertTileLayer(tiledLayer, mapWidth, mapHeight);
             result.Add(layer);
         }
 
         return result;
+    }
+
+    internal static TmxLayer ConvertTileLayer(
+        TiledJsonLayer tiledLayer,
+        int mapWidth,
+        int mapHeight
+    )
+    {
+        var layer = new TmxLayer
+        {
+            Id = tiledLayer.Id,
+            Name = tiledLayer.Name,
+            Width = tiledLayer.Width > 0 ? tiledLayer.Width : mapWidth,
+            Height = tiledLayer.Height > 0 ? tiledLayer.Height : mapHeight,
+            Visible = tiledLayer.Visible,
+            Opacity = tiledLayer.Opacity,
+            OffsetX = tiledLayer.OffsetX,
+            OffsetY = tiledLayer.OffsetY,
+        };
+
+        var flatData = DecodeLayerData(tiledLayer);
+        if (flatData.Length > 0)
+            layer.Data = flatData;
+
+        return layer;
     }
 
     /// <summary>

@@ -9,7 +9,7 @@
   "tilewidth": 8,
   "tileheight": 8,
   "infinite": false,
-  "nextlayerid": 3,
+  "nextlayerid": 4,
   "nextobjectid": 1,
   "layers": [
     {
@@ -22,12 +22,9 @@
       "y": 0,
       "width": 2,
       "height": 2,
-      "data": [
-        514,
-        514,
-        538,
-        539
-      ]
+      "encoding": "base64",
+      "compression": "zlib",
+      "data": "eJxjYmJgYAJiKSCWBmIAAcwAQg=="
     },
     {
       "id": 2,
@@ -39,12 +36,9 @@
       "y": 0,
       "width": 2,
       "height": 2,
-      "data": [
-        522,
-        523,
-        929,
-        2147484577
-      ]
+      "encoding": "base64",
+      "compression": "zlib",
+      "data": "eJzjYmJg4Abihcxg3AAACZIB4g=="
     },
     {
       "id": 3,

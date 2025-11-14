@@ -4,9 +4,12 @@ Pokemon Emerald Map Converter to Tiled 8x8 Format
 Converts pokeemerald metatile-based maps to Tiled JSON with 8x8 tiles and metatile properties.
 """
 
+import argparse
+import base64
+import gzip
 import json
 import struct
-import argparse
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Any, Optional
@@ -199,12 +202,69 @@ def load_metatiles_from_pokeemerald(metatiles_bin_path: Path,
     return tileset
 
 
+def encode_tile_layer_data(layer_data: List[int],
+                           compression_mode: str) -> Dict[str, str]:
+    """
+    Encode a tile layer into Tiled-compatible base64 data with optional compression.
+
+    Args:
+        layer_data: Flat list of global tile IDs (including flip flags)
+        compression_mode: One of "zlib", "gzip"
+
+    Returns:
+        Dict with encoded string and compression label
+    """
+    if compression_mode not in {"zlib", "gzip"}:
+        raise ValueError(f"Unsupported compression mode: {compression_mode}")
+
+    # Tiled expects little-endian uint32 values
+    byte_payload = struct.pack(f"<{len(layer_data)}I", *layer_data) if layer_data else b""
+
+    if compression_mode == "zlib":
+        compressed = zlib.compress(byte_payload)
+    else:  # gzip
+        compressed = gzip.compress(byte_payload)
+
+    encoded = base64.b64encode(compressed).decode("ascii")
+    return {"data": encoded, "compression": compression_mode}
+
+
+def build_tile_layer(layer_id: int,
+                     name: str,
+                     width_tiles: int,
+                     height_tiles: int,
+                     layer_data: List[int],
+                     compression_mode: str) -> Dict[str, Any]:
+    layer = {
+        "id": layer_id,
+        "name": name,
+        "type": "tilelayer",
+        "visible": True,
+        "opacity": 1,
+        "x": 0,
+        "y": 0,
+        "width": width_tiles,
+        "height": height_tiles,
+    }
+
+    if compression_mode == "none":
+        layer["data"] = layer_data
+    else:
+        encoded = encode_tile_layer_data(layer_data, compression_mode)
+        layer["encoding"] = "base64"
+        layer["compression"] = encoded["compression"]
+        layer["data"] = encoded["data"]
+
+    return layer
+
+
 def convert_pokeemerald_map(layout_path: Path,
                            primary_tileset_dir: Path,
                            output_path: Path,
                            secondary_tileset_dir: Optional[Path] = None,
                            primary_tileset_json: str = "../Tilesets/general.json",
-                           secondary_tileset_json: Optional[str] = None) -> None:
+                           secondary_tileset_json: Optional[str] = None,
+                           compression_mode: str = "zlib") -> None:
     """
     Converts pokeemerald map to Tiled format with 8x8 tiles.
 
@@ -215,6 +275,7 @@ def convert_pokeemerald_map(layout_path: Path,
         secondary_tileset_dir: Optional directory containing secondary tileset binary files
         primary_tileset_json: Relative path to reference the primary tileset JSON in output
         secondary_tileset_json: Relative path to reference the secondary tileset JSON in output
+        compression_mode: Compression strategy for tile layers ("zlib", "gzip", or "none")
     """
     layout = load_layout_json(layout_path)
     width_metatiles = layout['width']
@@ -345,33 +406,25 @@ def convert_pokeemerald_map(layout_path: Path,
         "tilewidth": 8,
         "tileheight": 8,
         "infinite": False,
-        "nextlayerid": 3,
+        "nextlayerid": 4,
         "nextobjectid": 1,
         "layers": [
-            {
-                "id": 1,
-                "name": "Ground Layer",
-                "type": "tilelayer",
-                "visible": True,
-                "opacity": 1,
-                "x": 0,
-                "y": 0,
-                "width": width_tiles,
-                "height": height_tiles,
-                "data": bottom_layer_data
-            },
-            {
-                "id": 2,
-                "name": "Overlay Layer",
-                "type": "tilelayer",
-                "visible": True,
-                "opacity": 1,
-                "x": 0,
-                "y": 0,
-                "width": width_tiles,
-                "height": height_tiles,
-                "data": top_layer_data
-            }
+            build_tile_layer(
+                layer_id=1,
+                name="Ground Layer",
+                width_tiles=width_tiles,
+                height_tiles=height_tiles,
+                layer_data=bottom_layer_data,
+                compression_mode=compression_mode
+            ),
+            build_tile_layer(
+                layer_id=2,
+                name="Overlay Layer",
+                width_tiles=width_tiles,
+                height_tiles=height_tiles,
+                layer_data=top_layer_data,
+                compression_mode=compression_mode
+            )
         ],
         "tilesets": tileset_refs
     }
@@ -450,6 +503,8 @@ def main():
                        help='Relative path to reference primary tileset JSON (default: ../../Tilesets/general.json)')
     parser.add_argument('--secondary-tileset-json', default='../../Tilesets/petalburg.json',
                        help='Relative path to reference secondary tileset JSON (default: ../../Tilesets/petalburg.json)')
+    parser.add_argument('--compression', choices=['none', 'zlib', 'gzip'], default='zlib',
+                       help='Compression mode for tile layers (default: zlib). Use "none" to emit raw JSON arrays.')
 
     args = parser.parse_args()
 
@@ -459,7 +514,8 @@ def main():
         output_path=args.output,
         secondary_tileset_dir=args.secondary_tileset_dir,
         primary_tileset_json=args.primary_tileset_json,
-        secondary_tileset_json=args.secondary_tileset_json
+        secondary_tileset_json=args.secondary_tileset_json,
+        compression_mode=args.compression
     )
 
 
