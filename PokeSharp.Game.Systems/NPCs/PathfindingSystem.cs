@@ -200,7 +200,11 @@ public class PathfindingSystem : SystemBase, IUpdateSystem
         // Smooth the path to reduce waypoints
         path = _pathfindingService.SmoothPath(path, mapId, _spatialQuery);
 
-        // Update the NPC path with the new calculated path
+        // NOTE: ToArray() allocation is unavoidable here because:
+        // 1. MovementRoute.Waypoints is Point[] (required by component design)
+        // 2. This only happens when pathfinding recalculates (NPC hits obstacle)
+        // 3. Frequency is low (typically once per NPC per obstacle encounter)
+        // This is acceptable because it's not a per-frame allocation
         var newWaypoints = path.ToArray();
 
         if (world.Has<MovementRoute>(entity))
