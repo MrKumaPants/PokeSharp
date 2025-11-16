@@ -932,9 +932,11 @@ public static partial class LogTemplates
     /// <summary>
     ///     Logs game data loading completed with summary.
     /// </summary>
-    public static void LogGameDataLoaded(this ILogger logger, string summary)
+    public static void LogGameDataLoaded(this ILogger logger, Dictionary<string, int> loadedCounts)
     {
-        var body = $"[green]✓ Game data loaded:[/] [grey]{EscapeMarkup(summary)}[/]";
+        var parts = loadedCounts.Select(kvp => $"[cyan]{EscapeMarkup(kvp.Key)}:[/] [yellow]{kvp.Value}[/]");
+        var summary = string.Join("[grey], [/]", parts);
+        var body = $"[green]✓ Game data loaded:[/] {summary}";
         logger.LogInformation(LogFormatting.FormatTemplate(WithAccent(LogAccent.Asset, body)));
     }
 

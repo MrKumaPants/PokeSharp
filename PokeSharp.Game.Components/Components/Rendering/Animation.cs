@@ -33,11 +33,13 @@ public struct Animation
     public bool IsComplete { get; set; }
 
     /// <summary>
-    ///     Gets or sets the set of frame indices that have already triggered their events.
+    ///     Gets or sets the bit field of frame indices that have already triggered their events.
     ///     Used to prevent re-triggering events when frame hasn't changed.
     ///     Reset when animation changes or loops.
+    ///     Each bit represents a frame index (supports up to 64 frames).
+    ///     Zero-allocation alternative to HashSet.
     /// </summary>
-    public HashSet<int> TriggeredEventFrames { get; set; } = new();
+    public ulong TriggeredEventFrames { get; set; }
 
     /// <summary>
     ///     Initializes a new instance of the Animation struct.
@@ -67,7 +69,7 @@ public struct Animation
             FrameTimer = 0f;
             IsPlaying = true;
             IsComplete = false;
-            TriggeredEventFrames.Clear();
+            TriggeredEventFrames = 0;
         }
     }
 
@@ -79,7 +81,7 @@ public struct Animation
         CurrentFrame = 0;
         FrameTimer = 0f;
         IsComplete = false;
-        TriggeredEventFrames.Clear();
+        TriggeredEventFrames = 0;
     }
 
     /// <summary>

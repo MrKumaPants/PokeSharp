@@ -38,6 +38,9 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
     private QueryDescription _ownerQuery;
     private QueryDescription _ownedQuery;
 
+    // Reusable collections to avoid per-update allocations
+    private readonly List<Entity> _entitiesToFix = new();
+
     // Statistics for monitoring
     private int _brokenParentsFixed;
     private int _brokenChildrenFixed;
@@ -117,7 +120,7 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
     /// </summary>
     private void ValidateParentRelationships(World world)
     {
-        var entitiesToFix = new List<Entity>();
+        _entitiesToFix.Clear();
 
         world.Query(
             in _parentQuery,
@@ -129,13 +132,13 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
 
                 if (!world.IsAlive(parent.Value))
                 {
-                    entitiesToFix.Add(entity);
+                    _entitiesToFix.Add(entity);
                     _orphansDetected++;
                 }
             }
         );
 
-        foreach (var entity in entitiesToFix)
+        foreach (var entity in _entitiesToFix)
         {
             if (world.IsAlive(entity))
             {
@@ -193,7 +196,7 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
     /// </summary>
     private void ValidateOwnerRelationships(World world)
     {
-        var entitiesToFix = new List<Entity>();
+        _entitiesToFix.Clear();
 
         world.Query(
             in _ownerQuery,
@@ -205,12 +208,12 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
 
                 if (!world.IsAlive(owner.Value))
                 {
-                    entitiesToFix.Add(entity);
+                    _entitiesToFix.Add(entity);
                 }
             }
         );
 
-        foreach (var entity in entitiesToFix)
+        foreach (var entity in _entitiesToFix)
         {
             if (world.IsAlive(entity))
             {
@@ -228,7 +231,7 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
     /// </summary>
     private void ValidateOwnedRelationships(World world)
     {
-        var entitiesToFix = new List<Entity>();
+        _entitiesToFix.Clear();
 
         world.Query(
             in _ownedQuery,
@@ -240,13 +243,13 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
 
                 if (!world.IsAlive(owned.OwnerEntity))
                 {
-                    entitiesToFix.Add(entity);
+                    _entitiesToFix.Add(entity);
                     _orphansDetected++;
                 }
             }
         );
 
-        foreach (var entity in entitiesToFix)
+        foreach (var entity in _entitiesToFix)
         {
             if (world.IsAlive(entity))
             {

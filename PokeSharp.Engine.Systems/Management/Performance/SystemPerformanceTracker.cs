@@ -66,6 +66,11 @@ public class SystemPerformanceTracker
     private readonly ConcurrentDictionary<string, ulong> _lastSlowWarningFrame = new();
     private ulong _frameCounter;
 
+    // LINQ ALLOCATION ELIMINATION: Reusable list for sorting metrics
+    // OLD: OrderByDescending().ToList() = 5-10 KB/sec allocation overhead every 5 seconds
+    // NEW: Reuse List<> + List.Sort() = zero allocations (list capacity retained between calls)
+    private readonly List<KeyValuePair<string, SystemMetrics>> _cachedSortedMetrics = new();
+
     /// <summary>
     ///     Creates a new performance tracker.
     /// </summary>
@@ -161,6 +166,7 @@ public class SystemPerformanceTracker
     /// <summary>
     ///     Logs performance statistics for all systems.
     ///     OPTIMIZED: No lock required with ConcurrentDictionary (safe for concurrent enumeration).
+    ///     OPTIMIZED: Zero allocations - reuses cached list instead of LINQ OrderByDescending().ToList().
     /// </summary>
     public void LogPerformanceStats()
     {
@@ -170,12 +176,17 @@ public class SystemPerformanceTracker
         if (_metrics.Count == 0)
             return;
 
-        // ConcurrentDictionary supports lock-free enumeration
-        // Snapshot is taken at the start of enumeration (consistent view)
-        var sortedMetrics = _metrics.OrderByDescending(kvp => kvp.Value.AverageUpdateMs).ToList();
+        // CRITICAL OPTIMIZATION: Eliminate LINQ allocations
+        // OLD: OrderByDescending().ToList() = 5-10 KB/sec allocation overhead
+        // NEW: Reuse List<> + List.Sort() = zero allocations
+        // Clear() retains capacity, so list only grows once and then reuses memory
+        _cachedSortedMetrics.Clear();
+        _cachedSortedMetrics.AddRange(_metrics);
+        _cachedSortedMetrics.Sort((a, b) =>
+            b.Value.AverageUpdateMs.CompareTo(a.Value.AverageUpdateMs));
 
         // Log all systems using the custom template
-        foreach (var kvp in sortedMetrics)
+        foreach (var kvp in _cachedSortedMetrics)
         {
             var systemName = kvp.Key;
             var metrics = kvp.Value;

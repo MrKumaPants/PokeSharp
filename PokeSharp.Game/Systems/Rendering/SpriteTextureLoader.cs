@@ -21,11 +21,9 @@ public class SpriteTextureLoader
     // PHASE 2: Per-map sprite tracking for lazy loading
     private readonly Dictionary<int, HashSet<string>> _mapSpriteIds = new();
     private readonly Dictionary<string, int> _spriteReferenceCount = new();
-    private readonly HashSet<string> _persistentSprites = new()
-    {
-        "sprites/players/brendan",
-        "sprites/players/may"
-    };
+    // Persistent sprites that should never be unloaded (e.g., UI elements)
+    // Player sprites load on-demand from entity templates
+    private readonly HashSet<string> _persistentSprites = new();
 
     public SpriteTextureLoader(
         SpriteLoader spriteLoader,

@@ -52,8 +52,7 @@ public class GameDataLoader
         loadedCounts["Maps"] = await LoadMapsAsync(mapsPath, ct);
 
         // Log summary
-        var summary = string.Join(", ", loadedCounts.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
-        _logger.LogGameDataLoaded(summary);
+        _logger.LogGameDataLoaded(loadedCounts);
     }
 
     /// <summary>
@@ -228,6 +227,12 @@ public class GameDataLoader
             .ToArray();
         var count = 0;
 
+        // OPTIMIZATION: Load all existing maps once to avoid N+1 queries
+        // Using AsNoTracking since we'll manually track changes
+        var existingMaps = await _context
+            .Maps.AsNoTracking()
+            .ToDictionaryAsync(m => m.MapId, ct);
+
         foreach (var file in files)
         {
             ct.ThrowIfCancellationRequested();
@@ -279,11 +284,11 @@ public class GameDataLoader
                     Version = GetPropertyString(properties, "version") ?? "1.0.0",
                 };
 
-                // Support mod overrides: Use AddOrUpdate pattern
-                var existing = _context.Maps.Find(mapId);
-                if (existing != null)
+                // Support mod overrides: Check in-memory dictionary instead of querying DB
+                if (existingMaps.TryGetValue(mapId, out var existing))
                 {
-                    // Mod is overriding base game map
+                    // Mod is overriding base game map - attach and update
+                    _context.Maps.Attach(existing);
                     _context.Entry(existing).CurrentValues.SetValues(mapDef);
                     _logger.LogMapOverridden(mapDef.MapId, mapDef.DisplayName);
                 }

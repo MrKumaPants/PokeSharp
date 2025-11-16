@@ -161,10 +161,6 @@ public class MapLoader(
         // PHASE 2: Clear sprite IDs from previous map
         _requiredSpriteIds.Clear();
 
-        // PHASE 2: Always include player sprites
-        _requiredSpriteIds.Add("players/brendan");
-        _requiredSpriteIds.Add("players/may");
-
         var mapId = GetMapIdFromString(mapDef.MapId);
         var mapName = mapDef.DisplayName;
 
@@ -253,10 +249,6 @@ public class MapLoader(
     {
         // PHASE 2: Clear sprite IDs from previous map
         _requiredSpriteIds.Clear();
-
-        // PHASE 2: Always include player sprites
-        _requiredSpriteIds.Add("players/brendan");
-        _requiredSpriteIds.Add("players/may");
 
         var tmxDoc = TiledMapLoader.Load(mapPath);
         var mapId = GetMapId(mapPath);
@@ -1103,6 +1095,11 @@ public class MapLoader(
                 $"Tileset '{tileset.Name ?? "unnamed"}' has invalid firstgid {firstGid}."
             );
 
+        // PERFORMANCE OPTIMIZATION: Build animation components dictionary BEFORE querying
+        // This allows us to execute a SINGLE query instead of N queries (one per animation)
+        // Reduces complexity from O(animations × tiles) to O(tiles + animations)
+        var animationsByTileId = new Dictionary<int, AnimatedTile>(tileset.Animations.Count);
+
         foreach (var kvp in tileset.Animations)
         {
             var localTileId = kvp.Key;
@@ -1146,13 +1143,22 @@ public class MapLoader(
                 tileMargin
             );
 
-            // Find all tile entities with this tile ID and add AnimatedTile component
+            // Store animation component for batch processing
+            animationsByTileId[globalTileId] = animatedTile;
+        }
+
+        // PERFORMANCE CRITICAL: Execute SINGLE query to process all animations
+        // This replaces N individual queries (one per animation) with ONE batch operation
+        // For maps with 50 animations × 10,000 tiles, this eliminates 500,000 unnecessary iterations
+        if (animationsByTileId.Count > 0)
+        {
             var tileQuery = QueryCache.Get<TileSprite>();
             world.Query(
                 in tileQuery,
                 (Entity entity, ref TileSprite sprite) =>
                 {
-                    if (sprite.TileGid == globalTileId)
+                    // Check if this tile has an animation component
+                    if (animationsByTileId.TryGetValue(sprite.TileGid, out var animatedTile))
                     {
                         world.Add(entity, animatedTile);
                         created++;

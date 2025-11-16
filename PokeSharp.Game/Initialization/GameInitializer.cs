@@ -10,7 +10,6 @@ using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
 using PokeSharp.Game.Data.MapLoading.Tiled;
-using PokeSharp.Game.Diagnostics;
 using PokeSharp.Game.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
@@ -78,9 +77,6 @@ public class GameInitializer(
 
         // REMOVED: manifest.json loading (obsolete - replaced by EF Core definitions)
         // Assets are now loaded on-demand via MapLoader and definition-based loading
-
-        // Run diagnostics
-        AssetDiagnostics.PrintAssetManagerStatus(_assetManager, _logger);
 
         // CRITICAL FIX: EntityPoolManager is now injected via constructor (same instance as EntityFactoryService)
         // This ensures pools registered here are available to EntityFactoryService

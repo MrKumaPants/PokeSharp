@@ -358,12 +358,9 @@ public class ComponentPoolIntegrationTests
         anim.FrameTimer = 0.5f;
         anim.IsPlaying = true;
 
-        // Verify HashSet is initialized
-        Assert.NotNull(anim.TriggeredEventFrames);
-
-        // Add some triggered frames
-        anim.TriggeredEventFrames.Add(1);
-        anim.TriggeredEventFrames.Add(3);
+        // Add some triggered frames using bit operations
+        anim.TriggeredEventFrames |= (1UL << 1); // Set bit 1
+        anim.TriggeredEventFrames |= (1UL << 3); // Set bit 3
 
         // Return to pool (should reset)
         manager.ReturnAnimation(anim);

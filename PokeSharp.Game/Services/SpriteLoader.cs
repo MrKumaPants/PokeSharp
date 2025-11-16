@@ -96,7 +96,8 @@ public class SpriteLoader
     }
 
     /// <summary>
-    /// Load a specific sprite by name
+    /// Load a specific sprite by name (searches across all categories)
+    /// For better performance, use LoadSpriteAsync(category, spriteName) overload.
     /// </summary>
     public async Task<SpriteManifest?> LoadSpriteAsync(string spriteName)
     {
@@ -106,16 +107,47 @@ public class SpriteLoader
             var allSprites = await LoadAllSpritesAsync();
             foreach (var sprite in allSprites)
             {
-                _spriteCache[sprite.Name] = sprite;
+                // FIXED: Use "category/name" as cache key to handle duplicate names
+                var cacheKey = $"{sprite.Category}/{sprite.Name}";
+                _spriteCache[cacheKey] = sprite;
             }
         }
 
-        if (_spriteCache.TryGetValue(spriteName, out var manifest))
+        // Try to find sprite by name (search all categories)
+        var found = _spriteCache.Values.FirstOrDefault(s => s.Name == spriteName);
+        if (found != null)
+        {
+            return found;
+        }
+
+        _logger.LogSpriteNotFound(spriteName);
+        return null;
+    }
+
+    /// <summary>
+    /// Load a specific sprite by category and name (recommended - faster and more precise)
+    /// </summary>
+    public async Task<SpriteManifest?> LoadSpriteAsync(string category, string spriteName)
+    {
+        if (_spriteCache == null)
+        {
+            _spriteCache = new Dictionary<string, SpriteManifest>();
+            var allSprites = await LoadAllSpritesAsync();
+            foreach (var sprite in allSprites)
+            {
+                // Use "category/name" as cache key to handle duplicate names
+                var cacheKey = $"{sprite.Category}/{sprite.Name}";
+                _spriteCache[cacheKey] = sprite;
+            }
+        }
+
+        var lookupKey = $"{category}/{spriteName}";
+        if (_spriteCache.TryGetValue(lookupKey, out var manifest))
         {
             return manifest;
         }
 
-        _logger.LogSpriteNotFound(spriteName);
+        _logger.LogSpriteNotFound(lookupKey);
         return null;
     }
 
