@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Data.Entities;
 
 namespace PokeSharp.Game.Data.Loading;
@@ -34,7 +35,7 @@ public class GameDataLoader
     /// </summary>
     public async Task LoadAllAsync(string dataPath, CancellationToken ct = default)
     {
-        _logger.LogInformation("Loading game data from {Path}", dataPath);
+        _logger.LogGameDataLoadingStarted(dataPath);
 
         var loadedCounts = new Dictionary<string, int>();
 
@@ -51,10 +52,8 @@ public class GameDataLoader
         loadedCounts["Maps"] = await LoadMapsAsync(mapsPath, ct);
 
         // Log summary
-        _logger.LogInformation(
-            "Game data loaded: {Summary}",
-            string.Join(", ", loadedCounts.Select(kvp => $"{kvp.Key}: {kvp.Value}"))
-        );
+        var summary = string.Join(", ", loadedCounts.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
+        _logger.LogGameDataLoaded(summary);
     }
 
     /// <summary>
@@ -64,7 +63,7 @@ public class GameDataLoader
     {
         if (!Directory.Exists(path))
         {
-            _logger.LogWarning("NPC directory not found: {Path}", path);
+            _logger.LogDirectoryNotFound("NPC", path);
             return 0;
         }
 
@@ -82,14 +81,14 @@ public class GameDataLoader
 
                 if (dto == null)
                 {
-                    _logger.LogWarning("Failed to deserialize NPC from {File}", file);
+                    _logger.LogNpcDeserializeFailed(file);
                     continue;
                 }
 
                 // Validate required fields
                 if (string.IsNullOrWhiteSpace(dto.NpcId))
                 {
-                    _logger.LogWarning("NPC in {File} missing npcId", file);
+                    _logger.LogNpcMissingField(file, "npcId");
                     continue;
                 }
 
@@ -114,18 +113,18 @@ public class GameDataLoader
                 _context.Npcs.Add(npc);
                 count++;
 
-                _logger.LogDebug("Loaded NPC: {NpcId}", npc.NpcId);
+                _logger.LogNpcLoaded(npc.NpcId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading NPC from {File}", file);
+                _logger.LogNpcLoadFailed(file, ex);
             }
         }
 
         // Save to in-memory database
         await _context.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Loaded {Count} NPCs", count);
+        _logger.LogNpcsLoaded(count);
         return count;
     }
 
@@ -136,7 +135,7 @@ public class GameDataLoader
     {
         if (!Directory.Exists(path))
         {
-            _logger.LogWarning("Trainer directory not found: {Path}", path);
+            _logger.LogDirectoryNotFound("Trainer", path);
             return 0;
         }
 
@@ -154,14 +153,14 @@ public class GameDataLoader
 
                 if (dto == null)
                 {
-                    _logger.LogWarning("Failed to deserialize Trainer from {File}", file);
+                    _logger.LogTrainerDeserializeFailed(file);
                     continue;
                 }
 
                 // Validate required fields
                 if (string.IsNullOrWhiteSpace(dto.TrainerId))
                 {
-                    _logger.LogWarning("Trainer in {File} missing trainerId", file);
+                    _logger.LogTrainerMissingField(file, "trainerId");
                     continue;
                 }
 
@@ -194,34 +193,39 @@ public class GameDataLoader
                 _context.Trainers.Add(trainer);
                 count++;
 
-                _logger.LogDebug("Loaded Trainer: {TrainerId}", trainer.TrainerId);
+                _logger.LogTrainerLoaded(trainer.TrainerId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading Trainer from {File}", file);
+                _logger.LogTrainerLoadFailed(file, ex);
             }
         }
 
         // Save to in-memory database
         await _context.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Loaded {Count} trainers", count);
+        _logger.LogTrainersLoaded(count);
         return count;
     }
 
     /// <summary>
     /// Load map definitions from Tiled JSON files.
-    /// Stores complete Tiled JSON data in TiledDataJson field.
+    /// Stores relative path to file instead of full JSON data.
     /// </summary>
     private async Task<int> LoadMapsAsync(string path, CancellationToken ct)
     {
         if (!Directory.Exists(path))
         {
-            _logger.LogWarning("Maps directory not found: {Path}", path);
+            _logger.LogDirectoryNotFound("Maps", path);
             return 0;
         }
 
-        var files = Directory.GetFiles(path, "*.json", SearchOption.AllDirectories);
+        // Determine Assets root for relative path calculation
+        var assetsRoot = ResolveAssetsRoot(path);
+
+        var files = Directory.GetFiles(path, "*.json", SearchOption.AllDirectories)
+            .Where(f => !IsHiddenOrSystemDirectory(f))  // Skip hidden directories like .claude-flow
+            .ToArray();
         var count = 0;
 
         foreach (var file in files)
@@ -230,7 +234,7 @@ public class GameDataLoader
 
             try
             {
-                // Read raw Tiled JSON
+                // Read Tiled JSON to extract metadata only
                 var tiledJson = await File.ReadAllTextAsync(file, ct);
 
                 // Parse to extract metadata (use a lightweight DTO)
@@ -241,7 +245,7 @@ public class GameDataLoader
 
                 if (tiledDoc == null)
                 {
-                    _logger.LogWarning("Failed to parse Tiled JSON from {File}", file);
+                    _logger.LogTiledParseFailed(file);
                     continue;
                 }
 
@@ -251,13 +255,16 @@ public class GameDataLoader
                 // Extract metadata from Tiled custom properties (convert array to dictionary)
                 var properties = ConvertTiledPropertiesToDictionary(tiledDoc.Properties);
 
+                // Calculate relative path from Assets root
+                var relativePath = Path.GetRelativePath(assetsRoot, file);
+
                 var mapDef = new MapDefinition
                 {
                     MapId = mapId,
                     DisplayName = GetPropertyString(properties, "displayName") ?? mapId,
                     Region = GetPropertyString(properties, "region") ?? "hoenn",
                     MapType = GetPropertyString(properties, "mapType"),
-                    TiledDataJson = tiledJson, // Store complete Tiled JSON
+                    TiledDataPath = relativePath, // Store relative path instead of JSON
                     MusicId = GetPropertyString(properties, "music"),
                     Weather = GetPropertyString(properties, "weather") ?? "clear",
                     ShowMapName = GetPropertyBool(properties, "showMapName") ?? true,
@@ -272,26 +279,54 @@ public class GameDataLoader
                     Version = GetPropertyString(properties, "version") ?? "1.0.0",
                 };
 
-                _context.Maps.Add(mapDef);
+                // Support mod overrides: Use AddOrUpdate pattern
+                var existing = _context.Maps.Find(mapId);
+                if (existing != null)
+                {
+                    // Mod is overriding base game map
+                    _context.Entry(existing).CurrentValues.SetValues(mapDef);
+                    _logger.LogMapOverridden(mapDef.MapId, mapDef.DisplayName);
+                }
+                else
+                {
+                    _context.Maps.Add(mapDef);
+                }
+
                 count++;
 
-                _logger.LogDebug(
-                    "Loaded Map: {MapId} ({DisplayName})",
-                    mapDef.MapId,
-                    mapDef.DisplayName
-                );
+                _logger.LogMapLoadedFromFile(mapDef.MapId, mapDef.DisplayName, relativePath);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading Map from {File}", file);
+                _logger.LogMapLoadFailed(file, ex);
             }
         }
 
         // Save to in-memory database
         await _context.SaveChangesAsync(ct);
 
-        _logger.LogInformation("Loaded {Count} maps", count);
+        _logger.LogMapsLoaded(count);
         return count;
+    }
+
+    /// <summary>
+    /// Resolves the Assets root directory for relative path calculation.
+    /// </summary>
+    private string ResolveAssetsRoot(string mapsPath)
+    {
+        // Walk up from Maps path to find Assets directory
+        var current = new DirectoryInfo(mapsPath);
+        while (current != null)
+        {
+            if (current.Name.Equals("Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                return current.FullName;
+            }
+            current = current.Parent;
+        }
+
+        // Fallback: assume Assets is 2 levels up from Maps (Assets/Data/Maps)
+        return Path.GetFullPath(Path.Combine(mapsPath, "..", ".."));
     }
 
     // Helper methods for extracting properties from Tiled custom properties
@@ -343,6 +378,15 @@ public class GameDataLoader
                 return result;
         }
         return null;
+    }
+
+    /// <summary>
+    /// Checks if a file path contains hidden or system directories (e.g., .claude-flow, .git).
+    /// </summary>
+    private static bool IsHiddenOrSystemDirectory(string filePath)
+    {
+        var pathParts = filePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return pathParts.Any(part => part.StartsWith("."));
     }
 }
 

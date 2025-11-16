@@ -61,7 +61,7 @@ public class JsonTemplateLoader
             var template = ConvertDtoToTemplate(dto, filePath);
 
             _logger.LogDebug(
-                "Loaded template {TemplateId} from {FilePath} with {ComponentCount} components",
+                "[steelblue1]WF[/] Loaded template [cyan]{TemplateId}[/] from [cyan]{FilePath}[/] with [yellow]{ComponentCount}[/] components",
                 template.TemplateId,
                 filePath,
                 template.ComponentCount
@@ -71,7 +71,7 @@ public class JsonTemplateLoader
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load template from {FilePath}", filePath);
+            _logger.LogError(ex, "[steelblue1]WF[/] [red]✗[/] Failed to load template from [cyan]{FilePath}[/]", filePath);
             throw;
         }
     }
@@ -91,7 +91,7 @@ public class JsonTemplateLoader
     {
         if (!Directory.Exists(directoryPath))
         {
-            _logger.LogWarning("Template directory not found: {DirectoryPath}", directoryPath);
+            _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Template directory not found: [cyan]{DirectoryPath}[/]", directoryPath);
             return new List<EntityTemplate>();
         }
 
@@ -110,12 +110,12 @@ public class JsonTemplateLoader
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Skipping invalid template file: {File}", file);
+                _logger.LogWarning(ex, "[steelblue1]WF[/] [orange3]⚠[/] Skipping invalid template file: [cyan]{File}[/]", file);
             }
         }
 
         _logger.LogInformation(
-            "Loaded {Count} templates from {DirectoryPath}",
+            "[steelblue1]WF[/] [green]✓[/] Loaded [yellow]{Count}[/] templates from [cyan]{DirectoryPath}[/]",
             templates.Count,
             directoryPath
         );
@@ -136,7 +136,7 @@ public class JsonTemplateLoader
 
         if (!Directory.Exists(directoryPath))
         {
-            _logger.LogWarning("Template directory not found: {DirectoryPath}", directoryPath);
+            _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Template directory not found: [cyan]{DirectoryPath}[/]", directoryPath);
             return cache;
         }
 
@@ -159,12 +159,12 @@ public class JsonTemplateLoader
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to parse JSON from: {File}", file);
+                _logger.LogWarning(ex, "[steelblue1]WF[/] [orange3]⚠[/] Failed to parse JSON from: [cyan]{File}[/]", file);
             }
         }
 
         _logger.LogDebug(
-            "Loaded {Count} template JSON files from {DirectoryPath}",
+            "[steelblue1]WF[/] Loaded [yellow]{Count}[/] template JSON files from [cyan]{DirectoryPath}[/]",
             cache.Count,
             directoryPath
         );
@@ -224,7 +224,7 @@ public class JsonTemplateLoader
                 {
                     _logger.LogError(
                         ex,
-                        "Failed to deserialize component {ComponentType} in template {TemplateId}",
+                        "[steelblue1]WF[/] [red]✗[/] Failed to deserialize component [cyan]{ComponentType}[/] in template [cyan]{TemplateId}[/]",
                         componentDto.Type,
                         dto.TemplateId
                     );

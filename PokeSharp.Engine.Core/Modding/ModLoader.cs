@@ -30,14 +30,14 @@ public sealed class ModLoader
 
         if (!Directory.Exists(_modsDirectory))
         {
-            _logger.LogInformation("Mods directory not found | creating: {Path}", _modsDirectory);
+            _logger.LogInformation("[steelblue1]WF[/] Mods directory not found | creating: [cyan]{Path}[/]", _modsDirectory);
             Directory.CreateDirectory(_modsDirectory);
             return _loadedMods;
         }
 
         var modDirectories = Directory.GetDirectories(_modsDirectory);
         _logger.LogInformation(
-            "Scanning for mods | path: {Path}, directories: {Count}",
+            "[steelblue1]WF[/] Scanning for mods | path: [cyan]{Path}[/], directories: [yellow]{Count}[/]",
             _modsDirectory,
             modDirectories.Length
         );
@@ -50,7 +50,7 @@ public sealed class ModLoader
                 if (!File.Exists(manifestPath))
                 {
                     _logger.LogWarning(
-                        "Skipping directory | reason: no mod.json, path: {Dir}",
+                        "[steelblue1]WF[/] [orange3]⚠[/] Skipping directory | reason: no mod.json, path: [cyan]{Dir}[/]",
                         Path.GetFileName(modDir)
                     );
                     continue;
@@ -64,7 +64,7 @@ public sealed class ModLoader
 
                 if (manifest == null)
                 {
-                    _logger.LogWarning("Failed to deserialize | path: {Path}", manifestPath);
+                    _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Failed to deserialize | path: [cyan]{Path}[/]", manifestPath);
                     continue;
                 }
 
@@ -74,7 +74,7 @@ public sealed class ModLoader
 
                 _loadedMods.Add(loadedMod);
                 _logger.LogInformation(
-                    "Discovered mod | id: {ModId}, version: {Version}, name: {Name}",
+                    "[steelblue1]WF[/] [green]✓[/] Discovered mod | id: [cyan]{ModId}[/], version: [yellow]{Version}[/], name: [cyan]{Name}[/]",
                     manifest.ModId,
                     manifest.Version,
                     manifest.Name
@@ -82,7 +82,7 @@ public sealed class ModLoader
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Mod load error | directory: {Dir}", modDir);
+                _logger.LogError(ex, "[steelblue1]WF[/] [orange3]⚠[/] Mod load error | directory: [cyan]{Dir}[/]", modDir);
             }
         }
 
@@ -149,7 +149,7 @@ public sealed class ModLoader
         }
 
         _logger.LogInformation(
-            "Mod load order | sequence: {Order}",
+            "[steelblue1]WF[/] Mod load order | sequence: [cyan]{Order}[/]",
             string.Join(" → ", sorted.Select(m => m.Manifest.ModId))
         );
 

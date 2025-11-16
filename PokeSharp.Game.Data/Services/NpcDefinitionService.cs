@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Data.Entities;
 
 namespace PokeSharp.Game.Data.Services;
@@ -45,7 +46,7 @@ public class NpcDefinitionService
         if (npc != null)
         {
             _npcCache[npcId] = npc;
-            _logger.LogDebug("Cached NPC definition: {NpcId}", npcId);
+            _logger.LogNpcCached(npcId);
         }
 
         return npc;
@@ -106,7 +107,7 @@ public class NpcDefinitionService
         if (trainer != null)
         {
             _trainerCache[trainerId] = trainer;
-            _logger.LogDebug("Cached Trainer definition: {TrainerId}", trainerId);
+            _logger.LogTrainerCached(trainerId);
         }
 
         return trainer;

@@ -35,7 +35,7 @@ public class ComponentDeserializerRegistry
             Deserializer = jsonElement => deserializer(jsonElement),
         };
 
-        _logger.LogDebug("Registered deserializer for component type: {TypeName}", typeName);
+        _logger.LogDebug("[steelblue1]WF[/] [green]✓[/] Registered deserializer for component type: [cyan]{TypeName}[/]", typeName);
     }
 
     /// <summary>
@@ -90,7 +90,7 @@ public class ComponentDeserializerRegistry
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to deserialize component {ComponentType}", dto.Type);
+            _logger.LogError(ex, "[steelblue1]WF[/] [red]✗[/] Failed to deserialize component [cyan]{ComponentType}[/]", dto.Type);
             throw;
         }
     }

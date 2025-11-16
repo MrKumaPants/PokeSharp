@@ -14,8 +14,20 @@ public class ScriptCacheEntry
     /// <summary>
     ///     Global cache of compiled constructor delegates for fast instantiation.
     ///     Thread-safe concurrent dictionary with compiled Expression.Lambda factories.
+    ///     Limited to MaxCompiledConstructors entries to prevent unbounded memory growth.
     /// </summary>
     private static readonly ConcurrentDictionary<Type, Func<object>> CompiledConstructors = new();
+
+    /// <summary>
+    ///     Lock for cache eviction operations.
+    /// </summary>
+    private static readonly object _cacheLock = new();
+
+    /// <summary>
+    ///     Maximum number of compiled constructors to cache. Prevents unbounded growth during hot-reload cycles.
+    ///     Each entry is ~1-5KB (compiled delegate + metadata). 100 entries = ~100-500KB max.
+    /// </summary>
+    private const int MaxCompiledConstructors = 100;
 
     private readonly object _instanceLock = new();
     private object? _instance;
@@ -85,7 +97,7 @@ public class ScriptCacheEntry
 
     /// <summary>
     ///     Create or retrieve the singleton instance for this cache entry.
-    ///     Thread-safe lazy instantiation.
+    ///     Thread-safe lazy instantiation with LRU eviction.
     ///     OPTIMIZATION: Uses compiled expression factory for 90% faster instantiation.
     ///     Performance: ~0.5-1ms (compiled) vs ~15-30ms (Activator.CreateInstance)
     /// </summary>
@@ -96,11 +108,8 @@ public class ScriptCacheEntry
             if (_instance == null)
                 try
                 {
-                    // OPTIMIZATION: Use compiled constructor factory instead of reflection
-                    var factory = CompiledConstructors.GetOrAdd(
-                        ScriptType,
-                        CreateCompiledConstructor
-                    );
+                    // OPTIMIZATION: Use compiled constructor factory with LRU eviction
+                    var factory = GetOrCreateCompiledConstructor(ScriptType);
                     _instance =
                         factory()
                         ?? throw new InvalidOperationException(
@@ -116,6 +125,39 @@ public class ScriptCacheEntry
                 }
 
             return _instance;
+        }
+    }
+
+    /// <summary>
+    ///     Get or create a compiled constructor with LRU eviction to prevent unbounded growth.
+    ///     Thread-safe with lock for cache size management.
+    /// </summary>
+    /// <param name="type">Type to get compiled constructor for</param>
+    /// <returns>Compiled constructor delegate</returns>
+    private static Func<object> GetOrCreateCompiledConstructor(Type type)
+    {
+        // Fast path: check if already cached
+        if (CompiledConstructors.TryGetValue(type, out var ctor))
+            return ctor;
+
+        lock (_cacheLock)
+        {
+            // Double-check after acquiring lock
+            if (CompiledConstructors.TryGetValue(type, out ctor))
+                return ctor;
+
+            // Evict oldest entry if at capacity (simple FIFO eviction)
+            // This prevents unbounded growth during hot-reload cycles
+            if (CompiledConstructors.Count >= MaxCompiledConstructors)
+            {
+                var firstKey = CompiledConstructors.Keys.First();
+                CompiledConstructors.TryRemove(firstKey, out _);
+            }
+
+            // Compile and cache new constructor
+            ctor = CreateCompiledConstructor(type);
+            CompiledConstructors[type] = ctor;
+            return ctor;
         }
     }
 

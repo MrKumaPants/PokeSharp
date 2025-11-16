@@ -70,7 +70,7 @@ public static partial class LogMessages
 
     [LoggerMessage(
         EventId = 2001,
-        Level = LogLevel.Information,
+        Level = LogLevel.Debug,
         Message = "Indexed {Count} static tiles into spatial hash"
     )]
     public static partial void LogSpatialHashIndexed(this ILogger logger, int count);
@@ -119,29 +119,7 @@ public static partial class LogMessages
     );
 
     // Asset Loading Messages
-    [LoggerMessage(
-        EventId = 4000,
-        Level = LogLevel.Debug,
-        Message = "Loaded texture '{TextureId}' in {TimeMs:F2}ms ({Width}x{Height}px)"
-    )]
-    public static partial void LogTextureLoaded(
-        this ILogger logger,
-        string textureId,
-        double timeMs,
-        int width,
-        int height
-    );
-
-    [LoggerMessage(
-        EventId = 4001,
-        Level = LogLevel.Warning,
-        Message = "Slow texture load: '{TextureId}' took {TimeMs:F2}ms"
-    )]
-    public static partial void LogSlowTextureLoad(
-        this ILogger logger,
-        string textureId,
-        double timeMs
-    );
+    // Note: LogTextureLoaded and LogSlowTextureLoad moved to LogTemplates.cs for rich formatting
 
     // Memory Messages
     [LoggerMessage(

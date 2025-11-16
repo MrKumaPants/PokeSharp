@@ -37,11 +37,12 @@ public class MapDefinition
     public string? MapType { get; set; }
 
     /// <summary>
-    /// Complete Tiled JSON data stored as string.
-    /// This is the full TmxDocument that MapLoader will parse.
+    /// Relative path to Tiled JSON file (e.g., "Data/Maps/littleroot_town.json").
+    /// MapLoader will read the file at runtime to parse TmxDocument.
     /// </summary>
     [Required]
-    public string TiledDataJson { get; set; } = "{}";
+    [MaxLength(500)]
+    public string TiledDataPath { get; set; } = string.Empty;
 
     /// <summary>
     /// Background music track ID.

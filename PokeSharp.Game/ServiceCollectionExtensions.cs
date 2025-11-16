@@ -1,7 +1,9 @@
 using Arch.Core;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Modding;
 using PokeSharp.Engine.Core.Templates;
@@ -20,6 +22,7 @@ using PokeSharp.Game.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
 using PokeSharp.Game.Templates;
+using Serilog;
 
 namespace PokeSharp.Game;
 
@@ -31,8 +34,18 @@ public static class ServiceCollectionExtensions
     /// <summary>
     ///     Adds all game services to the service collection.
     /// </summary>
-    public static IServiceCollection AddGameServices(this IServiceCollection services)
+    /// <param name="services">The service collection</param>
+    /// <param name="configuration">Optional configuration for Serilog (loaded from appsettings.json)</param>
+    /// <param name="environment">Environment name (Development, Production, etc.)</param>
+    public static IServiceCollection AddGameServices(
+        this IServiceCollection services,
+        IConfiguration? configuration = null,
+        string environment = "Production"
+    )
     {
+        // Configure Serilog logging
+        ConfigureLogging(services, configuration, environment);
+
         // EF Core In-Memory Database for game data definitions
         // Register as Singleton since we're using In-Memory database for read-only data
         services.AddDbContext<PokeSharp.Game.Data.GameDataContext>(
@@ -95,7 +108,7 @@ public static class ServiceCollectionExtensions
             >();
             var registry =
                 new PokeSharp.Engine.Core.Templates.Loading.ComponentDeserializerRegistry(logger);
-            ComponentDeserializerSetup.RegisterAllDeserializers(registry, sp.GetService<ILogger>());
+            ComponentDeserializerSetup.RegisterAllDeserializers(registry, sp.GetService<Microsoft.Extensions.Logging.ILogger>());
             return registry;
         });
 
@@ -118,7 +131,7 @@ public static class ServiceCollectionExtensions
                 .GetResult();
 
             logger?.LogInformation(
-                "WF  Template JSON loaded | count: {Count}, source: base",
+                "[steelblue1]WF[/] Template JSON loaded | count: [yellow]{Count}[/], source: [cyan]base[/]",
                 templateJsonCache.Count
             );
 
@@ -130,14 +143,14 @@ public static class ServiceCollectionExtensions
             var sortedMods = modLoader.SortByLoadOrder(mods);
 
             logger?.LogInformation(
-                "WF  Mod system initializing | discovered: {Count}",
+                "[steelblue1]WF[/] Mod system initializing | discovered: [yellow]{Count}[/]",
                 sortedMods.Count
             );
 
             foreach (var mod in sortedMods)
             {
                 logger?.LogInformation(
-                    "WF  Loading mod | id: {ModId}, version: {Version}",
+                    "[steelblue1]WF[/] Loading mod | id: [cyan]{ModId}[/], version: [cyan]{Version}[/]",
                     mod.Manifest.ModId,
                     mod.Manifest.Version
                 );
@@ -165,7 +178,7 @@ public static class ServiceCollectionExtensions
                             )
                             {
                                 var templateId = idNode?.ToString().Trim('"');
-                                logger?.LogInformation("    + {TemplateId}", templateId);
+                                logger?.LogInformation("    [green]+[/] [cyan]{TemplateId}[/]", templateId);
                             }
                         }
                     }
@@ -182,7 +195,7 @@ public static class ServiceCollectionExtensions
                         if (targetJson == null)
                         {
                             logger?.LogWarning(
-                                "    ! Patch target not found | target: {Target}",
+                                "    [orange3]![/] Patch target not found | target: [cyan]{Target}[/]",
                                 patch.Target
                             );
                             continue;
@@ -193,7 +206,7 @@ public static class ServiceCollectionExtensions
                         if (patchedJson == null)
                         {
                             logger?.LogWarning(
-                                "    ! Patch failed | target: {Target}",
+                                "    [orange3]![/] Patch failed | target: [cyan]{Target}[/]",
                                 patch.Target
                             );
                             continue;
@@ -202,14 +215,14 @@ public static class ServiceCollectionExtensions
                         // Update the JSON cache with patched version
                         templateJsonCache.Update(patch.Target, patchedJson);
                         logger?.LogInformation(
-                            "    * {Target} | {Desc}",
+                            "    [green]*[/] [cyan]{Target}[/] | {Desc}",
                             patch.Target,
                             patch.Description
                         );
                     }
                     catch (Exception ex)
                     {
-                        logger?.LogError(ex, "    ! Patch error | target: {Target}", patch.Target);
+                        logger?.LogError(ex, "    [red]![/] Patch error | target: [cyan]{Target}[/]", patch.Target);
                     }
                 }
             }
@@ -224,11 +237,11 @@ public static class ServiceCollectionExtensions
                 }
                 catch (Exception ex)
                 {
-                    logger?.LogError(ex, "Template deserialization failed | path: {Path}", path);
+                    logger?.LogError(ex, "[red]✗[/] Template deserialization failed | path: [cyan]{Path}[/]", path);
                 }
             }
 
-            logger?.LogInformation("▶   Template cache ready | count: {Count}", cache.Count);
+            logger?.LogInformation("[skyblue1]▶[/] Template cache ready | count: [yellow]{Count}[/]", cache.Count);
 
             return cache;
         });
@@ -316,5 +329,27 @@ public static class ServiceCollectionExtensions
         // AssetManager and MapLoader are now created via IGraphicsServiceFactory
 
         return services;
+    }
+
+    /// <summary>
+    ///     Configures Serilog logging for the application.
+    /// </summary>
+    private static void ConfigureLogging(
+        IServiceCollection services,
+        IConfiguration? configuration,
+        string environment
+    )
+    {
+        // Create Serilog logger
+        var serilogConfig = SerilogConfiguration.CreateConfiguration(configuration, environment);
+        var logger = serilogConfig.CreateLogger();
+        Log.Logger = logger;
+
+        // Add Serilog to DI
+        services.AddLogging(loggingBuilder =>
+        {
+            loggingBuilder.ClearProviders();
+            loggingBuilder.AddSerilog(logger, dispose: true);
+        });
     }
 }

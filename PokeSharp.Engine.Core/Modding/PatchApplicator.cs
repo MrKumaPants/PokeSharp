@@ -24,14 +24,14 @@ public sealed class PatchApplicator
     {
         if (document == null)
         {
-            _logger.LogWarning("Cannot apply patch to null document: {Target}", patch.Target);
+            _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Cannot apply patch to null document: [cyan]{Target}[/]", patch.Target);
             return null;
         }
 
         var current = document.Deserialize<JsonNode>();
         if (current == null)
         {
-            _logger.LogWarning("Failed to deserialize document: {Target}", patch.Target);
+            _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Failed to deserialize document: [cyan]{Target}[/]", patch.Target);
             return document;
         }
 
@@ -44,7 +44,7 @@ public sealed class PatchApplicator
                 if (current == null)
                 {
                     _logger.LogWarning(
-                        "Operation {Op} {Path} resulted in null document",
+                        "[steelblue1]WF[/] [orange3]⚠[/] Operation [cyan]{Op}[/] [cyan]{Path}[/] resulted in null document",
                         operation.Op,
                         operation.Path
                     );
@@ -55,7 +55,7 @@ public sealed class PatchApplicator
             {
                 _logger.LogError(
                     ex,
-                    "Failed to apply patch operation {Op} {Path} to {Target}",
+                    "[steelblue1]WF[/] [red]✗[/] Failed to apply patch operation [cyan]{Op}[/] [cyan]{Path}[/] to [cyan]{Target}[/]",
                     operation.Op,
                     operation.Path,
                     patch.Target

@@ -75,7 +75,7 @@ public interface ISpatialQuery
     /// }
     /// </code>
     /// </example>
-    IEnumerable<Entity> GetEntitiesAt(int mapId, int x, int y);
+    IReadOnlyList<Entity> GetEntitiesAt(int mapId, int x, int y);
 
     /// <summary>
     ///     Gets all entities within the specified rectangular bounds.
@@ -90,5 +90,5 @@ public interface ISpatialQuery
     /// // Process all entities in 10x10 tile area...
     /// </code>
     /// </example>
-    IEnumerable<Entity> GetEntitiesInBounds(int mapId, Rectangle bounds);
+    IReadOnlyList<Entity> GetEntitiesInBounds(int mapId, Rectangle bounds);
 }

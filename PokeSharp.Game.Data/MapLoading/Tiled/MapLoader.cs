@@ -92,13 +92,26 @@ public class MapLoader(
             throw new FileNotFoundException($"Map definition not found: {mapId}");
         }
 
-        _logger?.LogInformation(
-            "Loading map from definition: {MapId} ({DisplayName})",
-            mapDef.MapId,
-            mapDef.DisplayName
+        _logger?.LogWorkflowStatus(
+            "Loading map from definition",
+            ("mapId", mapDef.MapId),
+            ("displayName", mapDef.DisplayName)
         );
 
-        // Parse Tiled JSON from definition
+        // Read Tiled JSON from file using stored path
+        var assetRoot = ResolveAssetRoot();
+        var fullPath = Path.Combine(assetRoot, mapDef.TiledDataPath);
+
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException(
+                $"Map file not found: {fullPath} (relative: {mapDef.TiledDataPath})"
+            );
+        }
+
+        var tiledJson = File.ReadAllText(fullPath);
+
+        // Parse Tiled JSON
         var jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -106,16 +119,14 @@ public class MapLoader(
             AllowTrailingCommas = true,
         };
 
-        var mapDirectoryBase = ResolveMapDirectoryBase();
-
-        var syntheticMapPath = Path.Combine(mapDirectoryBase, $"{mapDef.MapId}.json");
-        var tmxDoc = TiledMapLoader.LoadFromJson(mapDef.TiledDataJson, syntheticMapPath);
+        var tmxDoc = TiledMapLoader.LoadFromJson(tiledJson, fullPath);
 
         // Load external tileset files (Tiled JSON format supports external tilesets)
+        var mapDirectoryBase = Path.GetDirectoryName(fullPath) ?? ResolveMapDirectoryBase();
         LoadExternalTilesets(tmxDoc, mapDirectoryBase);
 
         // Parse mixed layer types from JSON (Tiled stores all layers in one array)
-        ParseMixedLayers(tmxDoc, mapDef.TiledDataJson, jsonOptions);
+        ParseMixedLayers(tmxDoc, tiledJson, jsonOptions);
 
         // Use scoped logging
         using (_logger?.BeginScope($"Loading:{mapDef.MapId}"))
@@ -209,10 +220,10 @@ public class MapLoader(
         );
 
         // PHASE 2: Log sprite collection summary
-        _logger?.LogInformation(
-            "Collected {Count} unique sprite IDs for map {MapId}",
-            _requiredSpriteIds.Count,
-            mapDef.MapId
+        _logger?.LogAssetStatus(
+            "Sprite collection complete",
+            ("count", _requiredSpriteIds.Count),
+            ("mapId", mapDef.MapId)
         );
 
         if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
@@ -297,10 +308,10 @@ public class MapLoader(
         );
 
         // PHASE 2: Log sprite collection summary
-        _logger?.LogInformation(
-            "Collected {Count} unique sprite IDs for map {MapId}",
-            _requiredSpriteIds.Count,
-            mapName
+        _logger?.LogAssetStatus(
+            "Sprite collection complete",
+            ("count", _requiredSpriteIds.Count),
+            ("mapName", mapName)
         );
 
         if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
@@ -788,11 +799,9 @@ public class MapLoader(
             var tilesetIndex = FindTilesetIndexForGid(tileGid, tilesets);
             if (tilesetIndex < 0)
             {
-                _logger?.LogWarning(
-                    "[Loading:{MapId}] No tileset found for gid {TileGid} (layer '{LayerName}')",
-                    mapId,
-                    tileGid,
-                    layer.Name ?? "unnamed"
+                _logger?.LogResourceNotFound(
+                    "Tileset",
+                    $"gid {tileGid} for layer '{layer.Name ?? "unnamed"}' in map {mapId}"
                 );
                 continue;
             }
@@ -1839,18 +1848,18 @@ public class MapLoader(
                     if (!string.IsNullOrEmpty(npcDef.BehaviorScript))
                     {
                         builder.OverrideComponent(new Behavior(npcDef.BehaviorScript));
-                        _logger?.LogInformation(
-                            "Added Behavior component: typeId={TypeId} for NPC={NpcId}",
-                            npcDef.BehaviorScript,
-                            npcId
+                        _logger?.LogWorkflowStatus(
+                            "Added Behavior component",
+                            ("typeId", npcDef.BehaviorScript),
+                            ("npcId", npcId)
                         );
                     }
 
-                    _logger?.LogInformation(
-                        "Applied NPC definition '{NpcId}' ({DisplayName}) with behavior={Behavior}",
-                        npcId,
-                        npcDef.DisplayName,
-                        npcDef.BehaviorScript ?? "none"
+                    _logger?.LogWorkflowStatus(
+                        "Applied NPC definition",
+                        ("npcId", npcId),
+                        ("displayName", npcDef.DisplayName),
+                        ("behavior", npcDef.BehaviorScript ?? "none")
                     );
                 }
                 else
@@ -2138,9 +2147,9 @@ public class MapLoader(
             var imagePath = imageLayer.Image.Source;
             if (string.IsNullOrEmpty(imagePath))
             {
-                _logger?.LogWarning(
-                    "Image layer '{LayerName}' has no image source - skipping",
-                    imageLayer.Name
+                _logger?.LogOperationSkipped(
+                    $"Image layer '{imageLayer.Name}'",
+                    "no image source"
                 );
                 continue;
             }

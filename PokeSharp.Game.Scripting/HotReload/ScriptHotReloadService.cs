@@ -36,12 +36,15 @@ public class ScriptHotReloadService : IDisposable
 
     // Debouncing infrastructure
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _debouncers = new();
+    private readonly ConcurrentDictionary<string, DateTime> _lastDebounceTime = new();
+    private readonly System.Threading.Timer _cleanupTimer;
     private readonly ILogger<ScriptHotReloadService> _logger;
     private readonly IHotReloadNotificationService _notificationService;
     private readonly object _reloadLock = new();
     private readonly HotReloadStatistics _statistics = new();
     private readonly WatcherFactory _watcherFactory;
     private int _debouncedEventsCount;
+    private bool _disposed = false;
 
     private IScriptWatcher? _watcher;
 
@@ -89,6 +92,14 @@ public class ScriptHotReloadService : IDisposable
             "ScriptHotReloadService initialized with debounce delay: {Delay}ms",
             _debounceDelayMs
         );
+
+        // Start cleanup timer to remove orphaned debouncers every 30 seconds
+        _cleanupTimer = new System.Threading.Timer(
+            CleanupOrphanedDebouncers,
+            null,
+            30000, // 30 seconds in milliseconds
+            30000  // 30 seconds in milliseconds
+        );
     }
 
     public bool IsRunning { get; private set; }
@@ -97,15 +108,33 @@ public class ScriptHotReloadService : IDisposable
 
     public void Dispose()
     {
-        foreach (var kvp in _debouncers)
+        if (_disposed) return;
+        _disposed = true;
+
+        // Synchronously stop watching
+        if (_watcher != null)
         {
-            kvp.Value.Cancel();
-            kvp.Value.Dispose();
+            _watcher.Changed -= OnScriptChanged;
+            _watcher.Error -= OnWatcherError;
+            _watcher.Dispose();
+            _watcher = null;
         }
 
-        _debouncers.Clear();
+        // Dispose cleanup timer
+        _cleanupTimer?.Dispose();
 
-        StopAsync().GetAwaiter().GetResult();
+        // Cancel any pending operations
+        foreach (var kvp in _debouncers)
+        {
+            kvp.Value?.Cancel();
+            kvp.Value?.Dispose();
+        }
+        _debouncers.Clear();
+        _lastDebounceTime.Clear();
+
+        IsRunning = false;
+
+        _logger?.LogInformation("Script hot reload service disposed");
     }
 
     // Compilation events for UI notification
@@ -227,6 +256,7 @@ public class ScriptHotReloadService : IDisposable
         // Create new debouncer for this file
         var cts = new CancellationTokenSource();
         _debouncers[e.FilePath] = cts;
+        _lastDebounceTime[e.FilePath] = DateTime.UtcNow;
 
         try
         {
@@ -564,6 +594,49 @@ public class ScriptHotReloadService : IDisposable
             _logger.LogError("⚡ Emergency rollback FAILED for {TypeId}", typeId);
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    ///     Cleanup orphaned debouncers that have been idle for more than 60 seconds.
+    ///     This prevents memory leaks from CancellationTokenSource instances that may not
+    ///     have been properly removed due to exceptions or edge cases.
+    /// </summary>
+    private void CleanupOrphanedDebouncers(object? state)
+    {
+        if (_disposed)
+            return;
+
+        var now = DateTime.UtcNow;
+        var orphanedKeys = new List<string>();
+
+        // Find debouncers that have been idle for more than 60 seconds
+        foreach (var kvp in _debouncers)
+        {
+            if (!_lastDebounceTime.TryGetValue(kvp.Key, out var lastTime) ||
+                (now - lastTime).TotalSeconds > 60)
+            {
+                orphanedKeys.Add(kvp.Key);
+            }
+        }
+
+        // Remove orphaned debouncers
+        foreach (var key in orphanedKeys)
+        {
+            if (_debouncers.TryRemove(key, out var cts))
+            {
+                cts?.Cancel();
+                cts?.Dispose();
+                _lastDebounceTime.TryRemove(key, out _);
+            }
+        }
+
+        if (orphanedKeys.Count > 0)
+        {
+            _logger.LogDebug(
+                "Cleaned up {Count} orphaned debouncers",
+                orphanedKeys.Count
+            );
+        }
     }
 
     private void OnWatcherError(object? sender, ScriptWatcherErrorEventArgs e)

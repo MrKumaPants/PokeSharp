@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Engine.Common.Logging;
 
 namespace PokeSharp.Game.Services;
 
@@ -45,14 +46,11 @@ public class SpriteLoader
         {
             if (!Directory.Exists(spritesBasePath))
             {
-                _logger.LogWarning(
-                    "Sprites directory not found at {Path}. Run the sprite extractor tool.",
-                    spritesBasePath
-                );
+                _logger.LogDirectoryNotFound("Sprites", spritesBasePath);
                 continue;
             }
 
-            _logger.LogInformation("Scanning for sprite manifests in {Path}", spritesBasePath);
+            _logger.LogSpriteScanningStarted(spritesBasePath);
 
             // Find all manifest.json files in subdirectories
             var manifestFiles = Directory.GetFiles(
@@ -81,25 +79,18 @@ public class SpriteLoader
                         {
                             var lookupKey = $"{manifest.Category}/{manifest.Name}";
                             _spritePathLookup[lookupKey] = manifestDir;
-                            _logger.LogDebug(
-                                "Registered sprite: {Key} -> {Path}",
-                                lookupKey,
-                                manifestDir
-                            );
+                            _logger.LogSpriteRegistered(lookupKey, manifestDir);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to load manifest from {Path}", manifestFile);
+                    _logger.LogSpriteManifestLoadFailed(manifestFile, ex);
                 }
             }
         }
 
-        _logger.LogInformation(
-            "Loaded {Count} total sprites from all categories",
-            _allSprites.Count
-        );
+        _logger.LogSpritesLoaded(_allSprites.Count);
 
         return _allSprites;
     }
@@ -124,7 +115,7 @@ public class SpriteLoader
             return manifest;
         }
 
-        _logger.LogWarning("Sprite {SpriteName} not found in manifest", spriteName);
+        _logger.LogSpriteNotFound(spriteName);
         return null;
     }
 
@@ -166,7 +157,7 @@ public class SpriteLoader
             return path;
         }
 
-        _logger.LogWarning("Sprite path not found for {LookupKey}", lookupKey);
+        _logger.LogSpritePathNotFound(lookupKey);
         return null;
     }
 
@@ -210,7 +201,7 @@ public class SpriteLoader
         _spritePathLookup?.Clear();
         _spritePathLookup = null;
 
-        _logger.LogDebug("Sprite manifest cache cleared");
+        _logger.LogSpriteCacheCleared();
     }
 
     /// <summary>
@@ -223,7 +214,7 @@ public class SpriteLoader
 
         if (_spriteCache?.Remove(key) == true)
         {
-            _logger.LogDebug("Cleared sprite manifest from cache: {SpriteKey}", key);
+            _logger.LogSpriteClearedFromCache(key);
         }
 
         // Note: We don't remove from _allSprites or _spritePathLookup as those are

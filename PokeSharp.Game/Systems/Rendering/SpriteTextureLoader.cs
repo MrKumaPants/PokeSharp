@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
+using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Game.Services;
 
@@ -47,10 +48,10 @@ public class SpriteTextureLoader
     /// <returns>Number of sprite sheets loaded.</returns>
     public async Task<int> LoadAllSpriteTexturesAsync()
     {
-        _logger?.LogInformation("Loading sprite sheet textures...");
+        _logger?.LogAssetLoadingStarted("sprite sheet textures", 0);
 
         var manifests = await _spriteLoader.LoadAllSpritesAsync();
-        _logger?.LogInformation("Found {Count} sprite manifests to load", manifests.Count);
+        _logger?.LogSpriteManifestsFound(manifests.Count);
 
         var loadedCount = 0;
         var failedCount = 0;
@@ -62,54 +63,26 @@ public class SpriteTextureLoader
                 var textureKey = GetTextureKey(manifest.Category, manifest.Name);
                 var spritesheetPath = _spriteLoader.GetSpriteSheetPath(manifest);
 
-                _logger?.LogInformation(
-                    "Loading sprite {Index}/{Total}: {Category}/{Name}",
-                    loadedCount + 1,
-                    manifests.Count,
-                    manifest.Category,
-                    manifest.Name
-                );
+                _logger?.LogSpriteLoadingProgress(loadedCount + 1, manifests.Count, manifest.Category, manifest.Name);
 
                 if (string.IsNullOrEmpty(spritesheetPath) || !File.Exists(spritesheetPath))
                 {
-                    _logger?.LogWarning(
-                        "Sprite sheet not found for {Category}/{Name}",
-                        manifest.Category,
-                        manifest.Name
-                    );
+                    _logger?.LogSpriteSheetNotFound(manifest.Category, manifest.Name);
                     failedCount++;
                     continue;
                 }
 
-                _logger?.LogDebug("Opening file stream: {Path}", spritesheetPath);
-
                 // Load texture using MonoGame's Texture2D.FromStream
                 using var fileStream = File.OpenRead(spritesheetPath);
-
-                _logger?.LogDebug("Decoding texture from stream...");
                 var texture = Texture2D.FromStream(_graphicsDevice, fileStream);
 
-                _logger?.LogInformation(
-                    "Loaded texture: {Category}/{Name} Format={Format}, Size={Width}x{Height}",
-                    manifest.Category,
-                    manifest.Name,
-                    texture.Format,
-                    texture.Width,
-                    texture.Height
-                );
+                _logger?.LogSpriteTextureWithDimensions(manifest.Category, manifest.Name, texture.Format, texture.Width, texture.Height);
 
                 // Note: Transparency should be baked into the PNG by the extractor
                 // Runtime mask color application doesn't persist correctly
 
-                _logger?.LogDebug("Registering texture: {Key}", textureKey);
                 // Register with AssetManager (using a direct registration method)
                 RegisterTexture(textureKey, texture);
-
-                _logger?.LogDebug(
-                    "Successfully loaded: {Category}/{Name}",
-                    manifest.Category,
-                    manifest.Name
-                );
                 loadedCount++;
             }
             catch (Exception ex)
@@ -124,11 +97,7 @@ public class SpriteTextureLoader
             }
         }
 
-        _logger?.LogInformation(
-            "Sprite sheet loading complete: {Loaded} loaded, {Failed} failed",
-            loadedCount,
-            failedCount
-        );
+        _logger?.LogSpriteLoadingComplete(loadedCount, failedCount);
 
         return loadedCount;
     }
@@ -149,11 +118,7 @@ public class SpriteTextureLoader
 
         if (string.IsNullOrEmpty(spritesheetPath) || !File.Exists(spritesheetPath))
         {
-            _logger?.LogWarning(
-                "Sprite sheet not found for {Category}/{SpriteName}",
-                category,
-                spriteName
-            );
+            _logger?.LogSpriteSheetNotFound(category, spriteName);
             return;
         }
 
@@ -161,11 +126,7 @@ public class SpriteTextureLoader
         using var fileStream = File.OpenRead(spritesheetPath);
         var texture = Texture2D.FromStream(_graphicsDevice, fileStream);
 
-        _logger?.LogInformation(
-            "Lazy-loaded texture: {TextureKey}, Format={Format}",
-            textureKey,
-            texture.Format
-        );
+        _logger?.LogSpriteTextureLazyLoaded(textureKey, texture.Format);
 
         // Note: Transparency should be baked into the PNG by the extractor
         // Runtime mask color application doesn't persist correctly
@@ -173,7 +134,7 @@ public class SpriteTextureLoader
         // Register with AssetManager
         RegisterTexture(textureKey, texture);
 
-        _logger?.LogDebug("Loaded sprite sheet on-demand: {TextureKey}", textureKey);
+        _logger?.LogSpriteLoadedOnDemand(textureKey);
     }
 
     /// <summary>
@@ -208,7 +169,7 @@ public class SpriteTextureLoader
         // Track which sprites belong to this map
         _mapSpriteIds[mapId] = spriteIdSet;
 
-        _logger?.LogDebug("Loading sprites for map {MapId}: {Count} sprites required", mapId, spriteIdSet.Count);
+        _logger?.LogSpritesRequiredForMap(mapId, spriteIdSet.Count);
 
         foreach (var spriteId in spriteIdSet)
         {
@@ -216,7 +177,7 @@ public class SpriteTextureLoader
             var parts = spriteId.Split('/');
             if (parts.Length != 2)
             {
-                _logger?.LogWarning("Invalid sprite ID format: {SpriteId}", spriteId);
+                _logger?.LogInvalidSpriteIdFormat(spriteId);
                 continue;
             }
 
@@ -245,9 +206,7 @@ public class SpriteTextureLoader
             }
         }
 
-        _logger?.LogInformation(
-            "Loaded {LoadedCount} new sprites for map {MapId}, {SkippedCount} already loaded",
-            loadedCount, mapId, skippedCount);
+        _logger?.LogSpritesLoadedForMap(loadedCount, mapId, skippedCount);
 
         return spriteIdSet.Select(id => $"sprites/{id}").ToHashSet();
     }
@@ -269,7 +228,7 @@ public class SpriteTextureLoader
 
         if (string.IsNullOrEmpty(spritesheetPath) || !File.Exists(spritesheetPath))
         {
-            _logger?.LogWarning("Sprite texture file not found for {Category}/{SpriteName}", category, spriteName);
+            _logger?.LogSpriteTextureFileNotFound(category, spriteName);
             return;
         }
 
@@ -277,7 +236,7 @@ public class SpriteTextureLoader
         var texture = Texture2D.FromStream(_graphicsDevice, fileStream);
 
         RegisterTexture(textureKey, texture);
-        _logger?.LogDebug("Loaded sprite texture: {TextureKey}", textureKey);
+        _logger?.LogSpriteTextureLoadedDebug(textureKey);
     }
 
     /// <summary>
@@ -328,7 +287,7 @@ public class SpriteTextureLoader
     {
         if (!_mapSpriteIds.TryGetValue(mapId, out var spriteIds))
         {
-            _logger?.LogDebug("No sprites tracked for map {MapId}", mapId);
+            _logger?.LogNoSpritesForMap(mapId);
             return 0;
         }
 
@@ -362,7 +321,7 @@ public class SpriteTextureLoader
         // Remove map tracking
         _mapSpriteIds.Remove(mapId);
 
-        _logger?.LogInformation("Unloaded {Count} sprites for map {MapId}", unloadedCount, mapId);
+        _logger?.LogSpritesUnloadedForMap(unloadedCount, mapId);
         return unloadedCount;
     }
 

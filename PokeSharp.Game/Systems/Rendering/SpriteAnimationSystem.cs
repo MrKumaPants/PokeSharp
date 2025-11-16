@@ -25,6 +25,9 @@ public class SpriteAnimationSystem : SystemBase, IUpdateSystem
     // Cache manifests for performance (avoid repeated async loads)
     private readonly Dictionary<string, SpriteManifest> _manifestCache = new();
 
+    // Cache animation lookups by manifest to avoid repeated LINQ queries
+    private readonly Dictionary<string, Dictionary<string, SpriteAnimationInfo>> _animationCache = new();
+
     public SpriteAnimationSystem(
         SpriteLoader spriteLoader,
         ILogger<SpriteAnimationSystem>? logger = null
@@ -81,10 +84,7 @@ public class SpriteAnimationSystem : SystemBase, IUpdateSystem
 
                 if (manifest == null)
                 {
-                    _logger?.LogWarning(
-                        "Sprite manifest not found for {SpriteName}",
-                        sprite.SpriteName
-                    );
+                    _logger?.LogSpriteManifestNotFound(sprite.SpriteName);
                     return;
                 }
 
@@ -92,28 +92,18 @@ public class SpriteAnimationSystem : SystemBase, IUpdateSystem
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(
-                    ex,
-                    "Failed to load sprite manifest for {Category}/{SpriteName}",
-                    sprite.Category,
-                    sprite.SpriteName
-                );
+                _logger?.LogSpriteManifestLoadFailedForAnimation(ex, sprite.Category, sprite.SpriteName);
                 return;
             }
         }
 
         // Find the current animation in the manifest
         var currentAnimName = animation.CurrentAnimation;
-        var animData = manifest.Animations.FirstOrDefault(a => a.Name == currentAnimName);
+        var animData = GetCachedAnimation(manifest, currentAnimName, manifestKey);
 
         if (animData == null)
         {
-            _logger?.LogWarning(
-                "Animation '{AnimationName}' not found in sprite {Category}/{SpriteName}",
-                animation.CurrentAnimation,
-                sprite.Category,
-                sprite.SpriteName
-            );
+            _logger?.LogAnimationNotFoundInSprite(animation.CurrentAnimation, sprite.Category, sprite.SpriteName);
             return;
         }
 
@@ -169,5 +159,26 @@ public class SpriteAnimationSystem : SystemBase, IUpdateSystem
             // This makes the sprite's bottom-left align with the tile's bottom-left
             sprite.Origin = new Vector2(0, frame.Height);
         }
+    }
+
+    /// <summary>
+    ///     Gets an animation from the cache, building the cache if necessary.
+    ///     Avoids repeated LINQ queries for animation lookup.
+    /// </summary>
+    private SpriteAnimationInfo? GetCachedAnimation(SpriteManifest manifest, string animName, string manifestKey)
+    {
+        if (!_animationCache.TryGetValue(manifestKey, out var animDict))
+        {
+            // Build lookup dictionary once per manifest
+            animDict = new Dictionary<string, SpriteAnimationInfo>();
+            foreach (var anim in manifest.Animations)
+            {
+                animDict[anim.Name] = anim;
+            }
+            _animationCache[manifestKey] = animDict;
+        }
+
+        animDict.TryGetValue(animName, out var result);
+        return result;
     }
 }

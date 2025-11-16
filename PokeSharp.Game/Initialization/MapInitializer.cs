@@ -62,21 +62,22 @@ public class MapInitializer(
                 try
                 {
                     spriteTextureKeys = await _spriteTextureLoader.LoadSpritesForMapAsync(mapInfo.MapId, requiredSpriteIds);
-                    logger.LogInformation(
-                        "Map {MapId} loaded with {SpriteCount} sprites",
-                        mapId, spriteTextureKeys.Count);
+                    logger.LogAssetStatus(
+                        "Map sprites loaded",
+                        ("mapId", mapId),
+                        ("spriteCount", spriteTextureKeys.Count));
                 }
                 catch (Exception ex)
                 {
                     logger.LogWarning(ex,
-                        "Failed to load sprites for map {MapId}, using fallback textures",
+                        "[steelblue1]WF[/] [orange3]⚠[/] Failed to load sprites for map [cyan]{MapId}[/], using fallback textures",
                         mapId);
                     spriteTextureKeys = new HashSet<string>();
                 }
             }
             else
             {
-                logger.LogWarning("SpriteTextureLoader not set - skipping sprite loading for map {MapId}", mapId);
+                logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] SpriteTextureLoader not set - skipping sprite loading for map [cyan]{MapId}[/]", mapId);
                 spriteTextureKeys = new HashSet<string>();
             }
 
@@ -154,9 +155,10 @@ public class MapInitializer(
                 try
                 {
                     spriteTextureKeys = await _spriteTextureLoader.LoadSpritesForMapAsync(mapInfo.MapId, requiredSpriteIds);
-                    logger.LogInformation(
-                        "Map {MapPath} loaded with {SpriteCount} sprites",
-                        mapPath, spriteTextureKeys.Count);
+                    logger.LogAssetStatus(
+                        "Map sprites loaded",
+                        ("mapPath", mapPath),
+                        ("spriteCount", spriteTextureKeys.Count));
                 }
                 catch (Exception ex)
                 {

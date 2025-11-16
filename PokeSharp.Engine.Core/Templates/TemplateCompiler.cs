@@ -47,7 +47,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
         if (!template.Validate(out var errors))
         {
             _logger.LogError(
-                "Template compilation validation failed: {Errors}",
+                "[steelblue1]WF[/] [red]✗[/] Template compilation validation failed: {Errors}",
                 string.Join(", ", errors)
             );
             throw new InvalidOperationException(
@@ -94,7 +94,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
             {
                 _logger.LogError(
                     ex,
-                    "Failed to compile entity of type {EntityType}",
+                    "[steelblue1]WF[/] [red]✗[/] Failed to compile entity of type {EntityType}",
                     typeof(TEntity).Name
                 );
                 throw;
@@ -102,7 +102,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
         }
 
         _logger.LogInformation(
-            "Successfully compiled {Count} templates from {EntityType}",
+            "[steelblue1]WF[/] [green]✓[/] Successfully compiled [yellow]{Count}[/] templates from {EntityType}",
             templates.Count,
             typeof(TEntity).Name
         );

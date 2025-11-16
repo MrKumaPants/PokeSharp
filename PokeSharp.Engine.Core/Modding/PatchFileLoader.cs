@@ -25,7 +25,7 @@ public sealed class PatchFileLoader
         {
             if (!File.Exists(filePath))
             {
-                _logger.LogWarning("Patch file not found: {Path}", filePath);
+                _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Patch file not found: [cyan]{Path}[/]", filePath);
                 return null;
             }
 
@@ -37,7 +37,7 @@ public sealed class PatchFileLoader
 
             if (patch == null)
             {
-                _logger.LogWarning("Failed to deserialize patch file: {Path}", filePath);
+                _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Failed to deserialize patch file: [cyan]{Path}[/]", filePath);
                 return null;
             }
 
@@ -48,7 +48,7 @@ public sealed class PatchFileLoader
             }
 
             _logger.LogDebug(
-                "Loaded patch file: {Path} -> {Target} ({Count} operations)",
+                "[steelblue1]WF[/] Loaded patch file: [cyan]{Path}[/] -> {Target} ([yellow]{Count}[/] operations)",
                 Path.GetFileName(filePath),
                 patch.Target,
                 patch.Operations.Count
@@ -58,7 +58,7 @@ public sealed class PatchFileLoader
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error loading patch file: {Path}", filePath);
+            _logger.LogError(ex, "[steelblue1]WF[/] [red]✗[/] Error loading patch file: [cyan]{Path}[/]", filePath);
             return null;
         }
     }

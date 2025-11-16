@@ -32,7 +32,7 @@ public static class LoggerExtensions
             ["ExceptionSource"] = ex.Source ?? "Unknown",
         };
 
-        var contextString = string.Join(", ", contextData.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        var contextString = string.Join(", ", contextData.Select(kvp => $"[cyan]{kvp.Key}[/]=[yellow]{kvp.Value}[/]"));
         var fullMessage = $"{message} | Context: {contextString}";
 
         logger.LogError(ex, fullMessage, args);
@@ -55,7 +55,7 @@ public static class LoggerExtensions
             var gen2 = GC.CollectionCount(2);
 
             logger.LogInformation(
-                "Memory: {MemoryMb:F2}MB | GC Collections - Gen0: {Gen0}, Gen1: {Gen1}, Gen2: {Gen2}",
+                "[lightsteelblue1]MEM[/] Memory: [yellow]{MemoryMb:F2}MB[/] | GC Collections - Gen0: [yellow]{Gen0}[/], Gen1: [yellow]{Gen1}[/], Gen2: [yellow]{Gen2}[/]",
                 totalMemoryMb,
                 gen0,
                 gen1,
@@ -64,7 +64,7 @@ public static class LoggerExtensions
         }
         else
         {
-            logger.LogInformation("Memory: {MemoryMb:F2}MB", totalMemoryMb);
+            logger.LogInformation("[lightsteelblue1]MEM[/] Memory: [yellow]{MemoryMb:F2}MB[/]", totalMemoryMb);
         }
     }
 
@@ -85,7 +85,7 @@ public static class LoggerExtensions
         var freedMemory = beforeMemory - afterMemory;
 
         logger.LogInformation(
-            "Memory after GC: {AfterMb:F2}MB (freed {FreedMb:F2}MB from {BeforeMb:F2}MB)",
+            "[lightsteelblue1]MEM[/] Memory after GC: [yellow]{AfterMb:F2}MB[/] (freed [green]{FreedMb:F2}MB[/] from [yellow]{BeforeMb:F2}MB[/])",
             afterMemory,
             freedMemory,
             beforeMemory
@@ -118,14 +118,14 @@ public static class LoggerExtensions
 
             if (elapsedMs > warnThresholdMs)
                 logger.LogWarning(
-                    "{OperationName} took {TimeMs:F2}ms (threshold: {ThresholdMs:F2}ms)",
+                    "[plum1]P[/] [orange3]⚠[/] [cyan]{OperationName}[/] took [yellow]{TimeMs:F2}ms[/] (threshold: [yellow]{ThresholdMs:F2}ms[/])",
                     operationName,
                     elapsedMs,
                     warnThresholdMs
                 );
             else
                 logger.LogDebug(
-                    "{OperationName} completed in {TimeMs:F2}ms",
+                    "[plum1]P[/] [green]✓[/] [cyan]{OperationName}[/] completed in [yellow]{TimeMs:F2}ms[/]",
                     operationName,
                     elapsedMs
                 );
@@ -160,14 +160,14 @@ public static class LoggerExtensions
 
             if (elapsedMs > warnThresholdMs)
                 logger.LogWarning(
-                    "{OperationName} took {TimeMs:F2}ms (threshold: {ThresholdMs:F2}ms)",
+                    "[plum1]P[/] [orange3]⚠[/] [cyan]{OperationName}[/] took [yellow]{TimeMs:F2}ms[/] (threshold: [yellow]{ThresholdMs:F2}ms[/])",
                     operationName,
                     elapsedMs,
                     warnThresholdMs
                 );
             else
                 logger.LogDebug(
-                    "{OperationName} completed in {TimeMs:F2}ms",
+                    "[plum1]P[/] [green]✓[/] [cyan]{OperationName}[/] completed in [yellow]{TimeMs:F2}ms[/]",
                     operationName,
                     elapsedMs
                 );

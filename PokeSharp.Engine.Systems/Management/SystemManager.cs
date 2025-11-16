@@ -28,6 +28,12 @@ public class SystemManager
 
     private readonly List<IUpdateSystem> _updateSystems = new();
     private readonly List<IRenderSystem> _renderSystems = new();
+
+    // Cached enabled systems to avoid LINQ allocations on every frame (120x/sec)
+    private readonly List<IUpdateSystem> _cachedEnabledUpdateSystems = new();
+    private readonly List<IRenderSystem> _cachedEnabledRenderSystems = new();
+    private bool _enabledCacheDirty = true;
+
     private bool _initialized;
 
     /// <summary>
@@ -120,10 +126,12 @@ public class SystemManager
         {
             _updateSystems.Add(system);
             _updateSystems.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+            _enabledCacheDirty = true; // Mark cache as dirty when system list changes
 
-            _logger?.LogWorkflowStatus(
-                $"Registered update: {system.GetType().Name}",
-                ("priority", system.Priority)
+            _logger?.LogDebug(
+                "Registered update system: {SystemName} (Priority: {Priority})",
+                system.GetType().Name,
+                system.Priority
             );
         }
     }
@@ -141,10 +149,12 @@ public class SystemManager
         {
             _renderSystems.Add(system);
             _renderSystems.Sort((a, b) => a.RenderOrder.CompareTo(b.RenderOrder));
+            _enabledCacheDirty = true; // Mark cache as dirty when system list changes
 
-            _logger?.LogWorkflowStatus(
-                $"Registered render: {system.GetType().Name}",
-                ("order", system.RenderOrder)
+            _logger?.LogDebug(
+                "Registered render system: {SystemName} (Order: {RenderOrder})",
+                system.GetType().Name,
+                system.RenderOrder
             );
         }
     }
@@ -216,6 +226,45 @@ public class SystemManager
     }
 
     /// <summary>
+    ///     Rebuilds the cached enabled systems lists if marked dirty.
+    ///     This avoids LINQ allocations on every frame (120x/sec) by caching enabled systems
+    ///     and only rebuilding when systems are added/removed or enabled state changes.
+    /// </summary>
+    private void RebuildEnabledCache()
+    {
+        if (!_enabledCacheDirty)
+            return;
+
+        _cachedEnabledUpdateSystems.Clear();
+        foreach (var system in _updateSystems)
+        {
+            if (system.Enabled)
+                _cachedEnabledUpdateSystems.Add(system);
+        }
+
+        _cachedEnabledRenderSystems.Clear();
+        foreach (var system in _renderSystems)
+        {
+            if (system.Enabled)
+                _cachedEnabledRenderSystems.Add(system);
+        }
+
+        _enabledCacheDirty = false;
+    }
+
+    /// <summary>
+    ///     Invalidates the enabled systems cache.
+    ///     Call this when a system's Enabled property changes to ensure the cache is rebuilt.
+    /// </summary>
+    public void InvalidateEnabledCache()
+    {
+        lock (_lock)
+        {
+            _enabledCacheDirty = true;
+        }
+    }
+
+    /// <summary>
     ///     Updates all registered update systems in priority order.
     ///     This should be called from the Update() method of the game loop.
     /// </summary>
@@ -225,16 +274,14 @@ public class SystemManager
     {
         ArgumentNullException.ThrowIfNull(world);
 
-        IUpdateSystem[] systemsToUpdate;
-
         lock (_lock)
         {
-            systemsToUpdate = _updateSystems.Where(s => s.Enabled).ToArray();
+            RebuildEnabledCache();
         }
 
         _performanceTracker.IncrementFrame();
 
-        foreach (var system in systemsToUpdate)
+        foreach (var system in _cachedEnabledUpdateSystems)
         {
             try
             {
@@ -268,14 +315,12 @@ public class SystemManager
     {
         ArgumentNullException.ThrowIfNull(world);
 
-        IRenderSystem[] systemsToRender;
-
         lock (_lock)
         {
-            systemsToRender = _renderSystems.Where(s => s.Enabled).ToArray();
+            RebuildEnabledCache();
         }
 
-        foreach (var system in systemsToRender)
+        foreach (var system in _cachedEnabledRenderSystems)
         {
             try
             {

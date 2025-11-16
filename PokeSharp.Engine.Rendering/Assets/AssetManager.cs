@@ -219,12 +219,7 @@ public class AssetManager(
 
         // LruCache will handle old texture disposal automatically
         _textures.AddOrUpdate(id, texture);
-        _logger?.LogDebug(
-            "Registered texture: {TextureId} ({Width}x{Height})",
-            id,
-            texture.Width,
-            texture.Height
-        );
+        _logger?.LogSpriteTextureRegisteredDebug(id);
     }
 
     /// <summary>
@@ -237,7 +232,7 @@ public class AssetManager(
         var removed = _textures.Remove(id); // LruCache handles disposal
         if (removed)
         {
-            _logger?.LogDebug("Unregistered texture: {TextureId}", id);
+            _logger?.LogSpriteTextureUnregistered(id);
         }
         return removed;
     }

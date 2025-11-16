@@ -19,11 +19,16 @@ namespace PokeSharp.Engine.Core.Events;
 ///         access. Event firing is synchronous and happens on the caller's thread.
 ///         For high-frequency events, consider batching or debouncing in your handlers.
 ///     </para>
+///     <para>
+///         FIX #9: Uses ConcurrentDictionary with handler IDs for atomic unsubscribe
+///         operations, preventing memory leaks from handlers that cannot be removed.
+///     </para>
 /// </remarks>
 public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
 {
-    private readonly ConcurrentDictionary<Type, ConcurrentBag<Delegate>> _handlers = new();
+    private readonly ConcurrentDictionary<Type, ConcurrentDictionary<int, Delegate>> _handlers = new();
     private readonly ILogger<EventBus> _logger = logger ?? NullLogger<EventBus>.Instance;
+    private int _nextHandlerId = 0;
 
     /// <inheritdoc />
     public void Publish<TEvent>(TEvent eventData)
@@ -36,7 +41,7 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
 
         if (_handlers.TryGetValue(eventType, out var handlers) && !handlers.IsEmpty)
             // Execute all handlers with error isolation
-            foreach (var handler in handlers.ToArray())
+            foreach (var handler in handlers.Values)
                 try
                 {
                     ((Action<TEvent>)handler)(eventData);
@@ -46,7 +51,7 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
                     // Isolate handler errors - don't let them break event publishing
                     _logger.LogError(
                         ex,
-                        "Error in event handler for {EventType}: {Message}",
+                        "[orange3]SYS[/] [red]✗[/] Error in event handler for [cyan]{EventType}[/]: {Message}",
                         eventType.Name,
                         ex.Message
                     );
@@ -61,11 +66,14 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
             throw new ArgumentNullException(nameof(handler));
 
         var eventType = typeof(TEvent);
-        var handlers = _handlers.GetOrAdd(eventType, _ => new ConcurrentBag<Delegate>());
-        handlers.Add(handler);
+        var handlers = _handlers.GetOrAdd(eventType, _ => new ConcurrentDictionary<int, Delegate>());
 
-        // Return a disposable subscription
-        return new Subscription<TEvent>(this, handler);
+        // Generate unique handler ID using atomic increment
+        var handlerId = Interlocked.Increment(ref _nextHandlerId);
+        handlers[handlerId] = handler;
+
+        // Return a disposable subscription with the handler ID
+        return new Subscription(this, eventType, handlerId);
     }
 
     /// <inheritdoc />
@@ -91,24 +99,20 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
     }
 
     /// <summary>
-    ///     Unsubscribe a specific handler from an event type.
+    ///     Unsubscribe a specific handler by ID.
     /// </summary>
-    /// <typeparam name="TEvent">The type of event to unsubscribe from.</typeparam>
-    /// <param name="handler">The handler to remove.</param>
-    internal void Unsubscribe<TEvent>(Action<TEvent> handler)
-        where TEvent : TypeEventBase
+    /// <param name="eventType">The type of event to unsubscribe from.</param>
+    /// <param name="handlerId">The unique handler ID to remove.</param>
+    /// <remarks>
+    ///     FIX #9: Atomic removal using ConcurrentDictionary.TryRemove ensures
+    ///     handlers are always successfully removed, preventing memory leaks.
+    /// </remarks>
+    internal void Unsubscribe(Type eventType, int handlerId)
     {
-        if (handler == null)
-            return;
-
-        var eventType = typeof(TEvent);
-
         if (_handlers.TryGetValue(eventType, out var handlers))
         {
-            // ConcurrentBag doesn't support removal, so we rebuild without the handler
-            var updatedHandlers = handlers.Where(h => h != (Delegate)handler).ToArray();
-            var newBag = new ConcurrentBag<Delegate>(updatedHandlers);
-            _handlers.TryUpdate(eventType, newBag, handlers);
+            // Atomic removal - always succeeds
+            handlers.TryRemove(handlerId, out _);
         }
     }
 }
@@ -116,18 +120,21 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
 /// <summary>
 ///     Disposable subscription handle for unsubscribing.
 /// </summary>
-file sealed class Subscription<TEvent>(EventBus eventBus, Action<TEvent> handler) : IDisposable
-    where TEvent : TypeEventBase
+/// <remarks>
+///     FIX #9: Uses handler ID instead of handler reference for atomic unsubscribe.
+/// </remarks>
+file sealed class Subscription(EventBus eventBus, Type eventType, int handlerId) : IDisposable
 {
     private readonly EventBus _eventBus = eventBus;
-    private readonly Action<TEvent> _handler = handler;
+    private readonly Type _eventType = eventType;
+    private readonly int _handlerId = handlerId;
     private bool _disposed;
 
     public void Dispose()
     {
         if (!_disposed)
         {
-            _eventBus.Unsubscribe(_handler);
+            _eventBus.Unsubscribe(_eventType, _handlerId);
             _disposed = true;
         }
     }

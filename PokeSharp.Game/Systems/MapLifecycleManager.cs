@@ -1,9 +1,11 @@
 using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Engine.Systems.Queries;
 using PokeSharp.Game.Components.Maps;
+using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Tiles;
 
 namespace PokeSharp.Game.Systems;
@@ -46,12 +48,12 @@ public class MapLifecycleManager
     public void RegisterMap(int mapId, string mapName, HashSet<string> tilesetTextureIds, HashSet<string> spriteTextureIds)
     {
         _loadedMaps[mapId] = new MapMetadata(mapName, tilesetTextureIds, spriteTextureIds);
-        _logger?.LogInformation(
-            "Registered map: {MapName} (ID: {MapId}) with {TilesetCount} tilesets, {SpriteCount} sprites",
-            mapName,
-            mapId,
-            tilesetTextureIds.Count,
-            spriteTextureIds.Count
+        _logger?.LogWorkflowStatus(
+            "Registered map",
+            ("mapName", mapName),
+            ("mapId", mapId),
+            ("tilesetCount", tilesetTextureIds.Count),
+            ("spriteCount", spriteTextureIds.Count)
         );
     }
 
@@ -70,10 +72,10 @@ public class MapLifecycleManager
         _previousMapId = _currentMapId;
         _currentMapId = newMapId;
 
-        _logger?.LogInformation(
-            "Transitioning from map {OldMapId} to {NewMapId}",
-            oldMapId,
-            newMapId
+        _logger?.LogWorkflowStatus(
+            "Map transition",
+            ("from", oldMapId),
+            ("to", newMapId)
         );
 
         // Clean up old maps (keep current + previous for smooth transitions)
@@ -98,7 +100,7 @@ public class MapLifecycleManager
             return;
         }
 
-        _logger?.LogInformation("Unloading map: {MapName} (ID: {MapId})", metadata.Name, mapId);
+        _logger?.LogWorkflowStatus("Unloading map", ("mapName", metadata.Name), ("mapId", mapId));
 
         // 1. Destroy all tile entities for this map
         var tilesDestroyed = DestroyMapEntities(mapId);
@@ -111,12 +113,12 @@ public class MapLifecycleManager
 
         _loadedMaps.Remove(mapId);
 
-        _logger?.LogInformation(
-            "Map {MapName} unloaded: {Entities} entities, {Tilesets} tilesets, {Sprites} sprites freed",
-            metadata.Name,
-            tilesDestroyed,
-            tilesetsUnloaded,
-            spritesUnloaded
+        _logger?.LogWorkflowStatus(
+            "Map unloaded",
+            ("mapName", metadata.Name),
+            ("entities", tilesDestroyed),
+            ("tilesets", tilesetsUnloaded),
+            ("sprites", spritesUnloaded)
         );
     }
 
@@ -140,11 +142,26 @@ public class MapLifecycleManager
             }
         );
 
+        // FIX #10: Destroy ImageLayer entities
+        // ImageLayers don't have MapId component, so we destroy all of them
+        // (only one map is typically active at a time, so this is safe)
+        var imageLayerQuery = new QueryDescription().WithAll<ImageLayer>();
+        _world.Query(imageLayerQuery, (Entity entity) =>
+        {
+            entitiesToDestroy.Add(entity);
+        });
+
         // Now destroy entities outside the query
         foreach (var entity in entitiesToDestroy)
         {
             _world.Destroy(entity);
         }
+
+        _logger?.LogDebug(
+            "Destroyed {Count} entities for map {MapId} (including image layers)",
+            entitiesToDestroy.Count,
+            mapId
+        );
 
         return entitiesToDestroy.Count;
     }

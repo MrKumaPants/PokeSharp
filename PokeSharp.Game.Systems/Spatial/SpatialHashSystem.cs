@@ -24,6 +24,7 @@ public class SpatialHashSystem(ILogger<SpatialHashSystem>? logger = null)
     private readonly SpatialHash _dynamicHash = new(); // For entities with Position (cleared each frame)
     private readonly ILogger<SpatialHashSystem>? _logger = logger;
     private readonly SpatialHash _staticHash = new(); // For tiles (indexed once)
+    private readonly List<Entity> _queryResultBuffer = new(128); // Pooled buffer for query results
     private bool _staticTilesIndexed;
 
     /// <summary>
@@ -90,10 +91,19 @@ public class SpatialHashSystem(ILogger<SpatialHashSystem>? logger = null)
     /// <param name="x">The X tile coordinate.</param>
     /// <param name="y">The Y tile coordinate.</param>
     /// <returns>Collection of entities at this position.</returns>
-    public IEnumerable<Entity> GetEntitiesAt(int mapId, int x, int y)
+    public IReadOnlyList<Entity> GetEntitiesAt(int mapId, int x, int y)
     {
-        // Return entities from both static and dynamic hashes
-        return _staticHash.GetAt(mapId, x, y).Concat(_dynamicHash.GetAt(mapId, x, y));
+        _queryResultBuffer.Clear();
+
+        // Add static entities
+        foreach (var entity in _staticHash.GetAt(mapId, x, y))
+            _queryResultBuffer.Add(entity);
+
+        // Add dynamic entities
+        foreach (var entity in _dynamicHash.GetAt(mapId, x, y))
+            _queryResultBuffer.Add(entity);
+
+        return _queryResultBuffer;
     }
 
     /// <summary>
@@ -102,12 +112,19 @@ public class SpatialHashSystem(ILogger<SpatialHashSystem>? logger = null)
     /// <param name="mapId">The map identifier.</param>
     /// <param name="bounds">The bounding rectangle in tile coordinates.</param>
     /// <returns>Collection of entities within the bounds.</returns>
-    public IEnumerable<Entity> GetEntitiesInBounds(int mapId, Rectangle bounds)
+    public IReadOnlyList<Entity> GetEntitiesInBounds(int mapId, Rectangle bounds)
     {
-        // Return entities from both static and dynamic hashes
-        return _staticHash
-            .GetInBounds(mapId, bounds)
-            .Concat(_dynamicHash.GetInBounds(mapId, bounds));
+        _queryResultBuffer.Clear();
+
+        // Add static entities
+        foreach (var entity in _staticHash.GetInBounds(mapId, bounds))
+            _queryResultBuffer.Add(entity);
+
+        // Add dynamic entities
+        foreach (var entity in _dynamicHash.GetInBounds(mapId, bounds))
+            _queryResultBuffer.Add(entity);
+
+        return _queryResultBuffer;
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Data.Entities;
 
 namespace PokeSharp.Game.Data.Services;
@@ -27,6 +28,7 @@ public class MapDefinitionService
 
     /// <summary>
     /// Get map definition by ID (O(1) cached).
+    /// Uses AsNoTracking for read-only access to prevent memory tracking.
     /// </summary>
     public MapDefinition? GetMap(string mapId)
     {
@@ -37,14 +39,14 @@ public class MapDefinitionService
         if (_mapCache.TryGetValue(mapId, out var cached))
             return cached;
 
-        // Query database
-        var map = _context.Maps.Find(mapId);
+        // Query database with AsNoTracking (read-only, no change tracking overhead)
+        var map = _context.Maps.AsNoTracking().FirstOrDefault(m => m.MapId == mapId);
 
         // Cache for next time
         if (map != null)
         {
             _mapCache[mapId] = map;
-            _logger.LogDebug("Cached map definition: {MapId}", mapId);
+            _logger.LogMapCached(mapId);
         }
 
         return map;

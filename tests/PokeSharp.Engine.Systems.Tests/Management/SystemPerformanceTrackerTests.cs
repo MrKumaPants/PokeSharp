@@ -122,6 +122,9 @@ public class SystemPerformanceTrackerTests
     {
         // Arrange
         var mockLogger = new Mock<ILogger>();
+        // Set up IsEnabled to return true for Warning level
+        mockLogger.Setup(x => x.IsEnabled(LogLevel.Warning)).Returns(true);
+
         var config = new PerformanceConfiguration
         {
             TargetFrameTimeMs = 16.67f,
@@ -130,7 +133,13 @@ public class SystemPerformanceTrackerTests
         };
         var tracker = new SystemPerformanceTracker(mockLogger.Object, config);
 
-        // Act - Execute a slow system (3ms > 1.667ms threshold)
+        // Act - Advance frame counter to pass cooldown check (needs >= 10 frames)
+        for (int i = 0; i < 10; i++)
+        {
+            tracker.IncrementFrame();
+        }
+
+        // Execute a slow system (3ms > 1.667ms threshold)
         tracker.TrackSystemPerformance("SlowSystem", 3.0);
 
         // Assert - Verify warning was logged

@@ -9,6 +9,20 @@ namespace PokeSharp.Game.Components.Rendering;
 public struct Sprite
 {
     /// <summary>
+    ///     Cached texture key for AssetManager lookup.
+    ///     Format: "sprites/{category}/{spriteName}"
+    ///     Computed once during construction to avoid string allocations during rendering.
+    /// </summary>
+    private readonly string? _cachedTextureKey;
+
+    /// <summary>
+    ///     Gets the cached texture key for AssetManager lookup.
+    ///     This property eliminates per-frame string allocations during rendering.
+    /// </summary>
+    public string TextureKey =>
+        _cachedTextureKey ?? $"sprites/{Category}/{SpriteName}";
+
+    /// <summary>
     ///     Gets or sets the sprite name (e.g., "walking", "nurse", "boy_1").
     /// </summary>
     public string SpriteName { get; set; }
@@ -62,6 +76,7 @@ public struct Sprite
     {
         SpriteName = spriteName;
         Category = category;
+        _cachedTextureKey = $"sprites/{category}/{spriteName}";
         CurrentFrame = 0;
         FlipHorizontal = false;
         SourceRect = Rectangle.Empty;
