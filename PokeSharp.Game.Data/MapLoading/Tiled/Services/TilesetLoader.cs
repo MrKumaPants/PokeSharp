@@ -4,7 +4,7 @@ using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Services;
 
 /// <summary>
 ///     Handles loading and management of tilesets from Tiled maps.

@@ -7,7 +7,7 @@ using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Processors;
 
 /// <summary>
 ///     Handles creation of image layer entities from Tiled maps.

@@ -232,7 +232,7 @@ public static class GameLoggingExtensions
         private readonly string _operationName;
         private readonly double _warnThresholdMs;
         private readonly Stopwatch _stopwatch;
-        private readonly IDisposable _scope;
+        private readonly IDisposable? _scope;
 
         public TimedOperationScope(ILogger logger, string operationName, double warnThresholdMs)
         {
@@ -272,7 +272,7 @@ public static class GameLoggingExtensions
                 );
             }
 
-            _scope.Dispose();
+            _scope?.Dispose();
         }
     }
 }

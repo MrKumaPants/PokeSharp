@@ -6,7 +6,7 @@ using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Templates;
 
-namespace PokeSharp.Game.ServiceRegistration;
+namespace PokeSharp.Game.Infrastructure.ServiceRegistration;
 
 /// <summary>
 ///     Extension methods for registering template and entity factory services.

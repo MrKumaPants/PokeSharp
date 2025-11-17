@@ -10,8 +10,8 @@ public class SpriteIdValueConverter : ValueConverter<SpriteId?, string?>
 {
     public SpriteIdValueConverter()
         : base(
-            v => v.HasValue ? v.Value.Value : null,
-            v => v != null ? new SpriteId(v) : null
+            v => v.HasValue ? v.Value.Value : null!,
+            v => v != null ? new SpriteId(v) : default(SpriteId?)
         )
     {
     }

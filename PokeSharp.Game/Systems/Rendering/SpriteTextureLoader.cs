@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Types;
 using PokeSharp.Engine.Rendering.Assets;
-using PokeSharp.Game.Services;
+using PokeSharp.Game.Infrastructure.Services;
 
 namespace PokeSharp.Game.Systems;
 

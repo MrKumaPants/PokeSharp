@@ -13,7 +13,7 @@ using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 using PokeSharp.Game.Data.Services;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Processors;
 
 /// <summary>
 ///     Handles spawning of map objects (NPCs, items, triggers, etc.) from Tiled object layers.

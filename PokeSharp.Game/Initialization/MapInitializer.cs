@@ -7,7 +7,7 @@ using PokeSharp.Engine.Core.Types;
 using PokeSharp.Engine.Rendering.Systems;
 using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Data.MapLoading.Tiled;
+using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 using PokeSharp.Game.Systems;
 using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 

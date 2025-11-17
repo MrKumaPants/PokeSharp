@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using Serilog;
 
-namespace PokeSharp.Game.ServiceRegistration;
+namespace PokeSharp.Game.Infrastructure.ServiceRegistration;
 
 /// <summary>
 ///     Extension methods for configuring logging services.

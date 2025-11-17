@@ -9,9 +9,9 @@ using PokeSharp.Engine.Rendering.Systems;
 using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
-using PokeSharp.Game.Configuration;
-using PokeSharp.Game.Data.MapLoading.Tiled;
-using PokeSharp.Game.Services;
+using PokeSharp.Game.Infrastructure.Configuration;
+using PokeSharp.Game.Data.MapLoading.Tiled.Core;
+using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
 
@@ -32,15 +32,6 @@ public class GameInitializer(
     SpriteLoader spriteLoader
 )
 {
-    private readonly AssetManager _assetManager = assetManager;
-    private readonly IEntityFactoryService _entityFactory = entityFactory;
-    private readonly ILogger<GameInitializer> _logger = logger;
-    private readonly ILoggerFactory _loggerFactory = loggerFactory;
-    private readonly MapLoader _mapLoader = mapLoader;
-    private readonly SystemManager _systemManager = systemManager;
-    private readonly World _world = world;
-    private readonly EntityPoolManager _poolManager = poolManager;
-    private readonly SpriteLoader _spriteLoader = spriteLoader;
 
     /// <summary>
     ///     Gets the spatial hash system.
@@ -55,7 +46,7 @@ public class GameInitializer(
     /// <summary>
     ///     Gets the entity pool manager.
     /// </summary>
-    public EntityPoolManager PoolManager => _poolManager;
+    public EntityPoolManager PoolManager => poolManager;
 
     /// <summary>
     ///     Gets the map lifecycle manager.
@@ -77,16 +68,16 @@ public class GameInitializer(
         // before GameInitializer.Initialize is invoked.
 
         // Register and warmup pools for common entity types
-        var gameplayConfig = Configuration.GameplayConfig.CreateDefault();
+        var gameplayConfig = Infrastructure.Configuration.GameplayConfig.CreateDefault();
         var playerPool = gameplayConfig.Pools.Player;
         var npcPool = gameplayConfig.Pools.Npc;
         var tilePool = gameplayConfig.Pools.Tile;
 
-        _poolManager.RegisterPool("player", initialSize: playerPool.InitialSize, maxSize: playerPool.MaxSize, warmup: playerPool.Warmup);
-        _poolManager.RegisterPool("npc", initialSize: npcPool.InitialSize, maxSize: npcPool.MaxSize, warmup: npcPool.Warmup);
-        _poolManager.RegisterPool("tile", initialSize: tilePool.InitialSize, maxSize: tilePool.MaxSize, warmup: tilePool.Warmup);
+        poolManager.RegisterPool("player", initialSize: playerPool.InitialSize, maxSize: playerPool.MaxSize, warmup: playerPool.Warmup);
+        poolManager.RegisterPool("npc", initialSize: npcPool.InitialSize, maxSize: npcPool.MaxSize, warmup: npcPool.Warmup);
+        poolManager.RegisterPool("tile", initialSize: tilePool.InitialSize, maxSize: tilePool.MaxSize, warmup: tilePool.Warmup);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Entity pool manager initialized with {NPCPoolSize} NPC, {PlayerPoolSize} player, and {TilePoolSize} tile pool capacity",
             npcPool.InitialSize,
             playerPool.InitialSize,
@@ -99,67 +90,67 @@ public class GameInitializer(
         // === Update Systems (Logic Only) ===
 
         // SpatialHashSystem (Priority: 25) - must run early to build spatial index
-        var spatialHashLogger = _loggerFactory.CreateLogger<SpatialHashSystem>();
+        var spatialHashLogger = loggerFactory.CreateLogger<SpatialHashSystem>();
         SpatialHashSystem = new SpatialHashSystem(spatialHashLogger);
-        _systemManager.RegisterUpdateSystem(SpatialHashSystem);
+        systemManager.RegisterUpdateSystem(SpatialHashSystem);
 
         // Register pool management systems
-        var poolCleanupLogger = _loggerFactory.CreateLogger<PoolCleanupSystem>();
-        _systemManager.RegisterUpdateSystem(new PoolCleanupSystem(_poolManager, poolCleanupLogger));
+        var poolCleanupLogger = loggerFactory.CreateLogger<PoolCleanupSystem>();
+        systemManager.RegisterUpdateSystem(new PoolCleanupSystem(poolManager, poolCleanupLogger));
 
         // InputSystem with Pokemon-style input buffering
         var inputBuffer = gameplayConfig.InputBuffer;
-        var inputLogger = _loggerFactory.CreateLogger<InputSystem>();
+        var inputLogger = loggerFactory.CreateLogger<InputSystem>();
         var inputSystem = new InputSystem(inputBuffer.MaxBufferedInputs, inputBuffer.TimeoutSeconds, inputLogger);
-        _systemManager.RegisterUpdateSystem(inputSystem);
+        systemManager.RegisterUpdateSystem(inputSystem);
 
         // Register CollisionService (not a system, but a service used by MovementSystem)
-        var collisionServiceLogger = _loggerFactory.CreateLogger<CollisionService>();
+        var collisionServiceLogger = loggerFactory.CreateLogger<CollisionService>();
         var collisionService = new CollisionService(SpatialHashSystem, collisionServiceLogger);
 
         // Register MovementSystem (Priority: 100, handles movement and collision checking)
-        var movementLogger = _loggerFactory.CreateLogger<MovementSystem>();
+        var movementLogger = loggerFactory.CreateLogger<MovementSystem>();
         var movementSystem = new MovementSystem(collisionService, movementLogger);
-        _systemManager.RegisterUpdateSystem(movementSystem);
+        systemManager.RegisterUpdateSystem(movementSystem);
 
         // Register PathfindingSystem (Priority: 300, processes MovementRoute waypoints with A* pathfinding)
-        var pathfindingLogger = _loggerFactory.CreateLogger<PathfindingSystem>();
+        var pathfindingLogger = loggerFactory.CreateLogger<PathfindingSystem>();
         var pathfindingSystem = new PathfindingSystem(SpatialHashSystem, pathfindingLogger);
-        _systemManager.RegisterUpdateSystem(pathfindingSystem);
+        systemManager.RegisterUpdateSystem(pathfindingSystem);
 
         // Register CameraFollowSystem (Priority: 825, after PathfindingSystem, before TileAnimation)
-        var cameraFollowLogger = _loggerFactory.CreateLogger<CameraFollowSystem>();
-        _systemManager.RegisterUpdateSystem(new CameraFollowSystem(cameraFollowLogger));
+        var cameraFollowLogger = loggerFactory.CreateLogger<CameraFollowSystem>();
+        systemManager.RegisterUpdateSystem(new CameraFollowSystem(cameraFollowLogger));
 
         // Register TileAnimationSystem (Priority: 850, animates water/grass tiles between Animation and Render)
-        var tileAnimLogger = _loggerFactory.CreateLogger<TileAnimationSystem>();
-        _systemManager.RegisterUpdateSystem(new TileAnimationSystem(tileAnimLogger));
+        var tileAnimLogger = loggerFactory.CreateLogger<TileAnimationSystem>();
+        systemManager.RegisterUpdateSystem(new TileAnimationSystem(tileAnimLogger));
 
         // Register SpriteAnimationSystem (Priority: 875, updates NPC/player sprite frames from manifests)
-        var spriteAnimLogger = _loggerFactory.CreateLogger<SpriteAnimationSystem>();
-        _systemManager.RegisterUpdateSystem(
-            new SpriteAnimationSystem(_spriteLoader, spriteAnimLogger)
+        var spriteAnimLogger = loggerFactory.CreateLogger<SpriteAnimationSystem>();
+        systemManager.RegisterUpdateSystem(
+            new SpriteAnimationSystem(spriteLoader, spriteAnimLogger)
         );
 
         // NOTE: NPCBehaviorSystem is registered separately in NPCBehaviorInitializer
         // It requires ScriptService and behavior registry to be set up first
 
         // Register RelationshipSystem (Priority: 950, validates entity relationships and cleans up broken references)
-        var relationshipLogger = _loggerFactory.CreateLogger<RelationshipSystem>();
+        var relationshipLogger = loggerFactory.CreateLogger<RelationshipSystem>();
         var relationshipSystem = new RelationshipSystem(relationshipLogger);
-        _systemManager.RegisterUpdateSystem(relationshipSystem);
+        systemManager.RegisterUpdateSystem(relationshipSystem);
 
         // === Render Systems (Rendering Only) ===
 
         // Register ElevationRenderSystem (Priority: 1000) - unified rendering with Z-order sorting
-        var renderLogger = _loggerFactory.CreateLogger<ElevationRenderSystem>();
-        RenderSystem = new ElevationRenderSystem(graphicsDevice, _assetManager, renderLogger);
-        _systemManager.RegisterRenderSystem(RenderSystem);
+        var renderLogger = loggerFactory.CreateLogger<ElevationRenderSystem>();
+        RenderSystem = new ElevationRenderSystem(graphicsDevice, assetManager, renderLogger);
+        systemManager.RegisterRenderSystem(RenderSystem);
 
         // Initialize all systems
-        _systemManager.Initialize(_world);
+        systemManager.Initialize(world);
 
-        _logger.LogWorkflowStatus("Game initialization complete");
+        logger.LogWorkflowStatus("Game initialization complete");
     }
 
     /// <summary>
@@ -172,8 +163,8 @@ public class GameInitializer(
         SpriteTextureLoader = spriteTextureLoader ?? throw new ArgumentNullException(nameof(spriteTextureLoader));
 
         // Initialize MapLifecycleManager with SpriteTextureLoader dependency
-        var mapLifecycleLogger = _loggerFactory.CreateLogger<MapLifecycleManager>();
-        MapLifecycleManager = new MapLifecycleManager(_world, _assetManager, spriteTextureLoader, mapLifecycleLogger);
-        _logger.LogInformation("MapLifecycleManager initialized with sprite texture support");
+        var mapLifecycleLogger = loggerFactory.CreateLogger<MapLifecycleManager>();
+        MapLifecycleManager = new MapLifecycleManager(world, assetManager, spriteTextureLoader, mapLifecycleLogger);
+        logger.LogInformation("MapLifecycleManager initialized with sprite texture support");
     }
 }

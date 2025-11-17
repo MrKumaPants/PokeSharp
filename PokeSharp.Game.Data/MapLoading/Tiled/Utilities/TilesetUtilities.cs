@@ -2,7 +2,7 @@ using System;
 using Microsoft.Xna.Framework;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Utilities;
 
 /// <summary>
 ///     Utility methods for tileset calculations.

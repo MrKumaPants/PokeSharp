@@ -8,10 +8,11 @@ using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Systems;
+using PokeSharp.Game.Data.MapLoading.Tiled.Services;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 using PokeSharp.Game.Data.PropertyMapping;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Processors;
 
 /// <summary>
 ///     Handles processing of map layers and creation of tile entities.

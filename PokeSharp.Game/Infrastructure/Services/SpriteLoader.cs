@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 
-namespace PokeSharp.Game.Services;
+namespace PokeSharp.Game.Infrastructure.Services;
 
 /// <summary>
 /// Service for loading sprites extracted from Pokemon Emerald.
@@ -86,7 +86,8 @@ public class SpriteLoader(ILogger<SpriteLoader> logger)
         logger.LogSpritesLoaded(_allSprites.Count);
 
         // Populate sprite cache for synchronous GetSprite() calls
-        _spriteCache = new Dictionary<string, SpriteManifest>();
+        // Use capacity hint to avoid reallocations
+        _spriteCache = new Dictionary<string, SpriteManifest>(_allSprites.Count);
         foreach (var sprite in _allSprites)
         {
             var cacheKey = $"{sprite.Category}/{sprite.Name}";

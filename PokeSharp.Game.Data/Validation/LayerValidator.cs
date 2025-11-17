@@ -64,6 +64,10 @@ public class LayerValidator : IMapValidator
 
     private void ValidateTileGids(TmxDocument map, TmxLayer layer, ValidationResult result)
     {
+        // Guard against null data (should already be checked, but defensive programming)
+        if (layer.Data == null)
+            return;
+
         // Build valid GID ranges from tilesets
         var validRanges = map
             .Tilesets.Select(ts => new

@@ -17,13 +17,16 @@ using PokeSharp.Game.Components.NPCs;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Data.Entities;
+using PokeSharp.Game.Data.MapLoading.Tiled.Processors;
+using PokeSharp.Game.Data.MapLoading.Tiled.Services;
+using PokeSharp.Game.Data.MapLoading.Tiled.Utilities;
 using PokeSharp.Game.Data.MapLoading.Tiled.TiledJson;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 using PokeSharp.Game.Data.PropertyMapping;
 using PokeSharp.Game.Data.Services;
 using PokeSharp.Game.Systems;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Core;
 
 /// <summary>
 ///     Loads Tiled maps and converts them to ECS components.
@@ -60,8 +63,8 @@ public class MapLoader(
     private readonly MapDefinitionService? _mapDefinitionService = mapDefinitionService;
     private readonly ILogger<MapLoader>? _logger = logger;
 
-    // Initialize MapIdManager
-    private readonly MapIdManager _mapIdManager = new MapIdManager();
+    // Initialize MapIdService
+    private readonly MapIdService _mapIdService = new MapIdService();
 
     // Initialize MapTextureTracker
     private readonly MapTextureTracker _mapTextureTracker = new MapTextureTracker(null);
@@ -203,7 +206,7 @@ public class MapLoader(
     /// </summary>
     private Entity LoadMapFromDocument(World world, TmxDocument tmxDoc, MapDefinition mapDef)
     {
-        var mapId = _mapIdManager.GetMapIdFromIdentifier(mapDef.MapId);
+        var mapId = _mapIdService.GetMapIdFromIdentifier(mapDef.MapId);
         var mapName = mapDef.DisplayName;
 
         var context = new MapLoadContext
@@ -230,7 +233,7 @@ public class MapLoader(
     private Entity LoadMapEntitiesInternal(World world, string mapPath)
     {
         var tmxDoc = TiledMapLoader.Load(mapPath);
-        var mapId = _mapIdManager.GetMapId(mapPath);
+        var mapId = _mapIdService.GetMapId(mapPath);
         var mapName = Path.GetFileNameWithoutExtension(mapPath);
 
         var context = new MapLoadContext
@@ -379,7 +382,7 @@ public class MapLoader(
     /// <returns>Map runtime ID if the map has been loaded, null otherwise.</returns>
     public MapRuntimeId? GetMapIdByName(string mapName)
     {
-        return _mapIdManager.GetMapIdByName(mapName);
+        return _mapIdService.GetMapIdByName(mapName);
     }
 
     /// <summary>

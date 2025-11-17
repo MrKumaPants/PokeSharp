@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Services;
 
 /// <summary>
 ///     Tracks texture IDs used by each map for lifecycle management.

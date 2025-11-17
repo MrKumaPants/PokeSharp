@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Common.Utilities;
 
-namespace PokeSharp.Game.Diagnostics;
+namespace PokeSharp.Game.Infrastructure.Diagnostics;
 
 /// <summary>
 ///     Monitors game performance including frame times, memory usage, and GC statistics.

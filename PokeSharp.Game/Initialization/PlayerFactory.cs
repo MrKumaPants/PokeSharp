@@ -7,7 +7,7 @@ using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Configuration;
+using PokeSharp.Game.Infrastructure.Configuration;
 using PokeSharp.Game.Systems;
 
 namespace PokeSharp.Game.Initialization;
@@ -33,7 +33,7 @@ public class PlayerFactory(
     public Entity CreatePlayer(int x, int y, int viewportWidth, int viewportHeight)
     {
         // Capture tile size from MapInfo (default from config if not found)
-        var gameplayConfig = Configuration.GameplayConfig.CreateDefault();
+        var gameplayConfig = Infrastructure.Configuration.GameplayConfig.CreateDefault();
         var tileSize = gameplayConfig.DefaultTileSize;
         var mapInfoQuery = QueryCache.Get<MapInfo>();
         world.Query(

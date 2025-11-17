@@ -7,15 +7,15 @@ using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
 using PokeSharp.Game.Data.Loading;
-using PokeSharp.Game.Data.MapLoading.Tiled;
+using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 using PokeSharp.Game.Data.PropertyMapping;
 using PokeSharp.Game.Data.Services;
-using PokeSharp.Game.Diagnostics;
+using PokeSharp.Game.Infrastructure.Diagnostics;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Services;
-using PokeSharp.Game.Services;
+using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
 
@@ -88,7 +88,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         
         // Window configuration - defaults to 800x600
         // Can be overridden via configuration in the future
-        var windowConfig = Configuration.GameWindowConfig.CreateDefault();
+            var windowConfig = Infrastructure.Configuration.GameWindowConfig.CreateDefault();
         _graphics.PreferredBackBufferWidth = windowConfig.Width;
         _graphics.PreferredBackBufferHeight = windowConfig.Height;
         IsMouseVisible = windowConfig.IsMouseVisible;

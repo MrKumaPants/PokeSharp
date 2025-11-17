@@ -8,7 +8,7 @@ using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 using PokeSharp.Game.Data.Validation;
 using ZstdSharp;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Core;
 
 /// <summary>
 ///     Loads Tiled maps in JSON format (Tiled 1.11.2).

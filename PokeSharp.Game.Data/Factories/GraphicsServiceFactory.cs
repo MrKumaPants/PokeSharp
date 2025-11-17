@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Engine.Systems.Management;
-using PokeSharp.Game.Data.MapLoading.Tiled;
+using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 using PokeSharp.Game.Data.PropertyMapping;
 using PokeSharp.Game.Data.Services;
 

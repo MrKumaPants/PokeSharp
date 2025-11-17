@@ -6,7 +6,7 @@ using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.Rendering;
-using PokeSharp.Game.Services;
+using PokeSharp.Game.Infrastructure.Services;
 using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 
 namespace PokeSharp.Game.Systems;

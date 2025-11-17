@@ -5,11 +5,11 @@ using PokeSharp.Engine.Core.Events;
 using PokeSharp.Game.Data.PropertyMapping;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Services;
-using PokeSharp.Game.Services;
+using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
 
-namespace PokeSharp.Game.ServiceRegistration;
+namespace PokeSharp.Game.Infrastructure.ServiceRegistration;
 
 /// <summary>
 ///     Extension methods for registering scripting and API services.

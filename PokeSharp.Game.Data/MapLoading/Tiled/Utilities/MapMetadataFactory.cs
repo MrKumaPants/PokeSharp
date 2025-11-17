@@ -4,9 +4,10 @@ using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Data.Entities;
+using PokeSharp.Game.Data.MapLoading.Tiled.Services;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Utilities;
 
 /// <summary>
 ///     Handles creation of map metadata entities (MapInfo and TilesetInfo).

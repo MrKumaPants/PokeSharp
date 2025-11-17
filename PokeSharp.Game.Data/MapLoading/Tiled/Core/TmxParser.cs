@@ -3,7 +3,7 @@ using System.Linq;
 using System.Xml.Linq;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Core;
 
 /// <summary>
 ///     Parses Tiled map files (TMX format) using System.Xml.Linq.

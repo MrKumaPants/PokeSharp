@@ -1,13 +1,13 @@
 using System.IO;
 using PokeSharp.Engine.Core.Types;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Services;
 
 /// <summary>
-///     Manages map ID assignment and lookup.
+///     Provides map ID assignment and lookup services.
 ///     Maintains a mapping between map identifiers and unique runtime IDs.
 /// </summary>
-public class MapIdManager
+public class MapIdService
 {
     private readonly Dictionary<string, MapRuntimeId> _mapNameToId = new();
     private int _nextMapId;

@@ -1,10 +1,11 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
+using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 using PokeSharp.Game.Data.MapLoading.Tiled.TiledJson;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Utilities;
 
 /// <summary>
 ///     Parses Tiled JSON format, handling mixed layer types and converting properties.

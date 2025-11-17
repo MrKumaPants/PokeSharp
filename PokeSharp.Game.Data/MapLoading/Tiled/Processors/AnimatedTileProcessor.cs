@@ -7,9 +7,10 @@ using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Tiles;
+using PokeSharp.Game.Data.MapLoading.Tiled.Services;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Processors;
 
 /// <summary>
 ///     Handles creation of animated tile entities from tileset animations.

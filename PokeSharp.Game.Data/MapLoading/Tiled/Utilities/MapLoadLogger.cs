@@ -1,9 +1,11 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
+using PokeSharp.Game.Data.MapLoading.Tiled.Core;
+using PokeSharp.Game.Data.MapLoading.Tiled.Services;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Utilities;
 
 /// <summary>
 ///     Handles logging for map loading operations.

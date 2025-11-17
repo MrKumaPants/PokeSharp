@@ -7,9 +7,9 @@ using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
 using PokeSharp.Game.Data.Loading;
 using PokeSharp.Game.Data.Services;
-using PokeSharp.Game.Services;
+using PokeSharp.Game.Infrastructure.Services;
 
-namespace PokeSharp.Game.ServiceRegistration;
+namespace PokeSharp.Game.Infrastructure.ServiceRegistration;
 
 /// <summary>
 ///     Extension methods for registering core game services (ECS, data, modding).

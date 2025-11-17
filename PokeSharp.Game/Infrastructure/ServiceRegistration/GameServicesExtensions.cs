@@ -2,14 +2,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Data.Factories;
-using PokeSharp.Game.Diagnostics;
+using PokeSharp.Game.Infrastructure.Diagnostics;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
-using PokeSharp.Game.Services;
+using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
 
-namespace PokeSharp.Game.ServiceRegistration;
+namespace PokeSharp.Game.Infrastructure.ServiceRegistration;
 
 /// <summary>
 ///     Extension methods for registering game-specific services (collision, game time, initializers).

@@ -1,7 +1,7 @@
 using System.IO;
 using PokeSharp.Engine.Rendering.Assets;
 
-namespace PokeSharp.Game.Data.MapLoading.Tiled;
+namespace PokeSharp.Game.Data.MapLoading.Tiled.Services;
 
 /// <summary>
 ///     Resolves paths for map loading operations.

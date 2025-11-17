@@ -1,4 +1,4 @@
-namespace PokeSharp.Game.Configuration;
+namespace PokeSharp.Game.Infrastructure.Configuration;
 
 /// <summary>
 ///     Configuration for game window settings.

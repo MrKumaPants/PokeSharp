@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using PokeSharp.Game.ServiceRegistration;
+using PokeSharp.Game.Infrastructure.ServiceRegistration;
 
 namespace PokeSharp.Game;
 
