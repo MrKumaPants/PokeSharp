@@ -13,18 +13,19 @@ namespace PokeSharp.Game.Systems;
 /// </summary>
 public class SpriteTextureLoader
 {
-    private readonly SpriteLoader _spriteLoader;
     private readonly AssetManager _assetManager;
     private readonly GraphicsDevice _graphicsDevice;
     private readonly ILogger<SpriteTextureLoader>? _logger;
-    private readonly string _spritesBasePath;
 
     // PHASE 2: Per-map sprite tracking for lazy loading
     private readonly Dictionary<MapRuntimeId, HashSet<SpriteId>> _mapSpriteIds = new();
-    private readonly Dictionary<string, int> _spriteReferenceCount = new();
+
     // Persistent sprites that should never be unloaded (e.g., UI elements)
     // Player sprites load on-demand from entity templates
     private readonly HashSet<string> _persistentSprites = new();
+    private readonly SpriteLoader _spriteLoader;
+    private readonly Dictionary<string, int> _spriteReferenceCount = new();
+    private readonly string _spritesBasePath;
 
     public SpriteTextureLoader(
         SpriteLoader spriteLoader,
@@ -56,13 +57,17 @@ public class SpriteTextureLoader
         var failedCount = 0;
 
         foreach (var manifest in manifests)
-        {
             try
             {
                 var textureKey = GetTextureKey(manifest.Category, manifest.Name);
                 var spritesheetPath = _spriteLoader.GetSpriteSheetPath(manifest);
 
-                _logger?.LogSpriteLoadingProgress(loadedCount + 1, manifests.Count, manifest.Category, manifest.Name);
+                _logger?.LogSpriteLoadingProgress(
+                    loadedCount + 1,
+                    manifests.Count,
+                    manifest.Category,
+                    manifest.Name
+                );
 
                 if (string.IsNullOrEmpty(spritesheetPath) || !File.Exists(spritesheetPath))
                 {
@@ -75,11 +80,16 @@ public class SpriteTextureLoader
                 using var fileStream = File.OpenRead(spritesheetPath);
                 var texture = Texture2D.FromStream(_graphicsDevice, fileStream);
 
-                _logger?.LogSpriteTextureWithDimensions(manifest.Category, manifest.Name, texture.Format, texture.Width, texture.Height);
+                _logger?.LogSpriteTextureWithDimensions(
+                    manifest.Category,
+                    manifest.Name,
+                    texture.Format,
+                    texture.Width,
+                    texture.Height
+                );
 
                 // Note: Transparency should be baked into the PNG by the extractor
                 // Runtime mask color application doesn't persist correctly
-
                 // Register with AssetManager (using a direct registration method)
                 RegisterTexture(textureKey, texture);
                 loadedCount++;
@@ -94,7 +104,6 @@ public class SpriteTextureLoader
                 );
                 failedCount++;
             }
-        }
 
         _logger?.LogSpriteLoadingComplete(loadedCount, failedCount);
 
@@ -153,13 +162,16 @@ public class SpriteTextureLoader
     }
 
     /// <summary>
-    /// Loads only the sprites required for a specific map.
-    /// Implements lazy loading to reduce memory usage by 75%.
+    ///     Loads only the sprites required for a specific map.
+    ///     Implements lazy loading to reduce memory usage by 75%.
     /// </summary>
     /// <param name="mapId">Map ID to load sprites for</param>
     /// <param name="spriteIds">Collection of sprite IDs needed for this map</param>
     /// <returns>HashSet of loaded texture keys</returns>
-    public async Task<HashSet<string>> LoadSpritesForMapAsync(MapRuntimeId mapId, IEnumerable<SpriteId> spriteIds)
+    public async Task<HashSet<string>> LoadSpritesForMapAsync(
+        MapRuntimeId mapId,
+        IEnumerable<SpriteId> spriteIds
+    )
     {
         var loadedCount = 0;
         var skippedCount = 0;
@@ -193,7 +205,12 @@ public class SpriteTextureLoader
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Failed to load sprite texture: {Category}/{SpriteName}", category, spriteName);
+                _logger?.LogWarning(
+                    ex,
+                    "Failed to load sprite texture: {Category}/{SpriteName}",
+                    category,
+                    spriteName
+                );
             }
         }
 
@@ -203,14 +220,18 @@ public class SpriteTextureLoader
     }
 
     /// <summary>
-    /// Loads a single sprite texture asynchronously.
+    ///     Loads a single sprite texture asynchronously.
     /// </summary>
     private async Task LoadSpriteTextureAsync(string category, string spriteName)
     {
         var manifest = await _spriteLoader.LoadSpriteAsync(spriteName);
         if (manifest == null)
         {
-            _logger?.LogWarning("Sprite manifest not found: {Category}/{SpriteName}", category, spriteName);
+            _logger?.LogWarning(
+                "Sprite manifest not found: {Category}/{SpriteName}",
+                category,
+                spriteName
+            );
             return;
         }
 
@@ -231,31 +252,25 @@ public class SpriteTextureLoader
     }
 
     /// <summary>
-    /// Increments reference count for a sprite texture.
-    /// Used to track which maps are using each sprite.
+    ///     Increments reference count for a sprite texture.
+    ///     Used to track which maps are using each sprite.
     /// </summary>
     private void IncrementReferenceCount(string textureKey)
     {
         if (_spriteReferenceCount.ContainsKey(textureKey))
-        {
             _spriteReferenceCount[textureKey]++;
-        }
         else
-        {
             _spriteReferenceCount[textureKey] = 1;
-        }
     }
 
     /// <summary>
-    /// Decrements reference count for a sprite texture.
-    /// Returns true if sprite can be safely unloaded (ref count = 0).
+    ///     Decrements reference count for a sprite texture.
+    ///     Returns true if sprite can be safely unloaded (ref count = 0).
     /// </summary>
     private bool DecrementReferenceCount(string textureKey)
     {
         if (!_spriteReferenceCount.ContainsKey(textureKey))
-        {
             return true; // Not tracked, safe to unload
-        }
 
         _spriteReferenceCount[textureKey]--;
 
@@ -269,8 +284,8 @@ public class SpriteTextureLoader
     }
 
     /// <summary>
-    /// Unloads sprites that are no longer needed after a map is unloaded.
-    /// Uses reference counting to prevent unloading shared sprites.
+    ///     Unloads sprites that are no longer needed after a map is unloaded.
+    ///     Uses reference counting to prevent unloading shared sprites.
     /// </summary>
     /// <param name="mapId">Map ID to unload sprites for</param>
     /// <returns>Number of sprites unloaded</returns>
@@ -290,20 +305,16 @@ public class SpriteTextureLoader
 
             // Never unload persistent sprites (player sprites)
             if (_persistentSprites.Contains(textureKey))
-            {
                 continue;
-            }
 
             // Decrement reference count
             if (DecrementReferenceCount(textureKey))
-            {
                 // Reference count is zero, safe to unload
                 if (_assetManager.UnregisterTexture(textureKey))
                 {
                     unloadedCount++;
                     _logger?.LogDebug("Unloaded sprite texture: {TextureKey}", textureKey);
                 }
-            }
         }
 
         // Remove map tracking
@@ -314,7 +325,7 @@ public class SpriteTextureLoader
     }
 
     /// <summary>
-    /// Gets sprite loading statistics for monitoring and debugging.
+    ///     Gets sprite loading statistics for monitoring and debugging.
     /// </summary>
     public (int MapsTracked, int UniqueSprites, int TotalReferences) GetSpriteStats()
     {
@@ -326,8 +337,8 @@ public class SpriteTextureLoader
     }
 
     /// <summary>
-    /// Clears the sprite loader's manifest cache.
-    /// Delegates to the underlying SpriteLoader.
+    ///     Clears the sprite loader's manifest cache.
+    ///     Delegates to the underlying SpriteLoader.
     /// </summary>
     public void ClearCache()
     {

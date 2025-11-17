@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Arch.Core;
 using Arch.Core.Extensions;
-using Arch.Core.Utils;
 
 namespace PokeSharp.Engine.Systems.BulkOperations;
 
@@ -42,10 +41,10 @@ namespace PokeSharp.Engine.Systems.BulkOperations;
 public sealed class BulkEntityOperations
 {
     private readonly World _world;
-    private long _totalBulkCreations;
-    private long _totalBulkDestructions;
     private long _entitiesCreated;
     private long _entitiesDestroyed;
+    private long _totalBulkCreations;
+    private long _totalBulkDestructions;
     private double _totalCreationTime;
     private double _totalDestructionTime;
 
@@ -76,15 +75,13 @@ public sealed class BulkEntityOperations
     /// </example>
     public Entity[] CreateEntities(int count, params ComponentType[] componentTypes)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
         var sw = Stopwatch.StartNew();
         var entities = new Entity[count];
 
-        for (int i = 0; i < count; i++)
-        {
+        for (var i = 0; i < count; i++)
             entities[i] = _world.Create(componentTypes);
-        }
 
         sw.Stop();
         UpdateCreationStats(count, sw.Elapsed.TotalMilliseconds);
@@ -111,16 +108,16 @@ public sealed class BulkEntityOperations
     public Entity[] CreateEntities<T>(int count, Func<int, T> componentFactory)
         where T : struct
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
-        ArgumentNullException.ThrowIfNull(componentFactory, nameof(componentFactory));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+        ArgumentNullException.ThrowIfNull(componentFactory);
 
         var sw = Stopwatch.StartNew();
         var entities = new Entity[count];
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var entity = _world.Create<T>();
-            entity.Set<T>(componentFactory(i));
+            entity.Set(componentFactory(i));
             entities[i] = entity;
         }
 
@@ -157,18 +154,18 @@ public sealed class BulkEntityOperations
         where T1 : struct
         where T2 : struct
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
-        ArgumentNullException.ThrowIfNull(factory1, nameof(factory1));
-        ArgumentNullException.ThrowIfNull(factory2, nameof(factory2));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+        ArgumentNullException.ThrowIfNull(factory1);
+        ArgumentNullException.ThrowIfNull(factory2);
 
         var sw = Stopwatch.StartNew();
         var entities = new Entity[count];
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var entity = _world.Create<T1, T2>();
-            entity.Set<T1>(factory1(i));
-            entity.Set<T2>(factory2(i));
+            entity.Set(factory1(i));
+            entity.Set(factory2(i));
             entities[i] = entity;
         }
 
@@ -210,20 +207,20 @@ public sealed class BulkEntityOperations
         where T2 : struct
         where T3 : struct
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
-        ArgumentNullException.ThrowIfNull(factory1, nameof(factory1));
-        ArgumentNullException.ThrowIfNull(factory2, nameof(factory2));
-        ArgumentNullException.ThrowIfNull(factory3, nameof(factory3));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+        ArgumentNullException.ThrowIfNull(factory1);
+        ArgumentNullException.ThrowIfNull(factory2);
+        ArgumentNullException.ThrowIfNull(factory3);
 
         var sw = Stopwatch.StartNew();
         var entities = new Entity[count];
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var entity = _world.Create<T1, T2, T3>();
-            entity.Set<T1>(factory1(i));
-            entity.Set<T2>(factory2(i));
-            entity.Set<T3>(factory3(i));
+            entity.Set(factory1(i));
+            entity.Set(factory2(i));
+            entity.Set(factory3(i));
             entities[i] = entity;
         }
 
@@ -247,7 +244,7 @@ public sealed class BulkEntityOperations
     /// </example>
     public void DestroyEntities(params Entity[] entities)
     {
-        ArgumentNullException.ThrowIfNull(entities, nameof(entities));
+        ArgumentNullException.ThrowIfNull(entities);
 
         if (entities.Length == 0)
             return;
@@ -255,12 +252,8 @@ public sealed class BulkEntityOperations
         var sw = Stopwatch.StartNew();
 
         foreach (var entity in entities)
-        {
             if (_world.IsAlive(entity))
-            {
                 _world.Destroy(entity);
-            }
-        }
 
         sw.Stop();
         UpdateDestructionStats(entities.Length, sw.Elapsed.TotalMilliseconds);
@@ -280,23 +273,21 @@ public sealed class BulkEntityOperations
     /// </example>
     public void DestroyEntities(IEnumerable<Entity> entities)
     {
-        ArgumentNullException.ThrowIfNull(entities, nameof(entities));
+        ArgumentNullException.ThrowIfNull(entities);
 
         var entityList = entities.ToList();
         if (entityList.Count == 0)
             return;
 
         var sw = Stopwatch.StartNew();
-        int destroyedCount = 0;
+        var destroyedCount = 0;
 
         foreach (var entity in entityList)
-        {
             if (_world.IsAlive(entity))
             {
                 _world.Destroy(entity);
                 destroyedCount++;
             }
-        }
 
         sw.Stop();
         UpdateDestructionStats(destroyedCount, sw.Elapsed.TotalMilliseconds);
@@ -318,15 +309,11 @@ public sealed class BulkEntityOperations
     public void AddComponent<T>(IEnumerable<Entity> entities, T component)
         where T : struct
     {
-        ArgumentNullException.ThrowIfNull(entities, nameof(entities));
+        ArgumentNullException.ThrowIfNull(entities);
 
         foreach (var entity in entities)
-        {
             if (_world.IsAlive(entity))
-            {
                 entity.Add(component);
-            }
-        }
     }
 
     /// <summary>
@@ -346,16 +333,12 @@ public sealed class BulkEntityOperations
     public void AddComponent<T>(Entity[] entities, Func<Entity, T> componentFactory)
         where T : struct
     {
-        ArgumentNullException.ThrowIfNull(entities, nameof(entities));
-        ArgumentNullException.ThrowIfNull(componentFactory, nameof(componentFactory));
+        ArgumentNullException.ThrowIfNull(entities);
+        ArgumentNullException.ThrowIfNull(componentFactory);
 
         foreach (var entity in entities)
-        {
             if (_world.IsAlive(entity))
-            {
                 entity.Add(componentFactory(entity));
-            }
-        }
     }
 
     /// <summary>
@@ -373,15 +356,11 @@ public sealed class BulkEntityOperations
     public void RemoveComponent<T>(IEnumerable<Entity> entities)
         where T : struct
     {
-        ArgumentNullException.ThrowIfNull(entities, nameof(entities));
+        ArgumentNullException.ThrowIfNull(entities);
 
         foreach (var entity in entities)
-        {
             if (_world.IsAlive(entity) && entity.Has<T>())
-            {
                 entity.Remove<T>();
-            }
-        }
     }
 
     /// <summary>

@@ -89,10 +89,14 @@ public class RuntimeLoggingTests
         var logger = ConsoleLoggerFactory.Create<RuntimeLoggingTests>(LogLevel.Debug);
 
         // Act & Assert
-        logger.LogTimed("TestOperation", () =>
-        {
-            Thread.Sleep(50); // Simulate work
-        }, warnThresholdMs: 100);
+        logger.LogTimed(
+            "TestOperation",
+            () =>
+            {
+                Thread.Sleep(50); // Simulate work
+            },
+            warnThresholdMs: 100
+        );
 
         // Should not throw and should log timing
     }
@@ -104,11 +108,14 @@ public class RuntimeLoggingTests
         var logger = ConsoleLoggerFactory.Create<RuntimeLoggingTests>(LogLevel.Debug);
 
         // Act
-        var result = logger.LogTimed("CalculationOperation", () =>
-        {
-            Thread.Sleep(10);
-            return 42;
-        });
+        var result = logger.LogTimed(
+            "CalculationOperation",
+            () =>
+            {
+                Thread.Sleep(10);
+                return 42;
+            }
+        );
 
         // Assert
         result.Should().Be(42);
@@ -157,13 +164,15 @@ public class RuntimeLoggingTests
         for (int i = 0; i < 10; i++)
         {
             int threadId = i;
-            tasks.Add(Task.Run(() =>
-            {
-                for (int j = 0; j < 100; j++)
+            tasks.Add(
+                Task.Run(() =>
                 {
-                    logger.LogInformation("Thread {ThreadId} message {MessageId}", threadId, j);
-                }
-            }));
+                    for (int j = 0; j < 100; j++)
+                    {
+                        logger.LogInformation("Thread {ThreadId} message {MessageId}", threadId, j);
+                    }
+                })
+            );
         }
 
         // Assert

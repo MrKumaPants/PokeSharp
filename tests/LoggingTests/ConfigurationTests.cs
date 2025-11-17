@@ -122,7 +122,13 @@ public class ConfigurationTests
         {
             if (Directory.Exists(logDirectory))
             {
-                try { Directory.Delete(logDirectory, true); } catch { /* Ignore */ }
+                try
+                {
+                    Directory.Delete(logDirectory, true);
+                }
+                catch
+                { /* Ignore */
+                }
             }
         }
     }
@@ -152,7 +158,13 @@ public class ConfigurationTests
         {
             if (Directory.Exists(logDirectory))
             {
-                try { Directory.Delete(logDirectory, true); } catch { /* Ignore */ }
+                try
+                {
+                    Directory.Delete(logDirectory, true);
+                }
+                catch
+                { /* Ignore */
+                }
             }
         }
     }
@@ -249,7 +261,13 @@ public class ConfigurationTests
         {
             if (Directory.Exists(logDirectory))
             {
-                try { Directory.Delete(logDirectory, true); } catch { /* Ignore */ }
+                try
+                {
+                    Directory.Delete(logDirectory, true);
+                }
+                catch
+                { /* Ignore */
+                }
             }
         }
     }

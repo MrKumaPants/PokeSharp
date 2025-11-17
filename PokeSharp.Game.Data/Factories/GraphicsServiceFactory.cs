@@ -17,10 +17,10 @@ namespace PokeSharp.Game.Data.Factories;
 public class GraphicsServiceFactory : IGraphicsServiceFactory
 {
     private readonly ILoggerFactory _loggerFactory;
+    private readonly MapDefinitionService? _mapDefinitionService;
+    private readonly NpcDefinitionService? _npcDefinitionService;
     private readonly PropertyMapperRegistry? _propertyMapperRegistry;
     private readonly SystemManager _systemManager;
-    private readonly NpcDefinitionService? _npcDefinitionService;
-    private readonly MapDefinitionService? _mapDefinitionService;
 
     /// <summary>
     ///     Initializes a new instance of the GraphicsServiceFactory.

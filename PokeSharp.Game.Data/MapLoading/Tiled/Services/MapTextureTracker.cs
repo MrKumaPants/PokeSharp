@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using PokeSharp.Engine.Common.Logging;
 
 namespace PokeSharp.Game.Data.MapLoading.Tiled.Services;
 
@@ -9,8 +8,8 @@ namespace PokeSharp.Game.Data.MapLoading.Tiled.Services;
 /// </summary>
 public class MapTextureTracker
 {
-    private readonly Dictionary<int, HashSet<string>> _mapTextureIds = new();
     private readonly ILogger<MapTextureTracker>? _logger;
+    private readonly Dictionary<int, HashSet<string>> _mapTextureIds = new();
 
     public MapTextureTracker(ILogger<MapTextureTracker>? logger = null)
     {
@@ -27,9 +26,7 @@ public class MapTextureTracker
         var textureIds = new HashSet<string>();
 
         foreach (var loadedTileset in tilesets)
-        {
             textureIds.Add(loadedTileset.TilesetId);
-        }
 
         _mapTextureIds[mapId] = textureIds;
         _logger?.LogDebug("Tracked {Count} texture IDs for map {MapId}", textureIds.Count, mapId);
@@ -48,4 +45,3 @@ public class MapTextureTracker
             : new HashSet<string>();
     }
 }
-

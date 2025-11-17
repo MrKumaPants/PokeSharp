@@ -11,23 +11,6 @@ namespace PokeSharp.Engine.Core.Types;
 public readonly record struct SpriteId
 {
     /// <summary>
-    ///     Gets the underlying string value.
-    /// </summary>
-    public string Value { get; }
-
-    /// <summary>
-    ///     Gets the category part of the sprite ID (e.g., "may" from "may/walking").
-    ///     Returns "generic" if no category is specified.
-    /// </summary>
-    public string Category { get; }
-
-    /// <summary>
-    ///     Gets the sprite name part (e.g., "walking" from "may/walking").
-    ///     Returns the full value if no category is specified.
-    /// </summary>
-    public string SpriteName { get; }
-
-    /// <summary>
     ///     Initializes a new instance of the SpriteId struct.
     /// </summary>
     /// <param name="value">The sprite identifier string.</param>
@@ -35,7 +18,10 @@ public readonly record struct SpriteId
     public SpriteId(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new ArgumentException("Sprite ID cannot be null, empty, or whitespace.", nameof(value));
+            throw new ArgumentException(
+                "Sprite ID cannot be null, empty, or whitespace.",
+                nameof(value)
+            );
 
         Value = value;
 
@@ -54,19 +40,45 @@ public readonly record struct SpriteId
     }
 
     /// <summary>
+    ///     Gets the underlying string value.
+    /// </summary>
+    public string Value { get; }
+
+    /// <summary>
+    ///     Gets the category part of the sprite ID (e.g., "may" from "may/walking").
+    ///     Returns "generic" if no category is specified.
+    /// </summary>
+    public string Category { get; }
+
+    /// <summary>
+    ///     Gets the sprite name part (e.g., "walking" from "may/walking").
+    ///     Returns the full value if no category is specified.
+    /// </summary>
+    public string SpriteName { get; }
+
+    /// <summary>
     ///     Implicit conversion from string to SpriteId.
     /// </summary>
-    public static implicit operator SpriteId(string value) => new(value);
+    public static implicit operator SpriteId(string value)
+    {
+        return new SpriteId(value);
+    }
 
     /// <summary>
     ///     Implicit conversion from SpriteId to string.
     /// </summary>
-    public static implicit operator string(SpriteId id) => id.Value;
+    public static implicit operator string(SpriteId id)
+    {
+        return id.Value;
+    }
 
     /// <summary>
     ///     Returns the string representation of the sprite ID.
     /// </summary>
-    public override string ToString() => Value;
+    public override string ToString()
+    {
+        return Value;
+    }
 
     /// <summary>
     ///     Creates a SpriteId from a string, returning null if invalid.
@@ -84,11 +96,16 @@ public readonly record struct SpriteId
     public static SpriteId Create(string category, string spriteName)
     {
         if (string.IsNullOrWhiteSpace(category))
-            throw new ArgumentException("Category cannot be null, empty, or whitespace.", nameof(category));
+            throw new ArgumentException(
+                "Category cannot be null, empty, or whitespace.",
+                nameof(category)
+            );
         if (string.IsNullOrWhiteSpace(spriteName))
-            throw new ArgumentException("Sprite name cannot be null, empty, or whitespace.", nameof(spriteName));
+            throw new ArgumentException(
+                "Sprite name cannot be null, empty, or whitespace.",
+                nameof(spriteName)
+            );
 
         return new SpriteId($"{category}/{spriteName}");
     }
 }
-

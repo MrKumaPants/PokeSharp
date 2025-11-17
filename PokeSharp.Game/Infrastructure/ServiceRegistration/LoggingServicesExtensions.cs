@@ -29,10 +29,9 @@ public static class LoggingServicesExtensions
         services.AddLogging(loggingBuilder =>
         {
             loggingBuilder.ClearProviders();
-            loggingBuilder.AddSerilog(logger, dispose: true);
+            loggingBuilder.AddSerilog(logger, true);
         });
 
         return services;
     }
 }
-

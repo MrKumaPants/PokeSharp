@@ -1,5 +1,6 @@
 using Arch.Core;
 using Arch.Core.Extensions;
+using PokeSharp.Game.Components;
 
 namespace PokeSharp.Engine.Systems.Pooling;
 
@@ -13,10 +14,9 @@ namespace PokeSharp.Engine.Systems.Pooling;
 /// </remarks>
 public class EntityPoolManager
 {
-    private readonly World _world;
-    private readonly Dictionary<string, EntityPool> _pools;
-    private readonly EntityPool _defaultPool;
     private readonly object _lock = new();
+    private readonly Dictionary<string, EntityPool> _pools;
+    private readonly World _world;
 
     /// <summary>
     ///     Creates a new entity pool manager for the specified world.
@@ -24,15 +24,20 @@ public class EntityPoolManager
     /// <param name="world">ECS world to create entities in</param>
     public EntityPoolManager(World world)
     {
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
+        ArgumentNullException.ThrowIfNull(world);
 
         _world = world;
         _pools = new Dictionary<string, EntityPool>();
 
         // Create default pool
-        _defaultPool = new EntityPool(_world, "default", 100, 1000);
-        _pools["default"] = _defaultPool;
+        DefaultPool = new EntityPool(_world);
+        _pools["default"] = DefaultPool;
     }
+
+    /// <summary>
+    ///     Get the default pool (always available).
+    /// </summary>
+    public EntityPool DefaultPool { get; }
 
     /// <summary>
     ///     Register a named pool with custom configuration.
@@ -48,7 +53,7 @@ public class EntityPoolManager
         bool warmup = true
     )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(poolName, nameof(poolName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(poolName);
 
         lock (_lock)
         {
@@ -69,7 +74,7 @@ public class EntityPoolManager
     /// </summary>
     public void RegisterPool(PoolConfiguration config)
     {
-        ArgumentNullException.ThrowIfNull(config, nameof(config));
+        ArgumentNullException.ThrowIfNull(config);
 
         RegisterPool(config.Name, config.InitialSize, config.MaxSize, config.Warmup);
     }
@@ -82,7 +87,7 @@ public class EntityPoolManager
     /// <exception cref="KeyNotFoundException">Thrown if pool doesn't exist</exception>
     public EntityPool GetPool(string poolName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(poolName, nameof(poolName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(poolName);
 
         lock (_lock)
         {
@@ -98,18 +103,13 @@ public class EntityPoolManager
     /// </summary>
     public bool TryGetPool(string poolName, out EntityPool? pool)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(poolName, nameof(poolName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(poolName);
 
         lock (_lock)
         {
             return _pools.TryGetValue(poolName, out pool);
         }
     }
-
-    /// <summary>
-    ///     Get the default pool (always available).
-    /// </summary>
-    public EntityPool DefaultPool => _defaultPool;
 
     /// <summary>
     ///     Acquire entity from a named pool.
@@ -133,14 +133,10 @@ public class EntityPoolManager
         // If pool name not specified, try to get it from entity
         if (string.IsNullOrWhiteSpace(poolName))
         {
-            if (entity.Has<PokeSharp.Game.Components.Pooled>())
-            {
-                poolName = entity.Get<PokeSharp.Game.Components.Pooled>().PoolName;
-            }
+            if (entity.Has<Pooled>())
+                poolName = entity.Get<Pooled>().PoolName;
             else
-            {
                 poolName = "default";
-            }
         }
 
         var pool = GetPool(poolName);
@@ -207,7 +203,7 @@ public class EntityPoolManager
     /// </summary>
     public bool HasPool(string poolName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(poolName, nameof(poolName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(poolName);
 
         lock (_lock)
         {
@@ -250,5 +246,5 @@ public struct AggregatePoolStatistics
     ///     Overall reuse rate across all pools.
     /// </summary>
     public float OverallReuseRate =>
-        TotalCreated > 0 ? 1.0f - ((float)TotalCreated / (TotalActive + TotalAvailable)) : 0f;
+        TotalCreated > 0 ? 1.0f - (float)TotalCreated / (TotalActive + TotalAvailable) : 0f;
 }

@@ -1,6 +1,5 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Data.Entities;
@@ -123,4 +122,3 @@ public class MapMetadataFactory
         return mapInfoEntity;
     }
 }
-

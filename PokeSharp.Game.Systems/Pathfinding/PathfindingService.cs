@@ -1,9 +1,7 @@
 using Arch.Core.Extensions;
 using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Core.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Components.Tiles;
 
 namespace PokeSharp.Game.Systems.Pathfinding;
 
@@ -253,16 +251,12 @@ public class PathfindingService
         var entities = spatialQuery.GetEntitiesAt(mapId, position.X, position.Y);
 
         foreach (var entity in entities)
-        {
             if (entity.Has<Collision>())
             {
                 ref var collision = ref entity.Get<Collision>();
                 if (collision.IsSolid)
-                {
                     return false; // Blocked by solid collision
-                }
             }
-        }
 
         return true; // Walkable
     }

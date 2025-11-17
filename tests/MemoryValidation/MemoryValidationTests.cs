@@ -322,7 +322,7 @@ namespace PokeSharp.Tests.MemoryValidation
                 BackBufferFormat = SurfaceFormat.Color,
                 DepthStencilFormat = DepthFormat.Depth24,
                 DeviceWindowHandle = IntPtr.Zero,
-                IsFullScreen = false
+                IsFullScreen = false,
             };
 
             return new GraphicsDevice(

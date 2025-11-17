@@ -12,8 +12,5 @@ public class SpriteIdValueConverter : ValueConverter<SpriteId?, string?>
         : base(
             v => v.HasValue ? v.Value.Value : null!,
             v => v != null ? new SpriteId(v) : default(SpriteId?)
-        )
-    {
-    }
+        ) { }
 }
-

@@ -95,12 +95,10 @@ internal sealed class ConsoleLoggerFactoryImpl(LogLevel minLevel = LogLevel.Info
             );
 
             foreach (var line in exceptionLines)
-            {
                 if (LogFormatting.SupportsMarkup)
                     AnsiConsole.MarkupLine(line);
                 else
                     AnsiConsole.WriteLine(line);
-            }
         }
 
         private sealed class SimpleLogScope : IDisposable

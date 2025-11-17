@@ -10,8 +10,6 @@ using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Compilation;
 using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Scripting.Services;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.Services;
 
@@ -21,8 +19,8 @@ namespace PokeSharp.Game.Scripting.Services;
 /// </summary>
 public class ScriptService : IAsyncDisposable
 {
-    private readonly ScriptOptions _defaultOptions = ScriptCompilationOptions.GetDefaultOptions();
     private readonly IScriptingApiProvider _apis;
+    private readonly ScriptOptions _defaultOptions = ScriptCompilationOptions.GetDefaultOptions();
     private readonly ILogger<ScriptService> _logger;
 
     private readonly ConcurrentDictionary<

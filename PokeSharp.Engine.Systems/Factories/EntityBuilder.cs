@@ -41,7 +41,7 @@ public sealed class EntityBuilder
     /// <returns>This builder for chaining</returns>
     public EntityBuilder WithTag(string tag)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tag, nameof(tag));
+        ArgumentException.ThrowIfNullOrWhiteSpace(tag);
         Tag = tag;
         return this;
     }
@@ -68,7 +68,7 @@ public sealed class EntityBuilder
     /// <returns>This builder for chaining</returns>
     public EntityBuilder WithProperty(string key, object value)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key, nameof(key));
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
         ArgumentNullException.ThrowIfNull(value);
         _customProperties[key] = value;
         return this;

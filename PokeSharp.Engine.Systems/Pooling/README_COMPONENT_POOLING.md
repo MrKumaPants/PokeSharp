@@ -2,17 +2,21 @@
 
 ## Overview
 
-The Component Pooling System reduces GC pressure for frequently accessed components in the Arch ECS architecture. While Arch manages component storage internally through archetypes, this system provides pooling for temporary component operations and complex initialization.
+The Component Pooling System reduces GC pressure for frequently accessed components in the Arch ECS architecture. While
+Arch manages component storage internally through archetypes, this system provides pooling for temporary component
+operations and complex initialization.
 
 ## Performance Impact
 
 **Expected Benefits:**
+
 - **15-25% reduction** in component-related allocations
 - **10-15% reduction** in overall GC pressure
 - Particularly effective for components with reference types (Animation's HashSet)
 - Most impactful during intense gameplay (many entities moving/animating)
 
 **Targeted Components:**
+
 - `Position` (~7 accesses/frame): Movement, collision, rendering
 - `GridMovement` (~8 accesses/frame): Movement calculations
 - `Velocity`: Physics and movement updates
@@ -22,6 +26,7 @@ The Component Pooling System reduces GC pressure for frequently accessed compone
 ## Architecture
 
 ### ComponentPool<T>
+
 Generic pool for individual component types. Thread-safe using `ConcurrentBag<T>`.
 
 ```csharp
@@ -44,6 +49,7 @@ Console.WriteLine($"Reuse rate: {stats.ReuseRate:P1}");
 ```
 
 ### ComponentPoolManager
+
 Centralized manager for all component pools. Pre-configured for high-frequency components.
 
 ```csharp
@@ -191,6 +197,7 @@ public class AnimationSystem : BaseSystem
 ## When to Use Component Pools
 
 ### ✅ Good Use Cases
+
 1. **Temporary calculations**: Position interpolation, collision checks
 2. **State transitions**: Animation state copying, movement state changes
 3. **Batch operations**: Processing multiple components of same type
@@ -198,6 +205,7 @@ public class AnimationSystem : BaseSystem
 5. **Complex initialization**: Components with reference types (Animation's HashSet)
 
 ### ❌ When NOT to Use
+
 1. **Direct ECS operations**: Let Arch handle component storage
 2. **Long-lived components**: Just use entity.Get<T>() and entity.Set<T>()
 3. **Rarely accessed components**: Pooling overhead not worth it
@@ -221,6 +229,7 @@ File.WriteAllText("component_pool_report.txt", report);
 ```
 
 ### Expected Metrics
+
 - **Reuse Rate**: Target 70-85% (lower during startup, higher in steady state)
 - **Utilization Rate**: Should stay below 80% (pool not undersized)
 - **Total Created**: Should stabilize after warmup period
@@ -263,6 +272,7 @@ Console.WriteLine($"With pooling: {sw.ElapsedMilliseconds}ms");
 ## Migration Guide
 
 ### From Direct Component Access
+
 ```csharp
 // Before
 var position = entity.Get<Position>();
@@ -290,16 +300,19 @@ finally
 ## Troubleshooting
 
 ### Low Reuse Rate (<50%)
+
 - Pool size may be too large
 - Components not being returned properly
 - Check for memory leaks (retained references)
 
 ### High Utilization (>90%)
+
 - Pool size too small, increase maxSize
 - Too many concurrent operations
 - Consider adding more pools
 
 ### Memory Not Decreasing
+
 - Component pools reduce allocation rate, not total memory
 - GC will collect over time, benefits show in GC metrics
 - Use profiler to verify allocation reduction

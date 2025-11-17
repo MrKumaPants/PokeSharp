@@ -18,7 +18,8 @@ public class ErrorScenarioTests
         var exception = new FileNotFoundException("sprite.png not found", "sprite.png");
 
         // Act & Assert
-        var act = () => logger.LogError(exception, "Failed to load sprite {FileName}", "sprite.png");
+        var act = () =>
+            logger.LogError(exception, "Failed to load sprite {FileName}", "sprite.png");
 
         act.Should().NotThrow();
     }
@@ -31,11 +32,12 @@ public class ErrorScenarioTests
         var exception = new InvalidOperationException("Test exception");
 
         // Act & Assert
-        var act = () => logger.LogExceptionWithContext(
-            exception,
-            "Operation failed during {Operation}",
-            "MapLoading"
-        );
+        var act = () =>
+            logger.LogExceptionWithContext(
+                exception,
+                "Operation failed during {Operation}",
+                "MapLoading"
+            );
 
         act.Should().NotThrow();
     }
@@ -60,11 +62,12 @@ public class ErrorScenarioTests
         var logger = ConsoleLoggerFactory.Create<ErrorScenarioTests>();
 
         // Act & Assert
-        var act = () => logger.LogWarning(
-            "Validation failed for entity {EntityId}: {Reason}",
-            123,
-            "Missing required component"
-        );
+        var act = () =>
+            logger.LogWarning(
+                "Validation failed for entity {EntityId}: {Reason}",
+                123,
+                "Missing required component"
+            );
 
         act.Should().NotThrow();
     }
@@ -136,10 +139,8 @@ public class ErrorScenarioTests
         var logger = ConsoleLoggerFactory.Create<ErrorScenarioTests>();
 
         // Act & Assert
-        var act = () => logger.LogOperationFailedWithRecovery(
-            "Script compilation",
-            "Using cached version"
-        );
+        var act = () =>
+            logger.LogOperationFailedWithRecovery("Script compilation", "Using cached version");
 
         act.Should().NotThrow();
     }
@@ -151,10 +152,7 @@ public class ErrorScenarioTests
         var logger = ConsoleLoggerFactory.Create<ErrorScenarioTests>();
 
         // Act & Assert
-        var act = () => logger.LogOperationSkipped(
-            "Entity spawn",
-            "Template not found"
-        );
+        var act = () => logger.LogOperationSkipped("Entity spawn", "Template not found");
 
         act.Should().NotThrow();
     }
@@ -166,11 +164,12 @@ public class ErrorScenarioTests
         var logger = ConsoleLoggerFactory.Create<ErrorScenarioTests>();
 
         // Act & Assert
-        var act = () => logger.LogSystemUnavailable(
-            "RenderingEngine",
-            "Graphics device lost",
-            isCritical: true
-        );
+        var act = () =>
+            logger.LogSystemUnavailable(
+                "RenderingEngine",
+                "Graphics device lost",
+                isCritical: true
+            );
 
         act.Should().NotThrow();
     }
@@ -182,11 +181,12 @@ public class ErrorScenarioTests
         var logger = ConsoleLoggerFactory.Create<ErrorScenarioTests>();
 
         // Act & Assert
-        var act = () => logger.LogSystemDependencyMissing(
-            "ScriptingSystem",
-            "RoslynCompiler",
-            isCritical: false
-        );
+        var act = () =>
+            logger.LogSystemDependencyMissing(
+                "ScriptingSystem",
+                "RoslynCompiler",
+                isCritical: false
+            );
 
         act.Should().NotThrow();
     }
@@ -198,11 +198,12 @@ public class ErrorScenarioTests
         var logger = ConsoleLoggerFactory.Create<ErrorScenarioTests>();
 
         // Act & Assert
-        var act = () => logger.LogEntityMissingComponent(
-            "NPC #123",
-            "PositionComponent",
-            "Cannot render entity"
-        );
+        var act = () =>
+            logger.LogEntityMissingComponent(
+                "NPC #123",
+                "PositionComponent",
+                "Cannot render entity"
+            );
 
         act.Should().NotThrow();
     }
@@ -214,10 +215,7 @@ public class ErrorScenarioTests
         var logger = ConsoleLoggerFactory.Create<ErrorScenarioTests>();
 
         // Act & Assert
-        var act = () => logger.LogEntityNotFound(
-            "Player entity",
-            "Movement update"
-        );
+        var act = () => logger.LogEntityNotFound("Player entity", "Movement update");
 
         act.Should().NotThrow();
     }

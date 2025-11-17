@@ -151,7 +151,10 @@ public class AllocationTrackingTests
         var allocatedBytes = memoryAfter - memoryBefore;
 
         // Assert - Should allocate significant memory
-        Assert.True(allocatedBytes > 100_000, $"Expected >100KB allocated, got {allocatedBytes} bytes");
+        Assert.True(
+            allocatedBytes > 100_000,
+            $"Expected >100KB allocated, got {allocatedBytes} bytes"
+        );
     }
 
     [Fact]

@@ -52,9 +52,7 @@ public class EncounterZoneMapper : IEntityPropertyMapper<EncounterZone>
             var encounterZone = Map(properties);
             // Only add if encounter rate is greater than 0
             if (encounterZone.EncounterRate > 0)
-            {
                 world.Add(entity, encounterZone);
-            }
         }
     }
 }

@@ -32,25 +32,21 @@ public class NpcMapper : IEntityPropertyMapper<Npc>
 
         // Check if this NPC is a trainer
         if (properties.TryGetValue("trainer", out var trainerValue))
-        {
             npc.IsTrainer = trainerValue switch
             {
                 bool b => b,
                 string s => bool.TryParse(s, out var result) && result,
                 _ => false,
             };
-        }
 
         // Get view range
         if (properties.TryGetValue("view_range", out var rangeValue))
-        {
             npc.ViewRange = rangeValue switch
             {
                 int i => i,
                 string s when int.TryParse(s, out var result) => result,
                 _ => 0,
             };
-        }
 
         return npc;
     }

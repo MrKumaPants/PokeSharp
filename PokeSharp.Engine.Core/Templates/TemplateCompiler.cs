@@ -26,7 +26,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(entity, nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         var entityType = typeof(TEntity);
 
@@ -70,7 +70,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(entities, nameof(entities));
+        ArgumentNullException.ThrowIfNull(entities);
 
         var templates = new List<EntityTemplate>();
         var entityList = entities.ToList();
@@ -113,7 +113,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
     /// <inheritdoc />
     public bool Validate(TEntity entity)
     {
-        ArgumentNullException.ThrowIfNull(entity, nameof(entity));
+        ArgumentNullException.ThrowIfNull(entity);
 
         try
         {
@@ -137,7 +137,7 @@ public class TemplateCompiler<TEntity> : ITemplateCompiler<TEntity>
     /// <inheritdoc />
     public void RegisterCompiler(Func<TEntity, EntityTemplate> compilationFunc)
     {
-        ArgumentNullException.ThrowIfNull(compilationFunc, nameof(compilationFunc));
+        ArgumentNullException.ThrowIfNull(compilationFunc);
 
         var entityType = typeof(TEntity);
         _compilers[entityType] = compilationFunc;

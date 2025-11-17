@@ -1,11 +1,10 @@
+using System.Diagnostics;
 using Arch.Core;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.Rendering;
-using PokeSharp.Game.Systems;
-using PokeSharp.Game.Systems.Services;
 using Xunit;
 
 namespace PokeSharp.Engine.Systems.Tests.Movement;
@@ -17,10 +16,10 @@ namespace PokeSharp.Engine.Systems.Tests.Movement;
 /// </summary>
 public class MovementSystemTests : IDisposable
 {
-    private readonly World _world;
     private readonly Mock<ICollisionService> _mockCollisionService;
     private readonly Mock<ILogger<MovementSystem>> _mockLogger;
     private readonly MovementSystem _system;
+    private readonly World _world;
 
     public MovementSystemTests()
     {
@@ -44,13 +43,9 @@ public class MovementSystemTests : IDisposable
         {
             IsMoving = true,
             MovementProgress = 0f,
-            FacingDirection = Direction.South
+            FacingDirection = Direction.South,
         };
-        var animation = new Animation
-        {
-            CurrentAnimation = "walk_down",
-            IsPlaying = true
-        };
+        var animation = new Animation { CurrentAnimation = "walk_down", IsPlaying = true };
 
         var entity = _world.Create(position, movement, animation);
         _system.Initialize(_world);
@@ -72,7 +67,7 @@ public class MovementSystemTests : IDisposable
         {
             IsMoving = true,
             MovementProgress = 0f,
-            FacingDirection = Direction.South
+            FacingDirection = Direction.South,
         };
 
         var entity = _world.Create(position, movement);
@@ -123,27 +118,20 @@ public class MovementSystemTests : IDisposable
         // Arrange - Create realistic entity distribution
         // 80% entities without animation (NPCs, items, etc.)
         // 20% entities with animation (players, animated NPCs)
-        for (int i = 0; i < 80; i++)
-        {
-            _world.Create(
-                new Position { X = i, Y = 0 },
-                new GridMovement { IsMoving = false }
-            );
-        }
+        for (var i = 0; i < 80; i++)
+            _world.Create(new Position { X = i, Y = 0 }, new GridMovement { IsMoving = false });
 
-        for (int i = 0; i < 20; i++)
-        {
+        for (var i = 0; i < 20; i++)
             _world.Create(
                 new Position { X = i, Y = 1 },
                 new GridMovement { IsMoving = false },
                 new Animation { CurrentAnimation = "idle" }
             );
-        }
 
         _system.Initialize(_world);
 
         // Act
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
         _system.Update(_world, 0.016f);
         sw.Stop();
 
@@ -161,11 +149,7 @@ public class MovementSystemTests : IDisposable
         // Arrange
         var entity = _world.Create(
             new Position { X = 0, Y = 0 },
-            new GridMovement
-            {
-                IsMoving = true,
-                FacingDirection = Direction.South
-            }
+            new GridMovement { IsMoving = true, FacingDirection = Direction.South }
         );
 
         _system.Initialize(_world);
@@ -174,15 +158,13 @@ public class MovementSystemTests : IDisposable
         GC.WaitForPendingFinalizers();
         GC.Collect();
 
-        var memoryBefore = GC.GetTotalMemory(forceFullCollection: false);
+        var memoryBefore = GC.GetTotalMemory(false);
 
         // Act - Update multiple times
-        for (int i = 0; i < 100; i++)
-        {
+        for (var i = 0; i < 100; i++)
             _system.Update(_world, 0.016f);
-        }
 
-        var memoryAfter = GC.GetTotalMemory(forceFullCollection: false);
+        var memoryAfter = GC.GetTotalMemory(false);
         var allocated = memoryAfter - memoryBefore;
 
         // Assert - Should not allocate for direction strings
@@ -205,7 +187,7 @@ public class MovementSystemTests : IDisposable
                 IsMoving = true,
                 MovementSpeed = 4.0f,
                 MovementProgress = 0f,
-                FacingDirection = Direction.South
+                FacingDirection = Direction.South,
             }
         );
 
@@ -225,16 +207,8 @@ public class MovementSystemTests : IDisposable
         // Arrange
         var entity = _world.Create(
             new Position { X = 0, Y = 0 },
-            new GridMovement
-            {
-                IsMoving = true,
-                FacingDirection = Direction.South
-            },
-            new Animation
-            {
-                CurrentAnimation = "idle",
-                IsPlaying = false
-            }
+            new GridMovement { IsMoving = true, FacingDirection = Direction.South },
+            new Animation { CurrentAnimation = "idle", IsPlaying = false }
         );
 
         _system.Initialize(_world);
@@ -256,21 +230,14 @@ public class MovementSystemTests : IDisposable
         // NEW: Cache tile size per map ID
 
         // Arrange - Multiple entities on same map
-        for (int i = 0; i < 10; i++)
-        {
-            _world.Create(
-                new Position { X = i, Y = 0 },
-                new GridMovement { IsMoving = true }
-            );
-        }
+        for (var i = 0; i < 10; i++)
+            _world.Create(new Position { X = i, Y = 0 }, new GridMovement { IsMoving = true });
 
         _system.Initialize(_world);
 
         // Act - Update multiple frames
-        for (int frame = 0; frame < 100; frame++)
-        {
+        for (var frame = 0; frame < 100; frame++)
             _system.Update(_world, 0.016f);
-        }
 
         // Assert - Cache should work (no exceptions, consistent behavior)
         // Note: Without direct access to cache, we verify by absence of errors
@@ -287,16 +254,8 @@ public class MovementSystemTests : IDisposable
 
         var entity = _world.Create(
             new Position { X = 0, Y = 0 },
-            new GridMovement
-            {
-                IsMoving = false,
-                FacingDirection = Direction.None
-            },
-            new MovementRequest
-            {
-                Direction = Direction.South,
-                IsPending = true
-            }
+            new GridMovement { IsMoving = false, FacingDirection = Direction.None },
+            new MovementRequest { Direction = Direction.South, IsPending = true }
         );
 
         _system.Initialize(_world);
@@ -320,16 +279,8 @@ public class MovementSystemTests : IDisposable
 
         var entity = _world.Create(
             new Position { X = 0, Y = 0 },
-            new GridMovement
-            {
-                IsMoving = false,
-                FacingDirection = Direction.None
-            },
-            new MovementRequest
-            {
-                Direction = Direction.South,
-                IsPending = true
-            }
+            new GridMovement { IsMoving = false, FacingDirection = Direction.None },
+            new MovementRequest { Direction = Direction.South, IsPending = true }
         );
 
         _system.Initialize(_world);
@@ -355,7 +306,7 @@ public class MovementSystemTests : IDisposable
             Direction.South,
             Direction.West,
             Direction.East,
-            Direction.North
+            Direction.North,
         };
 
         // Act & Assert - All directions should map correctly
@@ -385,15 +336,13 @@ public class MovementSystemTests : IDisposable
 
         _system.Initialize(_world);
 
-        var memoryBefore = GC.GetTotalMemory(forceFullCollection: false);
+        var memoryBefore = GC.GetTotalMemory(false);
 
         // Act - Update 100 frames
-        for (int i = 0; i < 100; i++)
-        {
+        for (var i = 0; i < 100; i++)
             _system.Update(_world, 0.016f);
-        }
 
-        var memoryAfter = GC.GetTotalMemory(forceFullCollection: false);
+        var memoryAfter = GC.GetTotalMemory(false);
         var allocated = memoryAfter - memoryBefore;
 
         // Assert - Should not allocate new lists
@@ -406,15 +355,17 @@ public class MovementSystemTests : IDisposable
 /// </summary>
 public class MovementSystemIntegrationTests : IDisposable
 {
-    private readonly World _world;
     private readonly Mock<ICollisionService> _mockCollisionService;
     private readonly MovementSystem _system;
+    private readonly World _world;
 
     public MovementSystemIntegrationTests()
     {
         _world = World.Create();
         _mockCollisionService = new Mock<ICollisionService>();
-        _mockCollisionService.Setup(x => x.CanMove(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>())).Returns(true);
+        _mockCollisionService
+            .Setup(x => x.CanMove(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Returns(true);
         _system = new MovementSystem(_mockCollisionService.Object);
     }
 
@@ -435,33 +386,24 @@ public class MovementSystemIntegrationTests : IDisposable
         );
 
         // 3 NPCs (animated)
-        for (int i = 0; i < 3; i++)
-        {
+        for (var i = 0; i < 3; i++)
             _world.Create(
                 new Position { X = i, Y = 0 },
                 new GridMovement { IsMoving = false },
                 new Animation { CurrentAnimation = "idle" }
             );
-        }
 
         // 5 static entities (no animation)
-        for (int i = 0; i < 5; i++)
-        {
-            _world.Create(
-                new Position { X = i, Y = 10 },
-                new GridMovement { IsMoving = false }
-            );
-        }
+        for (var i = 0; i < 5; i++)
+            _world.Create(new Position { X = i, Y = 10 }, new GridMovement { IsMoving = false });
 
         _system.Initialize(_world);
 
         // Act - Simulate player movement
         _world.Set(player, new MovementRequest { Direction = Direction.South, IsPending = true });
 
-        for (int frame = 0; frame < 60; frame++) // 1 second at 60 FPS
-        {
+        for (var frame = 0; frame < 60; frame++) // 1 second at 60 FPS
             _system.Update(_world, 0.016f);
-        }
 
         // Assert - System should handle all entities without error
         var playerMovement = _world.Get<GridMovement>(player);
@@ -472,33 +414,28 @@ public class MovementSystemIntegrationTests : IDisposable
     public void StressTest_ShouldHandle_100Entities()
     {
         // Arrange - Create 100 entities (mix of animated and non-animated)
-        for (int i = 0; i < 100; i++)
-        {
+        for (var i = 0; i < 100; i++)
             if (i % 3 == 0) // 33% animated
-            {
                 _world.Create(
                     new Position { X = i % 10, Y = i / 10 },
                     new GridMovement { IsMoving = false },
                     new Animation { CurrentAnimation = "idle" }
                 );
-            }
             else
-            {
                 _world.Create(
                     new Position { X = i % 10, Y = i / 10 },
                     new GridMovement { IsMoving = false }
                 );
-            }
-        }
 
         _system.Initialize(_world);
 
         // Act
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
         _system.Update(_world, 0.016f);
         sw.Stop();
 
         // Assert - Should handle load efficiently
-        sw.ElapsedMilliseconds.Should().BeLessThan(16, "should update 100 entities within frame budget");
+        sw.ElapsedMilliseconds.Should()
+            .BeLessThan(16, "should update 100 entities within frame budget");
     }
 }

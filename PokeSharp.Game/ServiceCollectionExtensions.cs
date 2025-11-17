@@ -28,7 +28,7 @@ public static class ServiceCollectionExtensions
         // Register service groups
         services.AddCoreEcsServices();
         services.AddDataServices();
-        services.AddModdingServices("Mods");
+        services.AddModdingServices();
         services.AddTemplateServices();
         services.AddScriptingServices();
         services.AddGameRuntimeServices();

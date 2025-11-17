@@ -10,9 +10,9 @@ namespace PokeSharp.Game.Systems.Services;
 /// </summary>
 public class MapRegistry
 {
+    private readonly ConcurrentDictionary<MapRuntimeId, byte> _loadedMaps = new();
     private readonly ConcurrentDictionary<MapRuntimeId, string> _mapIdToName = new();
     private readonly ConcurrentDictionary<string, MapRuntimeId> _mapNameToId = new();
-    private readonly ConcurrentDictionary<MapRuntimeId, byte> _loadedMaps = new();
     private int _nextMapId;
 
     /// <summary>

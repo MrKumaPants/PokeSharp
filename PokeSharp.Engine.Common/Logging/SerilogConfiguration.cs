@@ -32,7 +32,10 @@ public static class SerilogConfiguration
         else
         {
             // Programmatic configuration as fallback
-            var isDevelopment = environment.Equals("Development", StringComparison.OrdinalIgnoreCase);
+            var isDevelopment = environment.Equals(
+                "Development",
+                StringComparison.OrdinalIgnoreCase
+            );
 
             loggerConfig
                 .MinimumLevel.Is(isDevelopment ? LogEventLevel.Debug : LogEventLevel.Information)
@@ -46,17 +49,19 @@ public static class SerilogConfiguration
 
             // Console sink with Spectre.Console support for markup rendering
             loggerConfig.WriteTo.Spectre(
-                outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u5}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
+                "[{Timestamp:HH:mm:ss.fff}] [{Level:u5}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
             );
 
             // File sink with rotation
-            loggerConfig.WriteTo.Async(a => a.File(
-                path: $"logs/pokesharp-{environment.ToLowerInvariant()}-.log",
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: isDevelopment ? 3 : 7,
-                fileSizeLimitBytes: isDevelopment ? 50 * 1024 * 1024 : 10 * 1024 * 1024, // 50MB dev, 10MB prod
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{ThreadId}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
-            ));
+            loggerConfig.WriteTo.Async(a =>
+                a.File(
+                    $"logs/pokesharp-{environment.ToLowerInvariant()}-.log",
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: isDevelopment ? 3 : 7,
+                    fileSizeLimitBytes: isDevelopment ? 50 * 1024 * 1024 : 10 * 1024 * 1024, // 50MB dev, 10MB prod
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{ThreadId}] {SourceContext}: {Message:lj}{NewLine}{Exception}"
+                )
+            );
         }
 
         return loggerConfig;
@@ -78,7 +83,7 @@ public static class SerilogConfiguration
 
         var loggerFactory = LoggerFactory.Create(builder =>
         {
-            builder.AddSerilog(serilogLogger, dispose: true);
+            builder.AddSerilog(serilogLogger, true);
         });
 
         return loggerFactory;
@@ -90,12 +95,15 @@ public static class SerilogConfiguration
     /// <param name="basePath">Base path where config files are located</param>
     /// <param name="environment">Environment name for environment-specific config</param>
     /// <returns>IConfiguration instance</returns>
-    public static IConfiguration LoadConfiguration(string basePath, string environment = "Production")
+    public static IConfiguration LoadConfiguration(
+        string basePath,
+        string environment = "Production"
+    )
     {
         var configBuilder = new ConfigurationBuilder()
             .SetBasePath(basePath)
-            .AddJsonFile("Config/appsettings.json", optional: true, reloadOnChange: true)
-            .AddJsonFile($"Config/appsettings.{environment}.json", optional: true, reloadOnChange: true)
+            .AddJsonFile("Config/appsettings.json", true, true)
+            .AddJsonFile($"Config/appsettings.{environment}.json", true, true)
             .AddEnvironmentVariables("POKESHARP_");
 
         return configBuilder.Build();

@@ -1,6 +1,5 @@
 using System.Numerics;
 using Arch.Core;
-using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Systems.Factories;
 
 namespace PokeSharp.Engine.Systems.BulkOperations;
@@ -76,15 +75,13 @@ public sealed class TemplateBatchSpawner
         Action<EntityBuilder, int>? configure = null
     )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
         var entities = new Entity[count];
 
-        for (int i = 0; i < count; i++)
-        {
+        for (var i = 0; i < count; i++)
             if (configure != null)
-            {
                 entities[i] = _factory.SpawnFromTemplate(
                     templateId,
                     _world,
@@ -93,12 +90,8 @@ public sealed class TemplateBatchSpawner
                         configure(builder, i);
                     }
                 );
-            }
             else
-            {
                 entities[i] = _factory.SpawnFromTemplate(templateId, _world);
-            }
-        }
 
         return entities;
     }
@@ -135,35 +128,33 @@ public sealed class TemplateBatchSpawner
         Vector2 startPosition
     )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(rows, nameof(rows));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(cols, nameof(cols));
-        ArgumentOutOfRangeException.ThrowIfNegative(spacing, nameof(spacing));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(rows);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(cols);
+        ArgumentOutOfRangeException.ThrowIfNegative(spacing);
 
         var totalCount = rows * cols;
         var entities = new Entity[totalCount];
 
-        for (int row = 0; row < rows; row++)
+        for (var row = 0; row < rows; row++)
+        for (var col = 0; col < cols; col++)
         {
-            for (int col = 0; col < cols; col++)
-            {
-                int index = row * cols + col;
-                var position = new Vector2(
-                    startPosition.X + col * spacing,
-                    startPosition.Y + row * spacing
-                );
+            var index = row * cols + col;
+            var position = new Vector2(
+                startPosition.X + col * spacing,
+                startPosition.Y + row * spacing
+            );
 
-                entities[index] = _factory.SpawnFromTemplate(
-                    templateId,
-                    _world,
-                    builder =>
-                    {
-                        // Assuming Position component exists - adjust based on your component structure
-                        builder.WithProperty("GridPosition", new { Row = row, Col = col });
-                        builder.WithProperty("SpawnPosition", position);
-                    }
-                );
-            }
+            entities[index] = _factory.SpawnFromTemplate(
+                templateId,
+                _world,
+                builder =>
+                {
+                    // Assuming Position component exists - adjust based on your component structure
+                    builder.WithProperty("GridPosition", new { Row = row, Col = col });
+                    builder.WithProperty("SpawnPosition", position);
+                }
+            );
         }
 
         return entities;
@@ -199,14 +190,14 @@ public sealed class TemplateBatchSpawner
     /// </example>
     public Entity[] SpawnCircle(string templateId, int count, Vector2 center, float radius)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
-        ArgumentOutOfRangeException.ThrowIfNegative(radius, nameof(radius));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+        ArgumentOutOfRangeException.ThrowIfNegative(radius);
 
         var entities = new Entity[count];
         var angleStep = MathF.PI * 2f / count;
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var angle = i * angleStep;
             var position = new Vector2(
@@ -255,13 +246,13 @@ public sealed class TemplateBatchSpawner
     /// </example>
     public Entity[] SpawnWave(string templateId, int count, WaveConfiguration config)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
-        ArgumentNullException.ThrowIfNull(config, nameof(config));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+        ArgumentNullException.ThrowIfNull(config);
 
         var entities = new Entity[count];
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var spawnDelay = i * config.SpawnInterval;
             var position = config.PositionFactory?.Invoke(i) ?? config.SpawnPosition;
@@ -302,15 +293,15 @@ public sealed class TemplateBatchSpawner
     /// </example>
     public Entity[] SpawnLine(string templateId, int count, Vector2 startPos, Vector2 endPos)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
         var entities = new Entity[count];
         var direction = Vector2.Normalize(endPos - startPos);
         var totalDistance = Vector2.Distance(startPos, endPos);
         var stepSize = totalDistance / (count - 1);
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var position = startPos + direction * (stepSize * i);
 
@@ -349,12 +340,12 @@ public sealed class TemplateBatchSpawner
     /// </example>
     public Entity[] SpawnRandom(string templateId, int count, Vector2 minBounds, Vector2 maxBounds)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
         var entities = new Entity[count];
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             var position = new Vector2(
                 Random.Shared.NextSingle() * (maxBounds.X - minBounds.X) + minBounds.X,

@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.HotReload.Cache;
 
@@ -12,6 +11,12 @@ namespace PokeSharp.Game.Scripting.HotReload.Cache;
 public class ScriptCacheEntry
 {
     /// <summary>
+    ///     Maximum number of compiled constructors to cache. Prevents unbounded growth during hot-reload cycles.
+    ///     Each entry is ~1-5KB (compiled delegate + metadata). 100 entries = ~100-500KB max.
+    /// </summary>
+    private const int MaxCompiledConstructors = 100;
+
+    /// <summary>
     ///     Global cache of compiled constructor delegates for fast instantiation.
     ///     Thread-safe concurrent dictionary with compiled Expression.Lambda factories.
     ///     Limited to MaxCompiledConstructors entries to prevent unbounded memory growth.
@@ -22,12 +27,6 @@ public class ScriptCacheEntry
     ///     Lock for cache eviction operations.
     /// </summary>
     private static readonly object _cacheLock = new();
-
-    /// <summary>
-    ///     Maximum number of compiled constructors to cache. Prevents unbounded growth during hot-reload cycles.
-    ///     Each entry is ~1-5KB (compiled delegate + metadata). 100 entries = ~100-500KB max.
-    /// </summary>
-    private const int MaxCompiledConstructors = 100;
 
     private readonly object _instanceLock = new();
     private object? _instance;

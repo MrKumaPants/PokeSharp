@@ -62,7 +62,6 @@ public class PropertyMapperRegistry
                 // Get the MapAndAdd method
                 var mapAndAddMethod = entityMapperInterface.GetMethod("MapAndAdd");
                 if (mapAndAddMethod != null)
-                {
                     try
                     {
                         mapAndAddMethod.Invoke(mapper, new object[] { world, entity, properties });
@@ -76,7 +75,6 @@ public class PropertyMapperRegistry
                             mapperType.Name
                         );
                     }
-                }
             }
         }
 

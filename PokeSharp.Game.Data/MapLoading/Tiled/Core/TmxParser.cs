@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Linq;
 using System.Xml.Linq;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
@@ -281,8 +280,8 @@ public static class TmxParser
             {
                 Id = ParseInt(layerElement, "id"),
                 Name = layerElement.Attribute("name")?.Value ?? string.Empty,
-                X = ParseFloat(layerElement, "offsetx", 0f),
-                Y = ParseFloat(layerElement, "offsety", 0f),
+                X = ParseFloat(layerElement, "offsetx"),
+                Y = ParseFloat(layerElement, "offsety"),
                 Visible = ParseInt(layerElement, "visible", 1) == 1,
                 Opacity = ParseFloat(layerElement, "opacity", 1.0f),
             };
@@ -290,14 +289,12 @@ public static class TmxParser
             // Parse image element
             var imageElement = layerElement.Element("image");
             if (imageElement != null)
-            {
                 imageLayer.Image = new TmxImage
                 {
                     Source = imageElement.Attribute("source")?.Value ?? string.Empty,
                     Width = ParseInt(imageElement, "width"),
                     Height = ParseInt(imageElement, "height"),
                 };
-            }
 
             imageLayers.Add(imageLayer);
         }

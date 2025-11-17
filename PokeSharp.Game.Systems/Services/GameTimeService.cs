@@ -6,22 +6,19 @@ namespace PokeSharp.Game.Systems.Services;
 /// </summary>
 public class GameTimeService : IGameTimeService
 {
-    private float _totalSeconds;
-    private float _deltaTime;
+    /// <inheritdoc />
+    public float TotalSeconds { get; private set; }
 
     /// <inheritdoc />
-    public float TotalSeconds => _totalSeconds;
+    public double TotalMilliseconds => TotalSeconds * 1000.0;
 
     /// <inheritdoc />
-    public double TotalMilliseconds => _totalSeconds * 1000.0;
-
-    /// <inheritdoc />
-    public float DeltaTime => _deltaTime;
+    public float DeltaTime { get; private set; }
 
     /// <inheritdoc />
     public void Update(float totalSeconds, float deltaTime)
     {
-        _totalSeconds = totalSeconds;
-        _deltaTime = deltaTime;
+        TotalSeconds = totalSeconds;
+        DeltaTime = deltaTime;
     }
 }

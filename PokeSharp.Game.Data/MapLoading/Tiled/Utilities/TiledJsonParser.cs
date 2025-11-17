@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 using PokeSharp.Game.Data.MapLoading.Tiled.TiledJson;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
@@ -69,6 +68,7 @@ public class TiledJsonParser
                             );
                             tilelayers.Add(converted);
                         }
+
                         break;
 
                     case "objectgroup":
@@ -128,12 +128,16 @@ public class TiledJsonParser
             var obj = new TmxObject
             {
                 Id = objElement.TryGetProperty("id", out var objId) ? objId.GetInt32() : 0,
-                Name = objElement.TryGetProperty("name", out var objName) ? objName.GetString() ?? "" : "",
+                Name = objElement.TryGetProperty("name", out var objName)
+                    ? objName.GetString() ?? ""
+                    : "",
                 Type = objElement.TryGetProperty("type", out var type) ? type.GetString() : null,
                 X = objElement.TryGetProperty("x", out var x) ? x.GetSingle() : 0,
                 Y = objElement.TryGetProperty("y", out var y) ? y.GetSingle() : 0,
                 Width = objElement.TryGetProperty("width", out var width) ? width.GetSingle() : 0,
-                Height = objElement.TryGetProperty("height", out var height) ? height.GetSingle() : 0,
+                Height = objElement.TryGetProperty("height", out var height)
+                    ? height.GetSingle()
+                    : 0,
             };
 
             // Parse properties array into dictionary
@@ -145,7 +149,6 @@ public class TiledJsonParser
                 );
 
                 if (properties != null)
-                {
                     foreach (var prop in properties)
                     {
                         if (string.IsNullOrEmpty(prop.Name))
@@ -153,11 +156,18 @@ public class TiledJsonParser
 
                         object? value = prop.Value switch
                         {
-                            JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.String => jsonElement.GetString(),
-                            JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.Number => jsonElement.GetInt32(),
-                            JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.True => true,
-                            JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.False => false,
-                            JsonElement jsonElement when jsonElement.ValueKind == JsonValueKind.Null => null,
+                            JsonElement jsonElement
+                                when jsonElement.ValueKind == JsonValueKind.String =>
+                                jsonElement.GetString(),
+                            JsonElement jsonElement
+                                when jsonElement.ValueKind == JsonValueKind.Number =>
+                                jsonElement.GetInt32(),
+                            JsonElement jsonElement
+                                when jsonElement.ValueKind == JsonValueKind.True => true,
+                            JsonElement jsonElement
+                                when jsonElement.ValueKind == JsonValueKind.False => false,
+                            JsonElement jsonElement
+                                when jsonElement.ValueKind == JsonValueKind.Null => null,
                             _ => prop.Value?.ToString(),
                         };
 
@@ -167,7 +177,6 @@ public class TiledJsonParser
                             obj.Properties[key] = value;
                         }
                     }
-                }
             }
 
             objectGroup.Objects.Add(obj);
@@ -176,4 +185,3 @@ public class TiledJsonParser
         return objectGroup;
     }
 }
-

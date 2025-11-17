@@ -1,7 +1,7 @@
 using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Engine.Common.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using PokeSharp.Game.Data.Configuration;
 using PokeSharp.Game.Data.MapLoading.Tiled.TiledJson;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
@@ -36,18 +36,11 @@ public static class TiledMapLoader
         _logger = logger;
 
         if (options.ValidateMaps && logger != null)
-        {
             _validator = new TmxDocumentValidator(
                 logger as ILogger<TmxDocumentValidator>
-                    ?? Microsoft
-                        .Extensions
-                        .Logging
-                        .Abstractions
-                        .NullLogger<TmxDocumentValidator>
-                        .Instance,
+                    ?? NullLogger<TmxDocumentValidator>.Instance,
                 options.ValidateFileReferences
             );
-        }
     }
 
     /// <summary>
@@ -100,21 +93,15 @@ public static class TiledMapLoader
 
             // Log warnings
             if (validationResult.Warnings.Count > 0 && _options?.LogValidationWarnings == true)
-            {
                 _logger?.LogWarning(validationResult.GetWarningMessage());
-            }
 
             // Handle validation errors
             if (!validationResult.IsValid)
             {
                 if (_options?.ThrowOnValidationError == true)
-                {
                     throw new MapValidationException(validationResult);
-                }
-                else
-                {
-                    _logger?.LogError(validationResult.GetErrorMessage());
-                }
+
+                _logger?.LogError(validationResult.GetErrorMessage());
             }
         }
 
@@ -131,7 +118,12 @@ public static class TiledMapLoader
             Height = tiledMap.Height,
             TileWidth = tiledMap.TileWidth,
             TileHeight = tiledMap.TileHeight,
-            Tilesets = ConvertTilesets(tiledMap.Tilesets, mapPath, tiledMap.TileWidth, tiledMap.TileHeight),
+            Tilesets = ConvertTilesets(
+                tiledMap.Tilesets,
+                mapPath,
+                tiledMap.TileWidth,
+                tiledMap.TileHeight
+            ),
             Layers = ConvertLayers(tiledMap.Layers, tiledMap.Width, tiledMap.Height),
             ObjectGroups = ConvertObjectGroups(tiledMap.Layers),
             ImageLayers = ConvertImageLayers(tiledMap.Layers),
@@ -215,7 +207,7 @@ public static class TiledMapLoader
                 {
                     var imagePath = tiledTileset.Image;
                     var tilesetDirectory = Path.GetDirectoryName(tilesetPath) ?? string.Empty;
-                    string resolvedImagePath = Path.IsPathRooted(imagePath)
+                    var resolvedImagePath = Path.IsPathRooted(imagePath)
                         ? imagePath
                         : Path.GetFullPath(Path.Combine(tilesetDirectory, imagePath));
 
@@ -533,14 +525,12 @@ public static class TiledMapLoader
 
             // Parse image source if present
             if (!string.IsNullOrEmpty(tiledLayer.Image))
-            {
                 imageLayer.Image = new TmxImage
                 {
                     Source = tiledLayer.Image,
                     Width = 0, // Image dimensions will be determined when texture is loaded
                     Height = 0,
                 };
-            }
 
             result.Add(imageLayer);
         }

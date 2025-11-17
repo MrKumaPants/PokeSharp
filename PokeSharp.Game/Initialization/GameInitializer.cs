@@ -1,5 +1,4 @@
 using Arch.Core;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Engine.Common.Logging;
@@ -9,11 +8,10 @@ using PokeSharp.Engine.Rendering.Systems;
 using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
-using PokeSharp.Game.Infrastructure.Configuration;
 using PokeSharp.Game.Data.MapLoading.Tiled.Core;
+using PokeSharp.Game.Infrastructure.Configuration;
 using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Initialization;
 
@@ -32,7 +30,6 @@ public class GameInitializer(
     SpriteLoader spriteLoader
 )
 {
-
     /// <summary>
     ///     Gets the spatial hash system.
     /// </summary>
@@ -73,14 +70,19 @@ public class GameInitializer(
         // before GameInitializer.Initialize is invoked.
 
         // Register and warmup pools for common entity types
-        var gameplayConfig = Infrastructure.Configuration.GameplayConfig.CreateDefault();
+        var gameplayConfig = GameplayConfig.CreateDefault();
         var playerPool = gameplayConfig.Pools.Player;
         var npcPool = gameplayConfig.Pools.Npc;
         var tilePool = gameplayConfig.Pools.Tile;
 
-        poolManager.RegisterPool("player", initialSize: playerPool.InitialSize, maxSize: playerPool.MaxSize, warmup: playerPool.Warmup);
-        poolManager.RegisterPool("npc", initialSize: npcPool.InitialSize, maxSize: npcPool.MaxSize, warmup: npcPool.Warmup);
-        poolManager.RegisterPool("tile", initialSize: tilePool.InitialSize, maxSize: tilePool.MaxSize, warmup: tilePool.Warmup);
+        poolManager.RegisterPool(
+            "player",
+            playerPool.InitialSize,
+            playerPool.MaxSize,
+            playerPool.Warmup
+        );
+        poolManager.RegisterPool("npc", npcPool.InitialSize, npcPool.MaxSize, npcPool.Warmup);
+        poolManager.RegisterPool("tile", tilePool.InitialSize, tilePool.MaxSize, tilePool.Warmup);
 
         logger.LogInformation(
             "Entity pool manager initialized with {NPCPoolSize} NPC, {PlayerPoolSize} player, and {TilePoolSize} tile pool capacity",
@@ -88,7 +90,6 @@ public class GameInitializer(
             playerPool.InitialSize,
             tilePool.InitialSize
         );
-
 
         // Create and register systems in priority order
 
@@ -106,7 +107,11 @@ public class GameInitializer(
         // InputSystem with Pokemon-style input buffering
         var inputBuffer = gameplayConfig.InputBuffer;
         var inputLogger = loggerFactory.CreateLogger<InputSystem>();
-        var inputSystem = new InputSystem(inputBuffer.MaxBufferedInputs, inputBuffer.TimeoutSeconds, inputLogger);
+        var inputSystem = new InputSystem(
+            inputBuffer.MaxBufferedInputs,
+            inputBuffer.TimeoutSeconds,
+            inputLogger
+        );
         systemManager.RegisterUpdateSystem(inputSystem);
 
         // Register CollisionService (not a system, but a service used by MovementSystem)
@@ -116,7 +121,11 @@ public class GameInitializer(
 
         // Register MovementSystem (Priority: 100, handles movement and collision checking)
         var movementLogger = loggerFactory.CreateLogger<MovementSystem>();
-        var movementSystem = new MovementSystem(CollisionService, SpatialHashSystem, movementLogger);
+        var movementSystem = new MovementSystem(
+            CollisionService,
+            SpatialHashSystem,
+            movementLogger
+        );
         systemManager.RegisterUpdateSystem(movementSystem);
 
         // Register PathfindingSystem (Priority: 300, processes MovementRoute waypoints with A* pathfinding)
@@ -166,11 +175,17 @@ public class GameInitializer(
     /// <param name="spriteTextureLoader">The sprite texture loader instance.</param>
     public void SetSpriteTextureLoader(SpriteTextureLoader spriteTextureLoader)
     {
-        SpriteTextureLoader = spriteTextureLoader ?? throw new ArgumentNullException(nameof(spriteTextureLoader));
+        SpriteTextureLoader =
+            spriteTextureLoader ?? throw new ArgumentNullException(nameof(spriteTextureLoader));
 
         // Initialize MapLifecycleManager with SpriteTextureLoader dependency
         var mapLifecycleLogger = loggerFactory.CreateLogger<MapLifecycleManager>();
-        MapLifecycleManager = new MapLifecycleManager(world, assetManager, spriteTextureLoader, mapLifecycleLogger);
+        MapLifecycleManager = new MapLifecycleManager(
+            world,
+            assetManager,
+            spriteTextureLoader,
+            mapLifecycleLogger
+        );
         logger.LogInformation("MapLifecycleManager initialized with sprite texture support");
     }
 }

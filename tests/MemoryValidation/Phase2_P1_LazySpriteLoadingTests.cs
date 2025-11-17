@@ -40,16 +40,22 @@ namespace PokeSharp.Tests.MemoryValidation
         {
             // ARRANGE
             _output.WriteLine("=== PHASE 2 TEST P1: LAZY SPRITE LOADING MEMORY VALIDATION ===");
-            _output.WriteLine($"Target: ≥{EXPECTED_MEMORY_SAVINGS_MB}MB reduction vs loading all sprites");
+            _output.WriteLine(
+                $"Target: ≥{EXPECTED_MEMORY_SAVINGS_MB}MB reduction vs loading all sprites"
+            );
             _output.WriteLine("");
 
             // Initialize test components
             var assetManager = InitializeAssetManager();
-            var spriteLoader = new SpriteLoader(Microsoft.Extensions.Logging.Abstractions.NullLogger<SpriteLoader>.Instance);
+            var spriteLoader = new SpriteLoader(
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<SpriteLoader>.Instance
+            );
 
             // Scan available sprite files
             var allSpriteFiles = DiscoverAllSpriteFiles();
-            _output.WriteLine($"Found {allSpriteFiles.Count} total sprite files in {SPRITES_BASE_PATH}");
+            _output.WriteLine(
+                $"Found {allSpriteFiles.Count} total sprite files in {SPRITES_BASE_PATH}"
+            );
             _output.WriteLine("");
 
             // ========================================
@@ -100,8 +106,13 @@ namespace PokeSharp.Tests.MemoryValidation
             var testMapId = 1;
             var testMapSpriteIds = GetTestMapSpriteIds(); // Small subset of sprites for one map
 
-            _output.WriteLine($"Loading sprites for map {testMapId}: {testMapSpriteIds.Count} sprites");
-            var loadedSpriteKeys = await spriteTextureLoader.LoadSpritesForMapAsync(testMapId, testMapSpriteIds);
+            _output.WriteLine(
+                $"Loading sprites for map {testMapId}: {testMapSpriteIds.Count} sprites"
+            );
+            var loadedSpriteKeys = await spriteTextureLoader.LoadSpritesForMapAsync(
+                testMapId,
+                testMapSpriteIds
+            );
             ForceGarbageCollection();
 
             var lazyEndMemoryMB = GetCurrentMemoryMB();
@@ -121,18 +132,22 @@ namespace PokeSharp.Tests.MemoryValidation
             _output.WriteLine("=== RESULTS ===");
             _output.WriteLine($"Baseline Memory (ALL sprites): {baselineMemoryUsedMB:F1}MB");
             _output.WriteLine($"Lazy Load Memory (ONE map):    {lazyMemoryUsedMB:F1}MB");
-            _output.WriteLine($"Memory Savings:                {memorySavingsMB:F1}MB ({savingsPercentage:F1}%)");
+            _output.WriteLine(
+                $"Memory Savings:                {memorySavingsMB:F1}MB ({savingsPercentage:F1}%)"
+            );
             _output.WriteLine($"Target Savings:                ≥{EXPECTED_MEMORY_SAVINGS_MB}MB");
             _output.WriteLine("");
 
             // ASSERT
             Assert.True(
                 memorySavingsMB >= EXPECTED_MEMORY_SAVINGS_MB,
-                $"FAIL: Lazy loading saved {memorySavingsMB:F1}MB, which is less than the target {EXPECTED_MEMORY_SAVINGS_MB}MB reduction. " +
-                $"Expected ≥{EXPECTED_MEMORY_SAVINGS_MB}MB savings, got {memorySavingsMB:F1}MB."
+                $"FAIL: Lazy loading saved {memorySavingsMB:F1}MB, which is less than the target {EXPECTED_MEMORY_SAVINGS_MB}MB reduction. "
+                    + $"Expected ≥{EXPECTED_MEMORY_SAVINGS_MB}MB savings, got {memorySavingsMB:F1}MB."
             );
 
-            _output.WriteLine($"✅ PASS: Lazy loading reduced memory by {memorySavingsMB:F1}MB (≥{EXPECTED_MEMORY_SAVINGS_MB}MB target)");
+            _output.WriteLine(
+                $"✅ PASS: Lazy loading reduced memory by {memorySavingsMB:F1}MB (≥{EXPECTED_MEMORY_SAVINGS_MB}MB target)"
+            );
             _output.WriteLine($"Phase 2 optimization successfully validated!");
         }
 
@@ -156,7 +171,7 @@ namespace PokeSharp.Tests.MemoryValidation
                     BackBufferFormat = SurfaceFormat.Color,
                     DepthStencilFormat = DepthFormat.Depth24,
                     DeviceWindowHandle = IntPtr.Zero,
-                    IsFullScreen = false
+                    IsFullScreen = false,
                 };
 
                 _graphicsDevice = new GraphicsDevice(
@@ -185,7 +200,13 @@ namespace PokeSharp.Tests.MemoryValidation
             if (!Directory.Exists(spritesPath))
             {
                 // Try alternate path (bin/Release or bin/Debug)
-                spritesPath = Path.Combine("PokeSharp.Game", "bin", "Release", "net9.0", SPRITES_BASE_PATH);
+                spritesPath = Path.Combine(
+                    "PokeSharp.Game",
+                    "bin",
+                    "Release",
+                    "net9.0",
+                    SPRITES_BASE_PATH
+                );
             }
 
             if (!Directory.Exists(spritesPath))
@@ -194,7 +215,8 @@ namespace PokeSharp.Tests.MemoryValidation
                 return new List<string>();
             }
 
-            var spriteFiles = Directory.GetFiles(spritesPath, "spritesheet.png", SearchOption.AllDirectories)
+            var spriteFiles = Directory
+                .GetFiles(spritesPath, "spritesheet.png", SearchOption.AllDirectories)
                 .ToList();
 
             return spriteFiles;
@@ -203,7 +225,10 @@ namespace PokeSharp.Tests.MemoryValidation
         /// <summary>
         /// Loads ALL sprite textures (simulates old system behavior).
         /// </summary>
-        private async Task<int> LoadAllSpritesBaseline(AssetManager assetManager, List<string> spriteFiles)
+        private async Task<int> LoadAllSpritesBaseline(
+            AssetManager assetManager,
+            List<string> spriteFiles
+        )
         {
             var loadedCount = 0;
 
@@ -213,7 +238,8 @@ namespace PokeSharp.Tests.MemoryValidation
                 {
                     // Generate a unique texture key
                     var relativePath = GetRelativePath(spriteFile);
-                    var textureKey = $"baseline_{relativePath.Replace(Path.DirectorySeparatorChar, '/')}";
+                    var textureKey =
+                        $"baseline_{relativePath.Replace(Path.DirectorySeparatorChar, '/')}";
 
                     // Load texture via AssetManager
                     if (File.Exists(spriteFile) && _graphicsDevice != null)
@@ -265,7 +291,7 @@ namespace PokeSharp.Tests.MemoryValidation
                 "generic/man_1",
                 "generic/woman_1",
                 "generic/old_man",
-                "generic/nurse"
+                "generic/nurse",
             };
         }
 

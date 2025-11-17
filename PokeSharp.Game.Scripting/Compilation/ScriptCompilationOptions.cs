@@ -6,7 +6,6 @@ using Microsoft.Xna.Framework;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.NPCs;
 using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.Compilation;
 

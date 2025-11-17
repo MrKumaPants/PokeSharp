@@ -24,7 +24,7 @@ public sealed class TemplateCompilerRegistry
     public void RegisterCompiler<TEntity>(ITemplateCompiler<TEntity> compiler)
         where TEntity : class
     {
-        ArgumentNullException.ThrowIfNull(compiler, nameof(compiler));
+        ArgumentNullException.ThrowIfNull(compiler);
 
         var entityType = typeof(TEntity);
         _compilers[entityType] = compiler;

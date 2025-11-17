@@ -26,9 +26,10 @@ namespace PokeSharp.Engine.Core.Events;
 /// </remarks>
 public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
 {
-    private readonly ConcurrentDictionary<Type, ConcurrentDictionary<int, Delegate>> _handlers = new();
+    private readonly ConcurrentDictionary<Type, ConcurrentDictionary<int, Delegate>> _handlers =
+        new();
     private readonly ILogger<EventBus> _logger = logger ?? NullLogger<EventBus>.Instance;
-    private int _nextHandlerId = 0;
+    private int _nextHandlerId;
 
     /// <inheritdoc />
     public void Publish<TEvent>(TEvent eventData)
@@ -66,7 +67,10 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
             throw new ArgumentNullException(nameof(handler));
 
         var eventType = typeof(TEvent);
-        var handlers = _handlers.GetOrAdd(eventType, _ => new ConcurrentDictionary<int, Delegate>());
+        var handlers = _handlers.GetOrAdd(
+            eventType,
+            _ => new ConcurrentDictionary<int, Delegate>()
+        );
 
         // Generate unique handler ID using atomic increment
         var handlerId = Interlocked.Increment(ref _nextHandlerId);
@@ -110,10 +114,8 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
     internal void Unsubscribe(Type eventType, int handlerId)
     {
         if (_handlers.TryGetValue(eventType, out var handlers))
-        {
             // Atomic removal - always succeeds
             handlers.TryRemove(handlerId, out _);
-        }
     }
 }
 

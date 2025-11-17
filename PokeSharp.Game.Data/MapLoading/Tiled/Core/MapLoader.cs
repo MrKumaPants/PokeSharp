@@ -1,27 +1,16 @@
-using System;
-using System.Linq;
 using System.Text.Json;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
-using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Types;
 using PokeSharp.Engine.Rendering.Assets;
-using PokeSharp.Engine.Systems.BulkOperations;
 using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Engine.Systems.Management;
-using PokeSharp.Game.Components.Common;
-using PokeSharp.Game.Components.Maps;
-using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Components.NPCs;
-using PokeSharp.Game.Components.Rendering;
-using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Data.Entities;
 using PokeSharp.Game.Data.MapLoading.Tiled.Processors;
 using PokeSharp.Game.Data.MapLoading.Tiled.Services;
-using PokeSharp.Game.Data.MapLoading.Tiled.Utilities;
-using PokeSharp.Game.Data.MapLoading.Tiled.TiledJson;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
+using PokeSharp.Game.Data.MapLoading.Tiled.Utilities;
 using PokeSharp.Game.Data.PropertyMapping;
 using PokeSharp.Game.Data.Services;
 using PokeSharp.Game.Systems;
@@ -51,68 +40,61 @@ public class MapLoader(
     private const uint FLIPPED_DIAGONALLY_FLAG = 0x20000000;
     private const uint TILE_ID_MASK = 0x1FFFFFFF;
 
+    // Initialize AnimatedTileProcessor (logger handled by MapLoader, so pass null)
+    private readonly AnimatedTileProcessor _animatedTileProcessor = new();
+
     private readonly IAssetProvider _assetManager =
         assetManager ?? throw new ArgumentNullException(nameof(assetManager));
+
+    private readonly IEntityFactoryService? _entityFactory = entityFactory;
+
+    // Initialize ImageLayerProcessor (logger handled by MapLoader, so pass null)
+    private readonly ImageLayerProcessor _imageLayerProcessor = new(
+        assetManager ?? throw new ArgumentNullException(nameof(assetManager))
+    );
+
+    // Initialize LayerProcessor (logger handled by MapLoader, so pass null)
+    private readonly LayerProcessor _layerProcessor = new(propertyMapperRegistry);
+
+    private readonly ILogger<MapLoader>? _logger = logger;
+    private readonly MapDefinitionService? _mapDefinitionService = mapDefinitionService;
+
+    // Initialize MapIdService
+    private readonly MapIdService _mapIdService = new();
+
+    // Initialize MapLoadLogger
+    private readonly MapLoadLogger _mapLoadLogger = new(logger);
+
+    // Initialize MapMetadataFactory (logger handled by MapLoader, so pass null)
+    private readonly MapMetadataFactory _mapMetadataFactory = new();
+
+    // Initialize MapObjectSpawner (logger handled by MapLoader, so pass null)
+    private readonly MapObjectSpawner _mapObjectSpawner = new(entityFactory, npcDefinitionService);
+
+    // Initialize MapPathResolver
+    private readonly MapPathResolver _mapPathResolver = new(
+        assetManager ?? throw new ArgumentNullException(nameof(assetManager))
+    );
+
+    // Initialize MapTextureTracker
+    private readonly MapTextureTracker _mapTextureTracker = new();
+    private readonly NpcDefinitionService? _npcDefinitionService = npcDefinitionService;
+
+    private readonly PropertyMapperRegistry? _propertyMapperRegistry = propertyMapperRegistry;
+
+    // PHASE 2: Track sprite IDs for lazy loading
+    private readonly HashSet<SpriteId> _requiredSpriteIds = new();
 
     private readonly SystemManager _systemManager =
         systemManager ?? throw new ArgumentNullException(nameof(systemManager));
 
-    private readonly PropertyMapperRegistry? _propertyMapperRegistry = propertyMapperRegistry;
-    private readonly IEntityFactoryService? _entityFactory = entityFactory;
-    private readonly NpcDefinitionService? _npcDefinitionService = npcDefinitionService;
-    private readonly MapDefinitionService? _mapDefinitionService = mapDefinitionService;
-    private readonly ILogger<MapLoader>? _logger = logger;
-
-    // Initialize MapIdService
-    private readonly MapIdService _mapIdService = new MapIdService();
-
-    // Initialize MapTextureTracker
-    private readonly MapTextureTracker _mapTextureTracker = new MapTextureTracker(null);
-
-    // PHASE 2: Track sprite IDs for lazy loading
-    private HashSet<SpriteId> _requiredSpriteIds = new();
+    // Initialize TiledJsonParser (logger handled by MapLoader, so pass null)
+    private readonly TiledJsonParser _tiledJsonParser = new();
 
     // Initialize TilesetLoader (logger handled by MapLoader, so pass null)
-    private readonly TilesetLoader _tilesetLoader = new TilesetLoader(
-        assetManager ?? throw new ArgumentNullException(nameof(assetManager)),
-        null
-    );
-
-    // Initialize LayerProcessor (logger handled by MapLoader, so pass null)
-    private readonly LayerProcessor _layerProcessor = new LayerProcessor(
-        propertyMapperRegistry,
-        null
-    );
-
-    // Initialize AnimatedTileProcessor (logger handled by MapLoader, so pass null)
-    private readonly AnimatedTileProcessor _animatedTileProcessor = new AnimatedTileProcessor(null);
-
-    // Initialize MapObjectSpawner (logger handled by MapLoader, so pass null)
-    private readonly MapObjectSpawner _mapObjectSpawner = new MapObjectSpawner(
-        entityFactory,
-        npcDefinitionService,
-        null
-    );
-
-    // Initialize MapMetadataFactory (logger handled by MapLoader, so pass null)
-    private readonly MapMetadataFactory _mapMetadataFactory = new MapMetadataFactory(null);
-
-    // Initialize ImageLayerProcessor (logger handled by MapLoader, so pass null)
-    private readonly ImageLayerProcessor _imageLayerProcessor = new ImageLayerProcessor(
-        assetManager ?? throw new ArgumentNullException(nameof(assetManager)),
-        null
-    );
-
-    // Initialize MapPathResolver
-    private readonly MapPathResolver _mapPathResolver = new MapPathResolver(
+    private readonly TilesetLoader _tilesetLoader = new(
         assetManager ?? throw new ArgumentNullException(nameof(assetManager))
     );
-
-    // Initialize TiledJsonParser (logger handled by MapLoader, so pass null)
-    private readonly TiledJsonParser _tiledJsonParser = new TiledJsonParser(null);
-
-    // Initialize MapLoadLogger
-    private readonly MapLoadLogger _mapLoadLogger = new MapLoadLogger(logger);
 
     /// <summary>
     ///     Loads a map from EF Core definition (NEW: Definition-based loading).
@@ -126,19 +108,15 @@ public class MapLoader(
     public Entity LoadMap(World world, MapIdentifier mapId)
     {
         if (_mapDefinitionService == null)
-        {
             throw new InvalidOperationException(
                 "MapDefinitionService is required for definition-based map loading. "
                     + "Use LoadMapEntities(world, mapPath) for file-based loading."
             );
-        }
 
         // Get map definition from EF Core
         var mapDef = _mapDefinitionService.GetMap(mapId);
         if (mapDef == null)
-        {
             throw new FileNotFoundException($"Map definition not found: {mapId.Value}");
-        }
 
         _logger?.LogWorkflowStatus(
             "Loading map from definition",
@@ -151,11 +129,9 @@ public class MapLoader(
         var fullPath = Path.Combine(assetRoot, mapDef.TiledDataPath);
 
         if (!File.Exists(fullPath))
-        {
             throw new FileNotFoundException(
                 $"Map file not found: {fullPath} (relative: {mapDef.TiledDataPath})"
             );
-        }
 
         var tiledJson = File.ReadAllText(fullPath);
 
@@ -170,7 +146,8 @@ public class MapLoader(
         var tmxDoc = TiledMapLoader.LoadFromJson(tiledJson, fullPath);
 
         // Load external tileset files (Tiled JSON format supports external tilesets)
-        var mapDirectoryBase = Path.GetDirectoryName(fullPath) ?? _mapPathResolver.ResolveMapDirectoryBase();
+        var mapDirectoryBase =
+            Path.GetDirectoryName(fullPath) ?? _mapPathResolver.ResolveMapDirectoryBase();
         _tilesetLoader.LoadExternalTilesets(tmxDoc, mapDirectoryBase);
 
         // Parse mixed layer types from JSON (Tiled stores all layers in one array)
@@ -214,15 +191,20 @@ public class MapLoader(
             MapId = mapId,
             MapName = mapName,
             ImageLayerPath = $"Data/Maps/{mapDef.MapId.Value}",
-            LogIdentifier = mapDef.MapId.Value
+            LogIdentifier = mapDef.MapId.Value,
         };
 
         return LoadMapEntitiesCore(
             world,
             tmxDoc,
             context,
-            () => _tilesetLoader.LoadTilesets(tmxDoc, Path.Combine(_mapPathResolver.ResolveMapDirectoryBase(), $"{mapDef.MapId}.json")),
-            (w, doc, id, name, tilesets) => _mapMetadataFactory.CreateMapMetadataFromDefinition(w, doc, mapDef, id, tilesets)
+            () =>
+                _tilesetLoader.LoadTilesets(
+                    tmxDoc,
+                    Path.Combine(_mapPathResolver.ResolveMapDirectoryBase(), $"{mapDef.MapId}.json")
+                ),
+            (w, doc, id, name, tilesets) =>
+                _mapMetadataFactory.CreateMapMetadataFromDefinition(w, doc, mapDef, id, tilesets)
         );
     }
 
@@ -241,7 +223,7 @@ public class MapLoader(
             MapId = mapId,
             MapName = mapName,
             ImageLayerPath = mapPath,
-            LogIdentifier = mapName
+            LogIdentifier = mapName,
         };
 
         return LoadMapEntitiesCore(
@@ -249,7 +231,8 @@ public class MapLoader(
             tmxDoc,
             context,
             () => _tilesetLoader.LoadTilesets(tmxDoc, mapPath),
-            (w, doc, id, name, tilesets) => _mapMetadataFactory.CreateMapMetadata(w, doc, mapPath, id, name, tilesets)
+            (w, doc, id, name, tilesets) =>
+                _mapMetadataFactory.CreateMapMetadata(w, doc, mapPath, id, name, tilesets)
         );
     }
 
@@ -276,10 +259,18 @@ public class MapLoader(
 
         // Process all layers and create tile entities (only if tilesets exist)
         var tilesCreated =
-            loadedTilesets.Count > 0 ? _layerProcessor.ProcessLayers(world, tmxDoc, context.MapId, loadedTilesets) : 0;
+            loadedTilesets.Count > 0
+                ? _layerProcessor.ProcessLayers(world, tmxDoc, context.MapId, loadedTilesets)
+                : 0;
 
         // Create metadata entities
-        var mapInfoEntity = createMetadata(world, tmxDoc, context.MapId, context.MapName, loadedTilesets);
+        var mapInfoEntity = createMetadata(
+            world,
+            tmxDoc,
+            context.MapId,
+            context.MapName,
+            loadedTilesets
+        );
 
         // Setup animations (only if tilesets exist)
         var animatedTilesCreated =
@@ -326,12 +317,8 @@ public class MapLoader(
         );
 
         if (_logger != null && _logger.IsEnabled(LogLevel.Debug))
-        {
             foreach (var spriteId in _requiredSpriteIds.OrderBy(x => x))
-            {
                 _logger.LogDebug("  - {SpriteId}", spriteId);
-            }
-        }
 
         // Invalidate spatial hash to rebuild with new tiles
         var spatialHashSystem = _systemManager.GetSystem<SpatialHashSystem>();
@@ -342,18 +329,6 @@ public class MapLoader(
         }
 
         return mapInfoEntity;
-    }
-
-    /// <summary>
-    ///     Context object for map loading operations.
-    ///     Encapsulates the differences between definition-based and file-based loading.
-    /// </summary>
-    private sealed class MapLoadContext
-    {
-        public int MapId { get; init; }
-        public string MapName { get; init; } = string.Empty;
-        public string ImageLayerPath { get; init; } = string.Empty;
-        public string LogIdentifier { get; init; } = string.Empty;
     }
 
     // Tileset loading methods moved to TilesetLoader class
@@ -404,6 +379,18 @@ public class MapLoader(
     public IReadOnlySet<SpriteId> GetRequiredSpriteIds()
     {
         return _requiredSpriteIds;
+    }
+
+    /// <summary>
+    ///     Context object for map loading operations.
+    ///     Encapsulates the differences between definition-based and file-based loading.
+    /// </summary>
+    private sealed class MapLoadContext
+    {
+        public int MapId { get; init; }
+        public string MapName { get; init; } = string.Empty;
+        public string ImageLayerPath { get; init; } = string.Empty;
+        public string LogIdentifier { get; init; } = string.Empty;
     }
 
     // Texture tracking moved to MapTextureTracker class

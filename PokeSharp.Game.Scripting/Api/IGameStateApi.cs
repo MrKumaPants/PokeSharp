@@ -1,7 +1,5 @@
 namespace PokeSharp.Game.Scripting.Api;
 
-using PokeSharp.Game.Systems.Services;
-
 /// <summary>
 ///     Game state management API for scripts.
 ///     Provides access to flags, variables, and persistent state.

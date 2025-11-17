@@ -84,7 +84,7 @@ public class MapLoaderAnimationTests : IDisposable
             CurrentAnimation = "water_tile",
             IsPlaying = true,
             CurrentFrame = 0,
-            FrameTimer = 0f
+            FrameTimer = 0f,
         };
 
         var entity = _world.Create(new TileData { TileId = 1 }, animation);
@@ -128,7 +128,10 @@ public class MapLoaderAnimationTests : IDisposable
 
         // Assert
         _world.Has<Sprite>(entity).Should().BeTrue();
-        _world.Has<Animation>(entity).Should().BeFalse("static tiles should not have Animation component");
+        _world
+            .Has<Animation>(entity)
+            .Should()
+            .BeFalse("static tiles should not have Animation component");
         _world.Has<TileData>(entity).Should().BeTrue();
     }
 
@@ -232,17 +235,25 @@ public class MapLoaderAnimationTests : IDisposable
                         FrameRate = 8,
                         Frames = new List<FrameDefinition>
                         {
-                            new() { FrameX = 0, FrameY = 0, Duration = 0.125f },
-                            new() { FrameX = 1, FrameY = 0, Duration = 0.125f }
-                        }
+                            new()
+                            {
+                                FrameX = 0,
+                                FrameY = 0,
+                                Duration = 0.125f,
+                            },
+                            new()
+                            {
+                                FrameX = 1,
+                                FrameY = 0,
+                                Duration = 0.125f,
+                            },
+                        },
                     }
-                }
-            }
+                },
+            },
         };
 
-        _mockAssetProvider
-            .Setup(x => x.GetAnimationManifest("tiles/water"))
-            .Returns(manifest);
+        _mockAssetProvider.Setup(x => x.GetAnimationManifest("tiles/water")).Returns(manifest);
 
         // Act - Create 10 tiles with the same sprite
         for (int i = 0; i < 10; i++)

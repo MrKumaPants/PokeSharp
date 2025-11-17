@@ -1,4 +1,3 @@
-using System;
 using Microsoft.Xna.Framework;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
@@ -79,11 +78,9 @@ public static class TilesetUtilities
 
         // Validate tile dimensions to prevent division by zero
         if (tileWidth <= 0 || tileHeight <= 0)
-        {
             throw new InvalidOperationException(
                 $"Invalid tile dimensions: {tileWidth}x{tileHeight}"
             );
-        }
 
         if (tileset.Image == null || tileset.Image.Width <= 0 || tileset.Image.Height <= 0)
             throw new InvalidOperationException(
@@ -127,4 +124,3 @@ public static class TilesetUtilities
         return new Rectangle(sourceX, sourceY, tileWidth, tileHeight);
     }
 }
-

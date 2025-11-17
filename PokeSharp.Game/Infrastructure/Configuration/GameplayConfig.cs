@@ -49,8 +49,8 @@ public class GameplayConfig
             {
                 Player = new PoolConfig { InitialSize = 1, MaxSize = 10 },
                 Npc = new PoolConfig { InitialSize = 50, MaxSize = 200 },
-                Tile = new PoolConfig { InitialSize = 5000, MaxSize = 10000 }
-            }
+                Tile = new PoolConfig { InitialSize = 5000, MaxSize = 10000 },
+            },
         };
     }
 
@@ -120,4 +120,3 @@ public class PoolConfig
     /// </summary>
     public bool Warmup { get; set; } = true;
 }
-

@@ -6,13 +6,11 @@ using PokeSharp.Engine.Common.Configuration;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Core.Types;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Interfaces;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Scripting.Services;
 
 namespace PokeSharp.Game.Scripting.Systems;
 
@@ -28,14 +26,14 @@ namespace PokeSharp.Game.Scripting.Systems;
 /// </remarks>
 public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
 {
+    private readonly IScriptingApiProvider _apis;
     private readonly PerformanceConfiguration _config;
     private readonly ILogger<TileBehaviorSystem> _logger;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly IScriptingApiProvider _apis;
     private readonly ConcurrentDictionary<string, ILogger> _scriptLoggerCache = new();
     private TypeRegistry<TileBehaviorDefinition>? _behaviorRegistry;
-    private int _tickCounter;
     private int _lastBehaviorSummaryCount;
+    private int _tickCounter;
 
     public TileBehaviorSystem(
         ILogger<TileBehaviorSystem> logger,
@@ -51,50 +49,148 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
     }
 
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
-    /// Tile behavior executes at priority 50, after spatial hash (25) and before movement (100).
+    ///     Gets the update priority. Lower values execute first.
+    ///     Tile behavior executes at priority 50, after spatial hash (25) and before movement (100).
     /// </summary>
     public int UpdatePriority => SystemPriority.TileBehavior;
+
+    /// <summary>
+    ///     Checks if movement is blocked by tile behaviors.
+    ///     Called by CollisionService.
+    /// </summary>
+    public bool IsMovementBlocked(
+        World world,
+        Entity tileEntity,
+        Direction fromDirection,
+        Direction toDirection
+    )
+    {
+        if (!tileEntity.Has<TileBehavior>())
+            return false;
+
+        ref var behavior = ref tileEntity.Get<TileBehavior>();
+        if (!behavior.IsActive)
+            return false;
+
+        if (_behaviorRegistry == null)
+            return false;
+
+        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
+        if (scriptObj is not TileBehaviorScriptBase script)
+            return false;
+
+        var context = new ScriptContext(world, tileEntity, _logger, _apis);
+
+        // Check both directions (like Pokemon Emerald's two-way check)
+        if (script.IsBlockedFrom(context, fromDirection, toDirection))
+            return true;
+
+        if (script.IsBlockedTo(context, toDirection))
+            return true;
+
+        return false;
+    }
+
+    /// <summary>
+    ///     Gets forced movement direction from tile behaviors.
+    ///     Called by MovementSystem.
+    /// </summary>
+    public Direction GetForcedMovement(World world, Entity tileEntity, Direction currentDirection)
+    {
+        if (!tileEntity.Has<TileBehavior>())
+            return Direction.None;
+
+        ref var behavior = ref tileEntity.Get<TileBehavior>();
+        if (!behavior.IsActive)
+            return Direction.None;
+
+        if (_behaviorRegistry == null)
+            return Direction.None;
+
+        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
+        if (scriptObj is not TileBehaviorScriptBase script)
+            return Direction.None;
+
+        var context = new ScriptContext(world, tileEntity, _logger, _apis);
+        return script.GetForcedMovement(context, currentDirection);
+    }
+
+    /// <summary>
+    ///     Gets jump direction from tile behaviors.
+    ///     Called by MovementSystem.
+    /// </summary>
+    public Direction GetJumpDirection(World world, Entity tileEntity, Direction fromDirection)
+    {
+        if (!tileEntity.Has<TileBehavior>())
+            return Direction.None;
+
+        ref var behavior = ref tileEntity.Get<TileBehavior>();
+        if (!behavior.IsActive)
+            return Direction.None;
+
+        if (_behaviorRegistry == null)
+            return Direction.None;
+
+        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
+        if (scriptObj is not TileBehaviorScriptBase script)
+            return Direction.None;
+
+        var context = new ScriptContext(world, tileEntity, _logger, _apis);
+        return script.GetJumpDirection(context, fromDirection);
+    }
+
+    /// <summary>
+    ///     Gets required movement mode from tile behaviors (surf, dive).
+    ///     Called by MovementSystem.
+    /// </summary>
+    public string? GetRequiredMovementMode(World world, Entity tileEntity)
+    {
+        if (!tileEntity.Has<TileBehavior>())
+            return null;
+
+        ref var behavior = ref tileEntity.Get<TileBehavior>();
+        if (!behavior.IsActive)
+            return null;
+
+        if (_behaviorRegistry == null)
+            return null;
+
+        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
+        if (scriptObj is not TileBehaviorScriptBase script)
+            return null;
+
+        var context = new ScriptContext(world, tileEntity, _logger, _apis);
+        return script.GetRequiredMovementMode(context);
+    }
+
+    /// <summary>
+    ///     Checks if running is allowed on this tile.
+    ///     Called by MovementSystem.
+    /// </summary>
+    public bool AllowsRunning(World world, Entity tileEntity)
+    {
+        if (!tileEntity.Has<TileBehavior>())
+            return true; // Default: allow running
+
+        ref var behavior = ref tileEntity.Get<TileBehavior>();
+        if (!behavior.IsActive)
+            return true;
+
+        if (_behaviorRegistry == null)
+            return true;
+
+        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
+        if (scriptObj is not TileBehaviorScriptBase script)
+            return true;
+
+        var context = new ScriptContext(world, tileEntity, _logger, _apis);
+        return script.AllowsRunning(context);
+    }
 
     /// <summary>
     ///     System priority for tile behaviors - runs after spatial hash, before movement.
     /// </summary>
     public override int Priority => SystemPriority.TileBehavior;
-
-    /// <summary>
-    ///     Set the behavior registry for loading behavior scripts.
-    /// </summary>
-    public void SetBehaviorRegistry(TypeRegistry<TileBehaviorDefinition> registry)
-    {
-        _behaviorRegistry = registry;
-        _logger.LogWorkflowStatus("Tile behavior registry linked", ("behaviors", registry.Count));
-    }
-
-    /// <summary>
-    ///     Gets or creates a logger for a specific tile behavior.
-    ///     Implements size limit to prevent unbounded memory growth.
-    /// </summary>
-    /// <param name="key">Logger key (behavior type + entity ID)</param>
-    /// <returns>Cached or newly created logger</returns>
-    private ILogger GetOrCreateLogger(string key)
-    {
-        return _scriptLoggerCache.GetOrAdd(
-            key,
-            k =>
-            {
-                // Check if we've hit the cache limit
-                if (_scriptLoggerCache.Count >= _config.MaxCachedLoggers)
-                {
-                    _logger.LogWarning(
-                        "Script logger cache limit reached ({Limit}). Consider increasing limit or checking for leaks.",
-                        _config.MaxCachedLoggers
-                    );
-                }
-
-                return _loggerFactory.CreateLogger($"TileBehavior.{k}");
-            }
-        );
-    }
 
     public override void Initialize(World world)
     {
@@ -203,144 +299,35 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
     }
 
     /// <summary>
-    ///     Checks if movement is blocked by tile behaviors.
-    ///     Called by CollisionService.
+    ///     Set the behavior registry for loading behavior scripts.
     /// </summary>
-    public bool IsMovementBlocked(
-        World world,
-        Entity tileEntity,
-        Direction fromDirection,
-        Direction toDirection
-    )
+    public void SetBehaviorRegistry(TypeRegistry<TileBehaviorDefinition> registry)
     {
-        if (!tileEntity.Has<TileBehavior>())
-            return false;
-
-        ref var behavior = ref tileEntity.Get<TileBehavior>();
-        if (!behavior.IsActive)
-            return false;
-
-        if (_behaviorRegistry == null)
-            return false;
-
-        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
-        if (scriptObj is not TileBehaviorScriptBase script)
-            return false;
-
-        var context = new ScriptContext(world, tileEntity, _logger, _apis);
-
-        // Check both directions (like Pokemon Emerald's two-way check)
-        if (script.IsBlockedFrom(context, fromDirection, toDirection))
-            return true;
-
-        if (script.IsBlockedTo(context, toDirection))
-            return true;
-
-        return false;
+        _behaviorRegistry = registry;
+        _logger.LogWorkflowStatus("Tile behavior registry linked", ("behaviors", registry.Count));
     }
 
     /// <summary>
-    ///     Gets forced movement direction from tile behaviors.
-    ///     Called by MovementSystem.
+    ///     Gets or creates a logger for a specific tile behavior.
+    ///     Implements size limit to prevent unbounded memory growth.
     /// </summary>
-    public Direction GetForcedMovement(
-        World world,
-        Entity tileEntity,
-        Direction currentDirection
-    )
+    /// <param name="key">Logger key (behavior type + entity ID)</param>
+    /// <returns>Cached or newly created logger</returns>
+    private ILogger GetOrCreateLogger(string key)
     {
-        if (!tileEntity.Has<TileBehavior>())
-            return Direction.None;
+        return _scriptLoggerCache.GetOrAdd(
+            key,
+            k =>
+            {
+                // Check if we've hit the cache limit
+                if (_scriptLoggerCache.Count >= _config.MaxCachedLoggers)
+                    _logger.LogWarning(
+                        "Script logger cache limit reached ({Limit}). Consider increasing limit or checking for leaks.",
+                        _config.MaxCachedLoggers
+                    );
 
-        ref var behavior = ref tileEntity.Get<TileBehavior>();
-        if (!behavior.IsActive)
-            return Direction.None;
-
-        if (_behaviorRegistry == null)
-            return Direction.None;
-
-        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
-        if (scriptObj is not TileBehaviorScriptBase script)
-            return Direction.None;
-
-        var context = new ScriptContext(world, tileEntity, _logger, _apis);
-        return script.GetForcedMovement(context, currentDirection);
-    }
-
-    /// <summary>
-    ///     Gets jump direction from tile behaviors.
-    ///     Called by MovementSystem.
-    /// </summary>
-    public Direction GetJumpDirection(
-        World world,
-        Entity tileEntity,
-        Direction fromDirection
-    )
-    {
-        if (!tileEntity.Has<TileBehavior>())
-            return Direction.None;
-
-        ref var behavior = ref tileEntity.Get<TileBehavior>();
-        if (!behavior.IsActive)
-            return Direction.None;
-
-        if (_behaviorRegistry == null)
-            return Direction.None;
-
-        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
-        if (scriptObj is not TileBehaviorScriptBase script)
-            return Direction.None;
-
-        var context = new ScriptContext(world, tileEntity, _logger, _apis);
-        return script.GetJumpDirection(context, fromDirection);
-    }
-
-    /// <summary>
-    ///     Gets required movement mode from tile behaviors (surf, dive).
-    ///     Called by MovementSystem.
-    /// </summary>
-    public string? GetRequiredMovementMode(World world, Entity tileEntity)
-    {
-        if (!tileEntity.Has<TileBehavior>())
-            return null;
-
-        ref var behavior = ref tileEntity.Get<TileBehavior>();
-        if (!behavior.IsActive)
-            return null;
-
-        if (_behaviorRegistry == null)
-            return null;
-
-        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
-        if (scriptObj is not TileBehaviorScriptBase script)
-            return null;
-
-        var context = new ScriptContext(world, tileEntity, _logger, _apis);
-        return script.GetRequiredMovementMode(context);
-    }
-
-    /// <summary>
-    ///     Checks if running is allowed on this tile.
-    ///     Called by MovementSystem.
-    /// </summary>
-    public bool AllowsRunning(World world, Entity tileEntity)
-    {
-        if (!tileEntity.Has<TileBehavior>())
-            return true; // Default: allow running
-
-        ref var behavior = ref tileEntity.Get<TileBehavior>();
-        if (!behavior.IsActive)
-            return true;
-
-        if (_behaviorRegistry == null)
-            return true;
-
-        var scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
-        if (scriptObj is not TileBehaviorScriptBase script)
-            return true;
-
-        var context = new ScriptContext(world, tileEntity, _logger, _apis);
-        return script.AllowsRunning(context);
+                return _loggerFactory.CreateLogger($"TileBehavior.{k}");
+            }
+        );
     }
 }
-

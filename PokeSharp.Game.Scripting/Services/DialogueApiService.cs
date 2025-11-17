@@ -2,10 +2,7 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;
-using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Core.Types.Events;
-using PokeSharp.Engine.Systems.Factories;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Systems.Services;
 
@@ -25,16 +22,16 @@ public class DialogueApiService(
     private readonly IEventBus _eventBus =
         eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
+    private readonly IGameTimeService _gameTime =
+        gameTime ?? throw new ArgumentNullException(nameof(gameTime));
+
     private readonly ILogger<DialogueApiService> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
 
     private readonly World _world = world ?? throw new ArgumentNullException(nameof(world));
-    private readonly IGameTimeService _gameTime =
-        gameTime ?? throw new ArgumentNullException(nameof(gameTime));
-    private bool _isDialogueActive;
 
     /// <inheritdoc />
-    public bool IsDialogueActive => _isDialogueActive;
+    public bool IsDialogueActive { get; private set; }
 
     /// <inheritdoc />
     public void ShowMessage(string message, string? speakerName = null, int priority = 0)
@@ -55,7 +52,7 @@ public class DialogueApiService(
         };
 
         _eventBus.Publish(dialogueEvent);
-        _isDialogueActive = true;
+        IsDialogueActive = true;
 
         _logger.LogDebug(
             "Published dialogue request: {Message} (Speaker: {Speaker}, Priority: {Priority})",
@@ -68,7 +65,7 @@ public class DialogueApiService(
     /// <inheritdoc />
     public void ClearMessages()
     {
-        _isDialogueActive = false;
+        IsDialogueActive = false;
         _logger.LogDebug("Cleared dialogue messages");
     }
 }

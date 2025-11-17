@@ -50,7 +50,9 @@ public class TileBehaviorInitializer(
                         ("script", scripted.BehaviorScript)
                     );
 
-                    var scriptInstance = await scriptService.LoadScriptAsync(scripted.BehaviorScript);
+                    var scriptInstance = await scriptService.LoadScriptAsync(
+                        scripted.BehaviorScript
+                    );
 
                     if (scriptInstance != null)
                     {
@@ -90,7 +92,7 @@ public class TileBehaviorInitializer(
             // Link TileBehaviorSystem to CollisionService and MovementSystem if available
             if (collisionService != null)
             {
-                collisionService.SetTileBehaviorSystem(tileBehaviorSystem as PokeSharp.Game.Components.Interfaces.ITileBehaviorSystem);
+                collisionService.SetTileBehaviorSystem(tileBehaviorSystem);
                 logger.LogInformation("Linked TileBehaviorSystem to CollisionService");
             }
 
@@ -98,7 +100,7 @@ public class TileBehaviorInitializer(
             var movementSystem = systemManager.GetSystem<MovementSystem>();
             if (movementSystem != null)
             {
-                movementSystem.SetTileBehaviorSystem(tileBehaviorSystem as PokeSharp.Game.Components.Interfaces.ITileBehaviorSystem);
+                movementSystem.SetTileBehaviorSystem(tileBehaviorSystem);
                 logger.LogInformation("Linked TileBehaviorSystem to MovementSystem");
             }
 
@@ -110,4 +112,3 @@ public class TileBehaviorInitializer(
         }
     }
 }
-

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
@@ -17,8 +16,6 @@ public class AssetManager(
     ILogger<AssetManager>? logger = null
 ) : IAssetProvider, IDisposable
 {
-    private readonly string _assetRoot = assetRoot;
-
     private readonly GraphicsDevice _graphicsDevice =
         graphicsDevice ?? throw new ArgumentNullException(nameof(graphicsDevice));
 
@@ -26,9 +23,9 @@ public class AssetManager(
 
     // LRU cache with 50MB budget for texture memory management
     private readonly LruCache<string, Texture2D> _textures = new(
-        maxSizeBytes: 50_000_000, // 50MB budget
-        sizeCalculator: texture => texture.Width * texture.Height * 4L, // RGBA = 4 bytes/pixel
-        logger: logger
+        50_000_000, // 50MB budget
+        texture => texture.Width * texture.Height * 4L, // RGBA = 4 bytes/pixel
+        logger
     );
 
     private bool _disposed;
@@ -36,7 +33,7 @@ public class AssetManager(
     /// <summary>
     ///     Gets the root directory path where assets are stored.
     /// </summary>
-    public string AssetRoot => _assetRoot;
+    public string AssetRoot { get; } = assetRoot;
 
     /// <summary>
     ///     Gets the number of loaded textures.
@@ -47,20 +44,6 @@ public class AssetManager(
     ///     Gets the current texture cache memory usage in bytes.
     /// </summary>
     public long TextureCacheSizeBytes => _textures.CurrentSize;
-
-    /// <summary>
-    ///     Disposes all loaded textures.
-    /// </summary>
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _textures.Clear(); // LruCache.Clear() disposes all textures
-        _disposed = true;
-
-        GC.SuppressFinalize(this);
-    }
 
     // REMOVED: LoadManifest() and LoadManifestInternal() - obsolete
     // manifest.json has been replaced by EF Core MapDefinition and on-demand texture loading
@@ -76,7 +59,7 @@ public class AssetManager(
         ArgumentException.ThrowIfNullOrEmpty(relativePath);
 
         var normalizedRelative = relativePath.Replace('/', Path.DirectorySeparatorChar);
-        var fullPath = Path.Combine(_assetRoot, normalizedRelative);
+        var fullPath = Path.Combine(AssetRoot, normalizedRelative);
 
         if (!File.Exists(fullPath))
         {
@@ -115,6 +98,30 @@ public class AssetManager(
             _logger?.LogSlowTextureLoad(id, elapsedMs);
     }
 
+    /// <summary>
+    ///     Checks if a texture is loaded in cache.
+    /// </summary>
+    /// <param name="id">The texture identifier.</param>
+    /// <returns>True if texture is loaded.</returns>
+    public bool HasTexture(string id)
+    {
+        return _textures.TryGetValue(id, out _);
+    }
+
+    /// <summary>
+    ///     Disposes all loaded textures.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _textures.Clear(); // LruCache.Clear() disposes all textures
+        _disposed = true;
+
+        GC.SuppressFinalize(this);
+    }
+
     private string? ResolveFallbackTexturePath(string id, string normalizedRelativePath)
     {
         var normalized = normalizedRelativePath.Replace('\\', '/');
@@ -122,7 +129,7 @@ public class AssetManager(
         if (normalized.StartsWith("Tilesets/", StringComparison.OrdinalIgnoreCase))
         {
             var fileName = Path.GetFileName(normalizedRelativePath);
-            var tilesetsRoot = Path.Combine(_assetRoot, "Tilesets");
+            var tilesetsRoot = Path.Combine(AssetRoot, "Tilesets");
             var tilesetDir = Path.Combine(tilesetsRoot, id);
 
             if (!string.IsNullOrEmpty(fileName))
@@ -193,16 +200,6 @@ public class AssetManager(
         throw new KeyNotFoundException($"Texture '{id}' not loaded or was evicted from cache.");
     }
 
-    /// <summary>
-    ///     Checks if a texture is loaded in cache.
-    /// </summary>
-    /// <param name="id">The texture identifier.</param>
-    /// <returns>True if texture is loaded.</returns>
-    public bool HasTexture(string id)
-    {
-        return _textures.TryGetValue(id, out _);
-    }
-
     // REMOVED: HotReloadTexture() - obsolete (depended on manifest.json)
     // For hot-reloading during development, use UnregisterTexture() + LoadTexture() manually
 
@@ -231,9 +228,7 @@ public class AssetManager(
     {
         var removed = _textures.Remove(id); // LruCache handles disposal
         if (removed)
-        {
             _logger?.LogSpriteTextureUnregistered(id);
-        }
         return removed;
     }
 }

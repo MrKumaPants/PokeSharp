@@ -5,7 +5,6 @@ using PokeSharp.Game.Data.Factories;
 using PokeSharp.Game.Infrastructure.Diagnostics;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
-using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
 
@@ -36,7 +35,9 @@ public static class GameServicesExtensions
             // SpatialHashSystem is registered as a system and implements ISpatialQuery
             var spatialQuery = systemManager.GetSystem<SpatialHashSystem>();
             if (spatialQuery == null)
-                throw new InvalidOperationException("SpatialHashSystem must be registered before CollisionService");
+                throw new InvalidOperationException(
+                    "SpatialHashSystem must be registered before CollisionService"
+                );
             var logger = sp.GetService<ILogger<CollisionService>>();
             return new CollisionService(spatialQuery, logger);
         });
@@ -53,4 +54,3 @@ public static class GameServicesExtensions
         return services;
     }
 }
-

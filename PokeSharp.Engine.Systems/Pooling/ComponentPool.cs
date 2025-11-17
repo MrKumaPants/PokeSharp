@@ -16,8 +16,8 @@ namespace PokeSharp.Engine.Systems.Pooling;
 public class ComponentPool<T>
     where T : struct
 {
-    private readonly ConcurrentBag<T> _pool = new();
     private readonly int _maxSize;
+    private readonly ConcurrentBag<T> _pool = new();
     private int _totalCreated;
     private int _totalRented;
     private int _totalReturned;
@@ -32,41 +32,6 @@ public class ComponentPool<T>
             throw new ArgumentException("Max size must be > 0", nameof(maxSize));
 
         _maxSize = maxSize;
-    }
-
-    /// <summary>
-    ///     Rent a component instance from the pool.
-    ///     Creates new instance if pool is empty.
-    /// </summary>
-    /// <returns>Component instance ready for use</returns>
-    public T Rent()
-    {
-        Interlocked.Increment(ref _totalRented);
-
-        if (_pool.TryTake(out var component))
-        {
-            return component;
-        }
-
-        Interlocked.Increment(ref _totalCreated);
-        return new T();
-    }
-
-    /// <summary>
-    ///     Return component instance to pool for reuse.
-    ///     Component is reset to default state before pooling.
-    /// </summary>
-    /// <param name="component">Component to return</param>
-    public void Return(T component)
-    {
-        Interlocked.Increment(ref _totalReturned);
-
-        if (_pool.Count >= _maxSize)
-            return; // Pool full, discard
-
-        // Reset to default state
-        component = default;
-        _pool.Add(component);
     }
 
     /// <summary>
@@ -92,7 +57,40 @@ public class ComponentPool<T>
     /// <summary>
     ///     Component reuse rate (0.0 to 1.0). Higher is better.
     /// </summary>
-    public float ReuseRate => _totalRented > 0 ? 1.0f - ((float)_totalCreated / _totalRented) : 0f;
+    public float ReuseRate => _totalRented > 0 ? 1.0f - (float)_totalCreated / _totalRented : 0f;
+
+    /// <summary>
+    ///     Rent a component instance from the pool.
+    ///     Creates new instance if pool is empty.
+    /// </summary>
+    /// <returns>Component instance ready for use</returns>
+    public T Rent()
+    {
+        Interlocked.Increment(ref _totalRented);
+
+        if (_pool.TryTake(out var component))
+            return component;
+
+        Interlocked.Increment(ref _totalCreated);
+        return new T();
+    }
+
+    /// <summary>
+    ///     Return component instance to pool for reuse.
+    ///     Component is reset to default state before pooling.
+    /// </summary>
+    /// <param name="component">Component to return</param>
+    public void Return(T component)
+    {
+        Interlocked.Increment(ref _totalReturned);
+
+        if (_pool.Count >= _maxSize)
+            return; // Pool full, discard
+
+        // Reset to default state
+        component = default;
+        _pool.Add(component);
+    }
 
     /// <summary>
     ///     Clear all pooled components.

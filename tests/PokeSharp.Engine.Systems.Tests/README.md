@@ -5,10 +5,13 @@ Unit tests for the `PokeSharp.Engine.Systems` project.
 ## Test Coverage
 
 ### Parallel System Execution
+
 - **ParallelSystemManagerTests** - Tests for parallel system execution, dependency resolution, and execution planning.
 
 ### Performance Tracking
-- **SystemPerformanceTrackerTests** - Tests for system performance monitoring, metrics collection, and slow system detection.
+
+- **SystemPerformanceTrackerTests** - Tests for system performance monitoring, metrics collection, and slow system
+  detection.
 
 ## Running Tests
 

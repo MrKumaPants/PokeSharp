@@ -1,10 +1,8 @@
+using System.Diagnostics;
 using Arch.Core;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
-using PokeSharp.Engine.Core.Assets;
-using PokeSharp.Engine.Rendering.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Rendering;
 using Xunit;
 
@@ -17,11 +15,11 @@ namespace PokeSharp.Engine.Systems.Tests.Rendering;
 /// </summary>
 public class SpriteAnimationSystemTests : IDisposable
 {
-    private readonly World _world;
     private readonly Mock<IAssetProvider> _mockAssetProvider;
     private readonly Mock<ILogger<SpriteAnimationSystem>> _mockLogger;
     private readonly SpriteAnimationSystem _system;
     private readonly AnimationManifest _testManifest;
+    private readonly World _world;
 
     public SpriteAnimationSystemTests()
     {
@@ -41,14 +39,34 @@ public class SpriteAnimationSystemTests : IDisposable
                         FrameRate = 8,
                         Frames = new List<FrameDefinition>
                         {
-                            new() { FrameX = 0, FrameY = 0, Duration = 0.125f },
-                            new() { FrameX = 1, FrameY = 0, Duration = 0.125f },
-                            new() { FrameX = 2, FrameY = 0, Duration = 0.125f },
-                            new() { FrameX = 3, FrameY = 0, Duration = 0.125f }
-                        }
+                            new()
+                            {
+                                FrameX = 0,
+                                FrameY = 0,
+                                Duration = 0.125f,
+                            },
+                            new()
+                            {
+                                FrameX = 1,
+                                FrameY = 0,
+                                Duration = 0.125f,
+                            },
+                            new()
+                            {
+                                FrameX = 2,
+                                FrameY = 0,
+                                Duration = 0.125f,
+                            },
+                            new()
+                            {
+                                FrameX = 3,
+                                FrameY = 0,
+                                Duration = 0.125f,
+                            },
+                        },
                     }
-                }
-            }
+                },
+            },
         };
 
         _system = new SpriteAnimationSystem(_mockAssetProvider.Object, _mockLogger.Object);
@@ -80,7 +98,7 @@ public class SpriteAnimationSystemTests : IDisposable
             CurrentAnimation = "walk_down",
             IsPlaying = true,
             CurrentFrame = 0,
-            FrameTimer = 0f
+            FrameTimer = 0f,
         };
 
         _mockAssetProvider
@@ -108,7 +126,7 @@ public class SpriteAnimationSystemTests : IDisposable
             CurrentAnimation = "walk_down",
             IsPlaying = true,
             CurrentFrame = 0,
-            FrameTimer = 0f
+            FrameTimer = 0f,
         };
 
         _mockAssetProvider
@@ -119,10 +137,8 @@ public class SpriteAnimationSystemTests : IDisposable
         _system.Initialize(_world);
 
         // Act - Update multiple times (simulate 60 frames)
-        for (int i = 0; i < 60; i++)
-        {
+        for (var i = 0; i < 60; i++)
             _system.Update(_world, 0.016f);
-        }
 
         // Assert - ManifestKey should still be the same instance
         var currentSprite = _world.Get<Sprite>(entity);
@@ -211,7 +227,7 @@ public class SpriteAnimationSystemTests : IDisposable
             CurrentAnimation = "walk_down",
             IsPlaying = false,
             CurrentFrame = 2, // Should stay at frame 2
-            FrameTimer = 0f
+            FrameTimer = 0f,
         };
 
         _mockAssetProvider
@@ -240,26 +256,31 @@ public class SpriteAnimationSystemTests : IDisposable
         var sprite = new Sprite("player", "player_sprite");
 
         // Act - Measure ManifestKey access (optimized)
-        var sw1 = System.Diagnostics.Stopwatch.StartNew();
-        for (int i = 0; i < iterations; i++)
+        var sw1 = Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++)
         {
             var key = sprite.ManifestKey; // Direct property access
         }
+
         sw1.Stop();
 
         // Act - Measure string concatenation (old way)
-        var sw2 = System.Diagnostics.Stopwatch.StartNew();
-        for (int i = 0; i < iterations; i++)
+        var sw2 = Stopwatch.StartNew();
+        for (var i = 0; i < iterations; i++)
         {
             var key = $"{sprite.Category}/{sprite.SpriteName}"; // Allocation per iteration
         }
+
         sw2.Stop();
 
         // Assert - ManifestKey should be significantly faster
         sw1.ElapsedMilliseconds.Should().BeLessThan(sw2.ElapsedMilliseconds);
 
         // Output performance comparison
-        var improvement = (sw2.ElapsedMilliseconds - sw1.ElapsedMilliseconds) / (double)sw2.ElapsedMilliseconds * 100;
+        var improvement =
+            (sw2.ElapsedMilliseconds - sw1.ElapsedMilliseconds)
+            / (double)sw2.ElapsedMilliseconds
+            * 100;
         _mockLogger.Object.LogInformation(
             $"ManifestKey performance: {sw1.ElapsedMilliseconds}ms vs {sw2.ElapsedMilliseconds}ms (string concat) - {improvement:F1}% faster"
         );
@@ -275,7 +296,7 @@ public class SpriteAnimationSystemTests : IDisposable
             CurrentAnimation = "walk_down",
             IsPlaying = true,
             CurrentFrame = 0,
-            FrameTimer = 0.1f
+            FrameTimer = 0.1f,
         };
 
         _mockAssetProvider

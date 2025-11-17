@@ -19,16 +19,16 @@ namespace PokeSharp.Engine.Systems.Pooling;
 /// </remarks>
 public class ComponentPoolManager
 {
-    private readonly ConcurrentDictionary<Type, object> _pools = new();
-    private readonly ILogger? _logger;
+    private readonly ComponentPool<Animation> _animationPool;
     private readonly bool _enableStatistics;
+    private readonly ComponentPool<GridMovement> _gridMovementPool;
+    private readonly ILogger? _logger;
+    private readonly ConcurrentDictionary<Type, object> _pools = new();
 
     // Pre-configured pools for frequently used components
     private readonly ComponentPool<Position> _positionPool;
-    private readonly ComponentPool<GridMovement> _gridMovementPool;
-    private readonly ComponentPool<Velocity> _velocityPool;
     private readonly ComponentPool<Sprite> _spritePool;
-    private readonly ComponentPool<Animation> _animationPool;
+    private readonly ComponentPool<Velocity> _velocityPool;
 
     /// <summary>
     ///     Creates a new component pool manager.
@@ -42,11 +42,11 @@ public class ComponentPoolManager
 
         // Initialize high-frequency component pools
         // Pool sizes based on typical usage patterns in game loops
-        _positionPool = new ComponentPool<Position>(maxSize: 2000);
-        _gridMovementPool = new ComponentPool<GridMovement>(maxSize: 1500);
-        _velocityPool = new ComponentPool<Velocity>(maxSize: 1500);
-        _spritePool = new ComponentPool<Sprite>(maxSize: 1000);
-        _animationPool = new ComponentPool<Animation>(maxSize: 1000);
+        _positionPool = new ComponentPool<Position>(2000);
+        _gridMovementPool = new ComponentPool<GridMovement>(1500);
+        _velocityPool = new ComponentPool<Velocity>(1500);
+        _spritePool = new ComponentPool<Sprite>(1000);
+        _animationPool = new ComponentPool<Animation>(1000);
 
         // Register in dictionary for generic access
         _pools[typeof(Position)] = _positionPool;
@@ -73,9 +73,7 @@ public class ComponentPoolManager
         var type = typeof(T);
 
         if (_pools.TryGetValue(type, out var existingPool))
-        {
             return (ComponentPool<T>)existingPool;
-        }
 
         // Create new pool
         var newPool = new ComponentPool<T>(maxSize);
@@ -89,52 +87,82 @@ public class ComponentPoolManager
     /// <summary>
     ///     Rent a Position component from pool.
     /// </summary>
-    public Position RentPosition() => _positionPool.Rent();
+    public Position RentPosition()
+    {
+        return _positionPool.Rent();
+    }
 
     /// <summary>
     ///     Return a Position component to pool.
     /// </summary>
-    public void ReturnPosition(Position position) => _positionPool.Return(position);
+    public void ReturnPosition(Position position)
+    {
+        _positionPool.Return(position);
+    }
 
     /// <summary>
     ///     Rent a GridMovement component from pool.
     /// </summary>
-    public GridMovement RentGridMovement() => _gridMovementPool.Rent();
+    public GridMovement RentGridMovement()
+    {
+        return _gridMovementPool.Rent();
+    }
 
     /// <summary>
     ///     Return a GridMovement component to pool.
     /// </summary>
-    public void ReturnGridMovement(GridMovement movement) => _gridMovementPool.Return(movement);
+    public void ReturnGridMovement(GridMovement movement)
+    {
+        _gridMovementPool.Return(movement);
+    }
 
     /// <summary>
     ///     Rent a Velocity component from pool.
     /// </summary>
-    public Velocity RentVelocity() => _velocityPool.Rent();
+    public Velocity RentVelocity()
+    {
+        return _velocityPool.Rent();
+    }
 
     /// <summary>
     ///     Return a Velocity component to pool.
     /// </summary>
-    public void ReturnVelocity(Velocity velocity) => _velocityPool.Return(velocity);
+    public void ReturnVelocity(Velocity velocity)
+    {
+        _velocityPool.Return(velocity);
+    }
 
     /// <summary>
     ///     Rent a Sprite component from pool.
     /// </summary>
-    public Sprite RentSprite() => _spritePool.Rent();
+    public Sprite RentSprite()
+    {
+        return _spritePool.Rent();
+    }
 
     /// <summary>
     ///     Return a Sprite component to pool.
     /// </summary>
-    public void ReturnSprite(Sprite sprite) => _spritePool.Return(sprite);
+    public void ReturnSprite(Sprite sprite)
+    {
+        _spritePool.Return(sprite);
+    }
 
     /// <summary>
     ///     Rent an Animation component from pool.
     /// </summary>
-    public Animation RentAnimation() => _animationPool.Rent();
+    public Animation RentAnimation()
+    {
+        return _animationPool.Rent();
+    }
 
     /// <summary>
     ///     Return an Animation component to pool.
     /// </summary>
-    public void ReturnAnimation(Animation animation) => _animationPool.Return(animation);
+    public void ReturnAnimation(Animation animation)
+    {
+        _animationPool.Return(animation);
+    }
 
     /// <summary>
     ///     Get statistics for all pools.
@@ -144,7 +172,6 @@ public class ComponentPoolManager
         var stats = new List<ComponentPoolStatistics>();
 
         foreach (var (type, poolObj) in _pools)
-        {
             if (poolObj is ComponentPool<Position> posPool)
                 stats.Add(posPool.GetStatistics());
             else if (poolObj is ComponentPool<GridMovement> gmPool)
@@ -155,7 +182,6 @@ public class ComponentPoolManager
                 stats.Add(sprPool.GetStatistics());
             else if (poolObj is ComponentPool<Animation> aniPool)
                 stats.Add(aniPool.GetStatistics());
-        }
 
         return stats;
     }
@@ -195,7 +221,7 @@ public class ComponentPoolManager
         sb.AppendLine($"Total Components Created: {totalCreated:N0}");
         sb.AppendLine($"Total Available: {totalAvailable}");
         sb.AppendLine(
-            $"Overall Reuse Rate: {(totalRented > 0 ? 1.0f - ((float)totalCreated / totalRented) : 0f):P1}"
+            $"Overall Reuse Rate: {(totalRented > 0 ? 1.0f - (float)totalCreated / totalRented : 0f):P1}"
         );
 
         // Memory estimation (rough approximation)
@@ -213,7 +239,6 @@ public class ComponentPoolManager
     public void ClearAll()
     {
         foreach (var (type, poolObj) in _pools)
-        {
             if (poolObj is ComponentPool<Position> posPool)
                 posPool.Clear();
             else if (poolObj is ComponentPool<GridMovement> gmPool)
@@ -224,7 +249,6 @@ public class ComponentPoolManager
                 sprPool.Clear();
             else if (poolObj is ComponentPool<Animation> aniPool)
                 aniPool.Clear();
-        }
 
         _logger?.LogInformation("All component pools cleared");
     }

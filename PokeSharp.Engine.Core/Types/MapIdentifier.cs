@@ -10,11 +10,6 @@ namespace PokeSharp.Engine.Core.Types;
 public readonly record struct MapIdentifier
 {
     /// <summary>
-    ///     Gets the underlying string value.
-    /// </summary>
-    public string Value { get; }
-
-    /// <summary>
     ///     Initializes a new instance of the MapIdentifier struct.
     /// </summary>
     /// <param name="value">The map identifier string.</param>
@@ -22,25 +17,42 @@ public readonly record struct MapIdentifier
     public MapIdentifier(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            throw new ArgumentException("Map identifier cannot be null, empty, or whitespace.", nameof(value));
+            throw new ArgumentException(
+                "Map identifier cannot be null, empty, or whitespace.",
+                nameof(value)
+            );
 
         Value = value;
     }
 
     /// <summary>
+    ///     Gets the underlying string value.
+    /// </summary>
+    public string Value { get; }
+
+    /// <summary>
     ///     Implicit conversion from string to MapIdentifier.
     /// </summary>
-    public static implicit operator MapIdentifier(string value) => new(value);
+    public static implicit operator MapIdentifier(string value)
+    {
+        return new MapIdentifier(value);
+    }
 
     /// <summary>
     ///     Implicit conversion from MapIdentifier to string.
     /// </summary>
-    public static implicit operator string(MapIdentifier id) => id.Value;
+    public static implicit operator string(MapIdentifier id)
+    {
+        return id.Value;
+    }
 
     /// <summary>
     ///     Returns the string representation of the identifier.
     /// </summary>
-    public override string ToString() => Value;
+    public override string ToString()
+    {
+        return Value;
+    }
 
     /// <summary>
     ///     Creates a MapIdentifier from a string, returning null if invalid.
@@ -52,4 +64,3 @@ public readonly record struct MapIdentifier
         return new MapIdentifier(value);
     }
 }
-

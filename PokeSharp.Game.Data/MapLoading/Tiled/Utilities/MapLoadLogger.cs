@@ -1,4 +1,3 @@
-using System.Linq;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Data.MapLoading.Tiled.Core;
@@ -37,12 +36,10 @@ public class MapLoadLogger
         _logger?.LogMapLoaded(mapName, tmxDoc.Width, tmxDoc.Height, tilesCreated, objectsCreated);
 
         if (imageLayersCreated > 0)
-        {
             _logger?.LogDebug(
                 "[dim]Image Layers:[/] [magenta]{ImageLayerCount}[/]",
                 imageLayersCreated
             );
-        }
 
         _logger?.LogDebug(
             "[dim]MapId:[/] [grey]{MapId}[/] [dim]|[/] [dim]Animated:[/] [yellow]{AnimatedCount}[/] [dim]|[/] [dim]Tileset:[/] [cyan]{TilesetId}[/]",
@@ -66,4 +63,3 @@ public class MapLoadLogger
         return string.Join(",", tilesets.Select(t => t.TilesetId));
     }
 }
-

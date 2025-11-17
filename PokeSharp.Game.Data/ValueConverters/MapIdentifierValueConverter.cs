@@ -9,11 +9,5 @@ namespace PokeSharp.Game.Data.ValueConverters;
 public class MapIdentifierValueConverter : ValueConverter<MapIdentifier, string>
 {
     public MapIdentifierValueConverter()
-        : base(
-            v => v.Value,
-            v => new MapIdentifier(v)
-        )
-    {
-    }
+        : base(v => v.Value, v => new MapIdentifier(v)) { }
 }
-

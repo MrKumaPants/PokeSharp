@@ -5,7 +5,6 @@ using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.NPCs;
 using PokeSharp.Game.Scripting.Api;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.Services;
 

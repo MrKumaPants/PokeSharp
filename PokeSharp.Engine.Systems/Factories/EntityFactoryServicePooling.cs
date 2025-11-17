@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Arch.Core;
-using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Common.Validation;
@@ -25,7 +24,6 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
 
     private readonly ILogger<EntityFactoryServicePooling> _logger;
     private readonly TemplateCache _templateCache;
-    private readonly EntityPoolManager? _poolManager;
 
     /// <summary>
     ///     Creates a new entity factory service with pooling support.
@@ -41,13 +39,23 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
     {
         _templateCache = templateCache ?? throw new ArgumentNullException(nameof(templateCache));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _poolManager = poolManager;
+        PoolManager = poolManager;
 
-        if (_poolManager != null)
+        if (PoolManager != null)
             _logger.LogInformation(
                 "EntityFactoryServicePooling initialized with pooling support enabled"
             );
     }
+
+    /// <summary>
+    ///     Check if pooling is available for this factory service.
+    /// </summary>
+    public bool IsPoolingEnabled => PoolManager != null;
+
+    /// <summary>
+    ///     Get the pool manager (if configured).
+    /// </summary>
+    public EntityPoolManager? PoolManager { get; }
 
     /// <inheritdoc />
     public Entity SpawnFromTemplate(
@@ -62,9 +70,9 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
     /// <inheritdoc />
     public Entity SpawnFromTemplate(string templateId, World world, Action<EntityBuilder> configure)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
-        ArgumentNullException.ThrowIfNull(configure, nameof(configure));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(configure);
 
         // Build context from fluent API
         var builder = new EntityBuilder();
@@ -90,120 +98,11 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
         return SpawnFromTemplate(templateId, world, context);
     }
 
-    /// <summary>
-    ///     Spawn entity from template with optional pooling support.
-    /// </summary>
-    /// <param name="templateId">Template identifier</param>
-    /// <param name="world">Arch world</param>
-    /// <param name="context">Spawn context</param>
-    /// <param name="usePooling">Whether to acquire entity from pool (2-3x faster)</param>
-    /// <param name="poolName">Pool name if using pooling</param>
-    /// <returns>Spawned entity</returns>
-    /// <remarks>
-    ///     Pooling provides significant performance benefits (2-3x faster spawning, 50%+ GC reduction)
-    ///     but requires calling ReleaseEntity() instead of entity.Destroy() when done.
-    /// </remarks>
-    public Entity SpawnFromTemplate(
-        string templateId,
-        World world,
-        EntitySpawnContext? context,
-        bool usePooling,
-        string poolName = "default"
-    )
-    {
-        return SpawnFromTemplateInternal(templateId, world, context, usePooling, poolName);
-    }
-
-    private Entity SpawnFromTemplateInternal(
-        string templateId,
-        World world,
-        EntitySpawnContext? context,
-        bool usePooling,
-        string poolName
-    )
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
-
-        // Retrieve template from cache
-        var template = _templateCache.Get(templateId);
-        if (template == null)
-        {
-            _logger.LogTemplateMissing(templateId);
-            throw new ArgumentException(
-                $"Template '{templateId}' not found in cache",
-                nameof(templateId)
-            );
-        }
-
-        // Resolve template inheritance chain
-        var resolvedTemplate = ResolveTemplateInheritance(template);
-
-        // Validate resolved template before spawning
-        var validationResult = ValidateTemplateInternal(resolvedTemplate);
-        if (!validationResult.IsValid)
-        {
-            _logger.LogError(
-                "Template validation failed for {TemplateId}: {Errors}",
-                templateId,
-                string.Join(", ", validationResult.Errors)
-            );
-            throw new InvalidOperationException(
-                $"Template '{templateId}' is invalid: {string.Join(", ", validationResult.Errors)}"
-            );
-        }
-
-        // Build component array from resolved template
-        var components = BuildComponentArray(resolvedTemplate, context);
-
-        // Create or acquire entity
-        Entity entity;
-        if (usePooling && _poolManager != null)
-        {
-            // Acquire from pool (2-3x faster)
-            entity = _poolManager.Acquire(poolName);
-            _logger.LogDebug(
-                "Acquired entity {EntityId} from pool '{PoolName}'",
-                entity.Id,
-                poolName
-            );
-        }
-        else
-        {
-            // Create normally
-            entity = world.Create();
-            _logger.LogDebug("Created new entity {EntityId}", entity.Id);
-        }
-
-        // Add each component using reflection (Arch requires compile-time types)
-        foreach (var component in components)
-        {
-            var componentType = component.GetType();
-
-            // Get cached Add<T> method for this component type
-            var addMethod = GetCachedAddMethod(componentType);
-
-            // Invoke Add<T>(entity, component)
-            addMethod.Invoke(world, [entity, component]);
-            _logger.LogDebug("  Added {Type} to entity", componentType.Name);
-        }
-
-        _logger.LogDebug(
-            "Spawned entity {EntityId} from template {TemplateId} with {ComponentCount} components (pooled: {Pooled})",
-            entity.Id,
-            templateId,
-            components.Count,
-            usePooling
-        );
-
-        return entity;
-    }
-
     /// <inheritdoc />
     public IEnumerable<Entity> SpawnBatch(IEnumerable<string> templateIds, World world)
     {
-        ArgumentNullException.ThrowIfNull(templateIds, nameof(templateIds));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
+        ArgumentNullException.ThrowIfNull(templateIds);
+        ArgumentNullException.ThrowIfNull(world);
 
         var entities = new List<Entity>();
         List<string> templateIdList = [.. templateIds];
@@ -233,7 +132,7 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
     /// <inheritdoc />
     public ValidationResult ValidateTemplate(string templateId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
 
         var template = _templateCache.Get(templateId);
         if (template == null)
@@ -248,49 +147,16 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
     /// <inheritdoc />
     public bool HasTemplate(string templateId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
         return _templateCache.Get(templateId) != null;
     }
 
     /// <inheritdoc />
     public IEnumerable<string> GetTemplateIdsByTag(string tag)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tag, nameof(tag));
+        ArgumentException.ThrowIfNullOrWhiteSpace(tag);
         return _templateCache.GetByTag(tag).Select(t => t.TemplateId);
     }
-
-    /// <summary>
-    ///     Return pooled entity to its pool instead of destroying it.
-    ///     Use this for entities spawned with usePooling=true.
-    /// </summary>
-    /// <param name="entity">Entity to release</param>
-    /// <param name="poolName">Optional explicit pool name (auto-detected if not specified)</param>
-    /// <exception cref="InvalidOperationException">Thrown if pooling not enabled or entity not pooled</exception>
-    /// <remarks>
-    ///     This is the correct way to "destroy" pooled entities. Regular entity.Destroy() will
-    ///     bypass the pool and create memory leaks in the pool tracking.
-    /// </remarks>
-    public void ReleaseEntity(Entity entity, string? poolName = null)
-    {
-        if (_poolManager == null)
-            throw new InvalidOperationException(
-                "Cannot release entity: EntityPoolManager not configured. "
-                    + "Pass EntityPoolManager to constructor to enable pooling."
-            );
-
-        _poolManager.Release(entity, poolName);
-        _logger.LogDebug("Released entity {EntityId} back to pool", entity.Id);
-    }
-
-    /// <summary>
-    ///     Check if pooling is available for this factory service.
-    /// </summary>
-    public bool IsPoolingEnabled => _poolManager != null;
-
-    /// <summary>
-    ///     Get the pool manager (if configured).
-    /// </summary>
-    public EntityPoolManager? PoolManager => _poolManager;
 
     /// <inheritdoc />
     public Entity[] SpawnBatchFromTemplate(
@@ -300,9 +166,9 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
         Action<EntityBuilder, int>? configureEach = null
     )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
         _logger.LogDebug(
             "Batch spawning {Count} entities from template {TemplateId}",
@@ -340,7 +206,7 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
 
         var entities = new Entity[count];
 
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
             EntitySpawnContext? context = null;
 
@@ -396,24 +262,150 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
     /// <inheritdoc />
     public void ReleaseBatch(Entity[] entities, World world)
     {
-        ArgumentNullException.ThrowIfNull(entities, nameof(entities));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
+        ArgumentNullException.ThrowIfNull(entities);
+        ArgumentNullException.ThrowIfNull(world);
 
         _logger.LogDebug("Releasing batch of {Count} entities", entities.Length);
 
         foreach (var entity in entities)
-        {
             // For pooling-enabled service, try to release to pool
-            if (_poolManager != null)
-            {
-                _poolManager.Release(entity);
-            }
+            if (PoolManager != null)
+                PoolManager.Release(entity);
             else
-            {
                 // Fall back to destruction
                 world.Destroy(entity);
-            }
+    }
+
+    /// <summary>
+    ///     Spawn entity from template with optional pooling support.
+    /// </summary>
+    /// <param name="templateId">Template identifier</param>
+    /// <param name="world">Arch world</param>
+    /// <param name="context">Spawn context</param>
+    /// <param name="usePooling">Whether to acquire entity from pool (2-3x faster)</param>
+    /// <param name="poolName">Pool name if using pooling</param>
+    /// <returns>Spawned entity</returns>
+    /// <remarks>
+    ///     Pooling provides significant performance benefits (2-3x faster spawning, 50%+ GC reduction)
+    ///     but requires calling ReleaseEntity() instead of entity.Destroy() when done.
+    /// </remarks>
+    public Entity SpawnFromTemplate(
+        string templateId,
+        World world,
+        EntitySpawnContext? context,
+        bool usePooling,
+        string poolName = "default"
+    )
+    {
+        return SpawnFromTemplateInternal(templateId, world, context, usePooling, poolName);
+    }
+
+    private Entity SpawnFromTemplateInternal(
+        string templateId,
+        World world,
+        EntitySpawnContext? context,
+        bool usePooling,
+        string poolName
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentNullException.ThrowIfNull(world);
+
+        // Retrieve template from cache
+        var template = _templateCache.Get(templateId);
+        if (template == null)
+        {
+            _logger.LogTemplateMissing(templateId);
+            throw new ArgumentException(
+                $"Template '{templateId}' not found in cache",
+                nameof(templateId)
+            );
         }
+
+        // Resolve template inheritance chain
+        var resolvedTemplate = ResolveTemplateInheritance(template);
+
+        // Validate resolved template before spawning
+        var validationResult = ValidateTemplateInternal(resolvedTemplate);
+        if (!validationResult.IsValid)
+        {
+            _logger.LogError(
+                "Template validation failed for {TemplateId}: {Errors}",
+                templateId,
+                string.Join(", ", validationResult.Errors)
+            );
+            throw new InvalidOperationException(
+                $"Template '{templateId}' is invalid: {string.Join(", ", validationResult.Errors)}"
+            );
+        }
+
+        // Build component array from resolved template
+        var components = BuildComponentArray(resolvedTemplate, context);
+
+        // Create or acquire entity
+        Entity entity;
+        if (usePooling && PoolManager != null)
+        {
+            // Acquire from pool (2-3x faster)
+            entity = PoolManager.Acquire(poolName);
+            _logger.LogDebug(
+                "Acquired entity {EntityId} from pool '{PoolName}'",
+                entity.Id,
+                poolName
+            );
+        }
+        else
+        {
+            // Create normally
+            entity = world.Create();
+            _logger.LogDebug("Created new entity {EntityId}", entity.Id);
+        }
+
+        // Add each component using reflection (Arch requires compile-time types)
+        foreach (var component in components)
+        {
+            var componentType = component.GetType();
+
+            // Get cached Add<T> method for this component type
+            var addMethod = GetCachedAddMethod(componentType);
+
+            // Invoke Add<T>(entity, component)
+            addMethod.Invoke(world, [entity, component]);
+            _logger.LogDebug("  Added {Type} to entity", componentType.Name);
+        }
+
+        _logger.LogDebug(
+            "Spawned entity {EntityId} from template {TemplateId} with {ComponentCount} components (pooled: {Pooled})",
+            entity.Id,
+            templateId,
+            components.Count,
+            usePooling
+        );
+
+        return entity;
+    }
+
+    /// <summary>
+    ///     Return pooled entity to its pool instead of destroying it.
+    ///     Use this for entities spawned with usePooling=true.
+    /// </summary>
+    /// <param name="entity">Entity to release</param>
+    /// <param name="poolName">Optional explicit pool name (auto-detected if not specified)</param>
+    /// <exception cref="InvalidOperationException">Thrown if pooling not enabled or entity not pooled</exception>
+    /// <remarks>
+    ///     This is the correct way to "destroy" pooled entities. Regular entity.Destroy() will
+    ///     bypass the pool and create memory leaks in the pool tracking.
+    /// </remarks>
+    public void ReleaseEntity(Entity entity, string? poolName = null)
+    {
+        if (PoolManager == null)
+            throw new InvalidOperationException(
+                "Cannot release entity: EntityPoolManager not configured. "
+                    + "Pass EntityPoolManager to constructor to enable pooling."
+            );
+
+        PoolManager.Release(entity, poolName);
+        _logger.LogDebug("Released entity {EntityId} back to pool", entity.Id);
     }
 
     // Private helper methods
@@ -546,15 +538,9 @@ public sealed class EntityFactoryServicePooling : IEntityFactoryService
 
         // Add new components from overrides that aren't in template
         if (context?.Overrides != null)
-        {
             foreach (var (typeName, componentData) in context.Overrides)
-            {
                 if (!addedTypes.Contains(typeName))
-                {
                     components.Add(componentData);
-                }
-            }
-        }
 
         return components;
     }

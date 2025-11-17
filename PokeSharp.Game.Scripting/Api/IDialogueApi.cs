@@ -1,7 +1,5 @@
 namespace PokeSharp.Game.Scripting.Api;
 
-using PokeSharp.Game.Systems.Services;
-
 /// <summary>
 ///     Dialogue and message display API for scripts.
 ///     Provides access to displaying messages, dialogue boxes, and UI notifications.

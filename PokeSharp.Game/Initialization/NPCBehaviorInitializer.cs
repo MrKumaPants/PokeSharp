@@ -48,8 +48,9 @@ public class NPCBehaviorInitializer(
                         ("script", scripted.BehaviorScript)
                     );
 
-                    var scriptInstance = await scriptService
-                        .LoadScriptAsync(scripted.BehaviorScript);
+                    var scriptInstance = await scriptService.LoadScriptAsync(
+                        scripted.BehaviorScript
+                    );
 
                     if (scriptInstance != null)
                     {

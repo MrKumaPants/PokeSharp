@@ -1,19 +1,17 @@
 using Arch.Core;
-using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Types;
 using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Engine.Systems.Queries;
-using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Tiles;
 
 namespace PokeSharp.Game.Systems;
 
 /// <summary>
-/// Manages map lifecycle: loading, unloading, and memory cleanup.
-/// Ensures only active maps remain in memory to prevent entity/texture accumulation.
+///     Manages map lifecycle: loading, unloading, and memory cleanup.
+///     Ensures only active maps remain in memory to prevent entity/texture accumulation.
 /// </summary>
 public class MapLifecycleManager(
     World world,
@@ -27,14 +25,19 @@ public class MapLifecycleManager(
     private MapRuntimeId? _previousMapId;
 
     /// <summary>
-    /// Gets the current active map ID
+    ///     Gets the current active map ID
     /// </summary>
     public MapRuntimeId? CurrentMapId => _currentMapId;
 
     /// <summary>
-    /// Registers a newly loaded map with tileset and sprite textures
+    ///     Registers a newly loaded map with tileset and sprite textures
     /// </summary>
-    public void RegisterMap(MapRuntimeId mapId, string mapName, HashSet<string> tilesetTextureIds, HashSet<string> spriteTextureIds)
+    public void RegisterMap(
+        MapRuntimeId mapId,
+        string mapName,
+        HashSet<string> tilesetTextureIds,
+        HashSet<string> spriteTextureIds
+    )
     {
         _loadedMaps[mapId] = new MapMetadata(mapName, tilesetTextureIds, spriteTextureIds);
         logger?.LogWorkflowStatus(
@@ -47,7 +50,7 @@ public class MapLifecycleManager(
     }
 
     /// <summary>
-    /// Transitions to a new map, cleaning up old map entities and textures
+    ///     Transitions to a new map, cleaning up old map entities and textures
     /// </summary>
     public void TransitionToMap(MapRuntimeId newMapId)
     {
@@ -73,13 +76,11 @@ public class MapLifecycleManager(
             .ToList();
 
         foreach (var mapId in mapsToUnload)
-        {
             UnloadMap(mapId);
-        }
     }
 
     /// <summary>
-    /// Unloads a specific map: destroys entities and unloads textures
+    ///     Unloads a specific map: destroys entities and unloads textures
     /// </summary>
     public void UnloadMap(MapRuntimeId mapId)
     {
@@ -89,7 +90,11 @@ public class MapLifecycleManager(
             return;
         }
 
-        logger?.LogWorkflowStatus("Unloading map", ("mapName", metadata.Name), ("mapId", mapId.Value));
+        logger?.LogWorkflowStatus(
+            "Unloading map",
+            ("mapName", metadata.Name),
+            ("mapId", mapId.Value)
+        );
 
         // 1. Destroy all tile entities for this map
         var tilesDestroyed = DestroyMapEntities(mapId);
@@ -112,7 +117,7 @@ public class MapLifecycleManager(
     }
 
     /// <summary>
-    /// Destroys all entities belonging to a specific map
+    ///     Destroys all entities belonging to a specific map
     /// </summary>
     private int DestroyMapEntities(MapRuntimeId mapId)
     {
@@ -125,9 +130,7 @@ public class MapLifecycleManager(
             (Entity entity, ref TilePosition pos) =>
             {
                 if (pos.MapId == mapId)
-                {
                     entitiesToDestroy.Add(entity);
-                }
             }
         );
 
@@ -135,16 +138,17 @@ public class MapLifecycleManager(
         // ImageLayers don't have MapId component, so we destroy all of them
         // (only one map is typically active at a time, so this is safe)
         var imageLayerQuery = new QueryDescription().WithAll<ImageLayer>();
-        world.Query(imageLayerQuery, (Entity entity) =>
-        {
-            entitiesToDestroy.Add(entity);
-        });
+        world.Query(
+            imageLayerQuery,
+            entity =>
+            {
+                entitiesToDestroy.Add(entity);
+            }
+        );
 
         // Now destroy entities outside the query
         foreach (var entity in entitiesToDestroy)
-        {
             world.Destroy(entity);
-        }
 
         logger?.LogDebug(
             "Destroyed {Count} entities for map {MapId} (including image layers)",
@@ -156,7 +160,7 @@ public class MapLifecycleManager(
     }
 
     /// <summary>
-    /// Unloads textures for a map (if AssetManager supports UnregisterTexture)
+    ///     Unloads textures for a map (if AssetManager supports UnregisterTexture)
     /// </summary>
     private int UnloadMapTextures(HashSet<string> textureIds)
     {
@@ -170,26 +174,26 @@ public class MapLifecycleManager(
             var isShared = _loadedMaps.Values.Any(m => m.TilesetTextureIds.Contains(textureId));
 
             if (!isShared)
-            {
                 if (assetManager.UnregisterTexture(textureId))
-                {
                     unloaded++;
-                }
-            }
         }
 
         return unloaded;
     }
 
     /// <summary>
-    /// PHASE 2: Unloads sprite textures for a map (with reference counting).
+    ///     PHASE 2: Unloads sprite textures for a map (with reference counting).
     /// </summary>
     private int UnloadSpriteTextures(MapRuntimeId mapId, HashSet<string> spriteTextureKeys)
     {
         try
         {
             var unloaded = spriteTextureLoader.UnloadSpritesForMap(mapId);
-            logger?.LogDebug("Unloaded {Count} sprite textures for map {MapId}", unloaded, mapId.Value);
+            logger?.LogDebug(
+                "Unloaded {Count} sprite textures for map {MapId}",
+                unloaded,
+                mapId.Value
+            );
             return unloaded;
         }
         catch (Exception ex)
@@ -200,7 +204,7 @@ public class MapLifecycleManager(
     }
 
     /// <summary>
-    /// Forces cleanup of all inactive maps (emergency memory cleanup)
+    ///     Forces cleanup of all inactive maps (emergency memory cleanup)
     /// </summary>
     public void ForceCleanup()
     {
@@ -209,9 +213,7 @@ public class MapLifecycleManager(
         var mapsToUnload = _loadedMaps.Keys.Where(id => id != _currentMapId).ToList();
 
         foreach (var mapId in mapsToUnload)
-        {
             UnloadMap(mapId);
-        }
 
         // PHASE 2: Clear sprite manifest cache to free memory
         spriteTextureLoader.ClearCache();
@@ -221,5 +223,9 @@ public class MapLifecycleManager(
         GC.Collect();
     }
 
-    private record MapMetadata(string Name, HashSet<string> TilesetTextureIds, HashSet<string> SpriteTextureIds);
+    private record MapMetadata(
+        string Name,
+        HashSet<string> TilesetTextureIds,
+        HashSet<string> SpriteTextureIds
+    );
 }

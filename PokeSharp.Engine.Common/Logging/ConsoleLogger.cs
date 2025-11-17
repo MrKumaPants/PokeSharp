@@ -73,12 +73,10 @@ public sealed class ConsoleLogger<T> : ILogger<T>
         );
 
         foreach (var line in exceptionLines)
-        {
             if (LogFormatting.SupportsMarkup)
                 AnsiConsole.MarkupLine(line);
             else
                 AnsiConsole.WriteLine(line);
-        }
     }
 
     /// <summary>

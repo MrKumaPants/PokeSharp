@@ -11,9 +11,9 @@ namespace PokeSharp.Engine.Core.Templates.Loading;
 /// </summary>
 public class JsonTemplateLoader
 {
-    private readonly ILogger<JsonTemplateLoader> _logger;
-    private readonly JsonSerializerOptions _jsonOptions;
     private readonly ComponentDeserializerRegistry _componentRegistry;
+    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger<JsonTemplateLoader> _logger;
 
     public JsonTemplateLoader(
         ILogger<JsonTemplateLoader> logger,
@@ -71,7 +71,11 @@ public class JsonTemplateLoader
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[steelblue1]WF[/] [red]✗[/] Failed to load template from [cyan]{FilePath}[/]", filePath);
+            _logger.LogError(
+                ex,
+                "[steelblue1]WF[/] [red]✗[/] Failed to load template from [cyan]{FilePath}[/]",
+                filePath
+            );
             throw;
         }
     }
@@ -91,7 +95,10 @@ public class JsonTemplateLoader
     {
         if (!Directory.Exists(directoryPath))
         {
-            _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Template directory not found: [cyan]{DirectoryPath}[/]", directoryPath);
+            _logger.LogWarning(
+                "[steelblue1]WF[/] [orange3]⚠[/] Template directory not found: [cyan]{DirectoryPath}[/]",
+                directoryPath
+            );
             return new List<EntityTemplate>();
         }
 
@@ -110,7 +117,11 @@ public class JsonTemplateLoader
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[steelblue1]WF[/] [orange3]⚠[/] Skipping invalid template file: [cyan]{File}[/]", file);
+                _logger.LogWarning(
+                    ex,
+                    "[steelblue1]WF[/] [orange3]⚠[/] Skipping invalid template file: [cyan]{File}[/]",
+                    file
+                );
             }
         }
 
@@ -136,7 +147,10 @@ public class JsonTemplateLoader
 
         if (!Directory.Exists(directoryPath))
         {
-            _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Template directory not found: [cyan]{DirectoryPath}[/]", directoryPath);
+            _logger.LogWarning(
+                "[steelblue1]WF[/] [orange3]⚠[/] Template directory not found: [cyan]{DirectoryPath}[/]",
+                directoryPath
+            );
             return cache;
         }
 
@@ -153,13 +167,15 @@ public class JsonTemplateLoader
                 var jsonNode = JsonNode.Parse(json);
 
                 if (jsonNode != null)
-                {
                     cache.Add(file, jsonNode);
-                }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "[steelblue1]WF[/] [orange3]⚠[/] Failed to parse JSON from: [cyan]{File}[/]", file);
+                _logger.LogWarning(
+                    ex,
+                    "[steelblue1]WF[/] [orange3]⚠[/] Failed to parse JSON from: [cyan]{File}[/]",
+                    file
+                );
             }
         }
 
@@ -212,9 +228,7 @@ public class JsonTemplateLoader
 
         // Deserialize components
         if (dto.Components != null)
-        {
             foreach (var componentDto in dto.Components)
-            {
                 try
                 {
                     var componentTemplate = _componentRegistry.DeserializeComponent(componentDto);
@@ -230,8 +244,6 @@ public class JsonTemplateLoader
                     );
                     throw;
                 }
-            }
-        }
 
         return template;
     }

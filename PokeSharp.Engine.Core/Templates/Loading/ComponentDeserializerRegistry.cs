@@ -26,8 +26,8 @@ public class ComponentDeserializerRegistry
     public void Register<TComponent>(string typeName, Func<JsonElement, TComponent> deserializer)
         where TComponent : struct
     {
-        ArgumentNullException.ThrowIfNull(typeName, nameof(typeName));
-        ArgumentNullException.ThrowIfNull(deserializer, nameof(deserializer));
+        ArgumentNullException.ThrowIfNull(typeName);
+        ArgumentNullException.ThrowIfNull(deserializer);
 
         _deserializers[typeName] = new ComponentDeserializerInfo
         {
@@ -35,7 +35,10 @@ public class ComponentDeserializerRegistry
             Deserializer = jsonElement => deserializer(jsonElement),
         };
 
-        _logger.LogDebug("[steelblue1]WF[/] [green]✓[/] Registered deserializer for component type: [cyan]{TypeName}[/]", typeName);
+        _logger.LogDebug(
+            "[steelblue1]WF[/] [green]✓[/] Registered deserializer for component type: [cyan]{TypeName}[/]",
+            typeName
+        );
     }
 
     /// <summary>
@@ -57,7 +60,7 @@ public class ComponentDeserializerRegistry
     /// <exception cref="InvalidOperationException">If deserializer not found</exception>
     public ComponentTemplate DeserializeComponent(ComponentDto dto)
     {
-        ArgumentNullException.ThrowIfNull(dto, nameof(dto));
+        ArgumentNullException.ThrowIfNull(dto);
 
         if (string.IsNullOrWhiteSpace(dto.Type))
             throw new ArgumentException("Component type is required", nameof(dto));
@@ -90,7 +93,11 @@ public class ComponentDeserializerRegistry
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[steelblue1]WF[/] [red]✗[/] Failed to deserialize component [cyan]{ComponentType}[/]", dto.Type);
+            _logger.LogError(
+                ex,
+                "[steelblue1]WF[/] [red]✗[/] Failed to deserialize component [cyan]{ComponentType}[/]",
+                dto.Type
+            );
             throw;
         }
     }

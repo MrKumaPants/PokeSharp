@@ -27,37 +27,29 @@ public class InteractionMapper : IEntityPropertyMapper<Interaction>
 
         // Get interaction range
         if (properties.TryGetValue("interaction_range", out var rangeValue))
-        {
             interaction.InteractionRange = rangeValue switch
             {
                 int i => i,
                 string s when int.TryParse(s, out var result) => result,
                 _ => 1,
             };
-        }
 
         // Get dialogue script
         if (properties.TryGetValue("dialogue", out var dialogueValue))
-        {
             interaction.DialogueScript = dialogueValue?.ToString();
-        }
 
         // Get interaction event
         if (properties.TryGetValue("on_interact", out var eventValue))
-        {
             interaction.InteractionEvent = eventValue?.ToString();
-        }
 
         // Check if facing is required (default true)
         if (properties.TryGetValue("requires_facing", out var facingValue))
-        {
             interaction.RequiresFacing = facingValue switch
             {
                 bool b => b,
                 string s => !bool.TryParse(s, out var result) || result, // Default true
                 _ => true,
             };
-        }
 
         return interaction;
     }

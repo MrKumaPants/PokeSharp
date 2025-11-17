@@ -3,10 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;
-using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Core.Types.Events;
-using PokeSharp.Engine.Systems.Factories;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Systems.Services;
 
@@ -26,12 +23,13 @@ public class EffectApiService(
     private readonly IEventBus _eventBus =
         eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
+    private readonly IGameTimeService _gameTime =
+        gameTime ?? throw new ArgumentNullException(nameof(gameTime));
+
     private readonly ILogger<EffectApiService> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
 
     private readonly World _world = world ?? throw new ArgumentNullException(nameof(world));
-    private readonly IGameTimeService _gameTime =
-        gameTime ?? throw new ArgumentNullException(nameof(gameTime));
 
     /// <inheritdoc />
     public void SpawnEffect(

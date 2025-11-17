@@ -62,11 +62,7 @@ public class PerformanceOptimizationIntegrationTests : IDisposable
         for (int i = 900; i < 1000; i++)
         {
             var sprite = new Sprite("tiles", $"water_{i % 10}");
-            var animation = new Animation
-            {
-                CurrentAnimation = "water_flow",
-                IsPlaying = true
-            };
+            var animation = new Animation { CurrentAnimation = "water_flow", IsPlaying = true };
             var tileData = new TileData { TileId = i };
             _world.Create(sprite, animation, tileData);
         }
@@ -101,9 +97,18 @@ public class PerformanceOptimizationIntegrationTests : IDisposable
 
         // Targets based on optimization goals
         Assert.True(loadTimeMs < 100, $"Map load should complete in <100ms, took {loadTimeMs}ms");
-        Assert.True(allocatedMB < 5, $"Map load should allocate <5MB, allocated {allocatedMB:F2}MB");
-        Assert.True(gen0Collections < 3, $"Map load should trigger <3 Gen0 GCs, triggered {gen0Collections}");
-        Assert.True(gen2Collections == 0, $"Map load should not trigger Gen2 GC, triggered {gen2Collections}");
+        Assert.True(
+            allocatedMB < 5,
+            $"Map load should allocate <5MB, allocated {allocatedMB:F2}MB"
+        );
+        Assert.True(
+            gen0Collections < 3,
+            $"Map load should trigger <3 Gen0 GCs, triggered {gen0Collections}"
+        );
+        Assert.True(
+            gen2Collections == 0,
+            $"Map load should not trigger Gen2 GC, triggered {gen2Collections}"
+        );
     }
 
     [Fact]
@@ -171,7 +176,10 @@ public class PerformanceOptimizationIntegrationTests : IDisposable
 
         // Targets: <130 KB/sec allocation, <8 Gen0/sec
         Assert.True(allocatedKB < 130, $"Should allocate <130KB/sec, allocated {allocatedKB:F2}KB");
-        Assert.True(gen0Collections < 8, $"Should trigger <8 Gen0/sec, triggered {gen0Collections}");
+        Assert.True(
+            gen0Collections < 8,
+            $"Should trigger <8 Gen0/sec, triggered {gen0Collections}"
+        );
     }
 
     [Fact]
@@ -403,7 +411,8 @@ public class PerformanceOptimizationIntegrationTests : IDisposable
         Assert.True(gen2PerSec < 1, $"Target <1 Gen2/sec, got {gen2PerSec:F2} Gen2/sec");
 
         // Success message
-        Console.WriteLine($@"
+        Console.WriteLine(
+            $@"
 === OPTIMIZATION SUCCESS ===
 Allocation Rate: {allocatedKBPerSec:F2} KB/sec (Target: <130 KB/sec)
 Gen0 Collections: {gen0PerSec:F2}/sec (Target: <8/sec)
@@ -411,6 +420,7 @@ Gen2 Collections: {gen2PerSec:F2}/sec (Target: <1/sec)
 Total Entities: 100
 Total Frames: 300 (5 seconds @ 60 FPS)
 ============================
-");
+"
+        );
     }
 }

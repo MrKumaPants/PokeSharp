@@ -4,12 +4,12 @@ using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 namespace PokeSharp.Game.Data.Validation;
 
 /// <summary>
-/// Validates TMX document structure and data integrity
+///     Validates TMX document structure and data integrity
 /// </summary>
 /// <remarks>
-/// TODO: This validator needs to be rewritten to work with the current TMX structure.
-/// The original implementation was written for a different data model where layer.Data
-/// was a List&lt;TmxTile&gt; instead of int[,]. Temporarily stubbed to allow builds.
+///     TODO: This validator needs to be rewritten to work with the current TMX structure.
+///     The original implementation was written for a different data model where layer.Data
+///     was a List&lt;TmxTile&gt; instead of int[,]. Temporarily stubbed to allow builds.
 /// </remarks>
 public class TmxDocumentValidator : IMapValidator
 {
@@ -34,15 +34,13 @@ public class TmxDocumentValidator : IMapValidator
         ValidateBounds(map, result);
 
         if (_validateFileReferences)
-        {
             ValidateFileReferences(map, mapPath, result);
-        }
 
         return result;
     }
 
     /// <summary>
-    /// Validates that required map elements are present
+    ///     Validates that required map elements are present
     /// </summary>
     private void ValidateRequiredElements(TmxDocument map, ValidationResult result)
     {
@@ -69,7 +67,7 @@ public class TmxDocumentValidator : IMapValidator
     }
 
     /// <summary>
-    /// Validates map bounds and dimensions are reasonable
+    ///     Validates map bounds and dimensions are reasonable
     /// </summary>
     private void ValidateBounds(TmxDocument map, ValidationResult result)
     {
@@ -102,7 +100,7 @@ public class TmxDocumentValidator : IMapValidator
     }
 
     /// <summary>
-    /// Validates file references (tilesets, images) exist
+    ///     Validates file references (tilesets, images) exist
     /// </summary>
     private void ValidateFileReferences(TmxDocument map, string mapPath, ValidationResult result)
     {
@@ -110,8 +108,7 @@ public class TmxDocumentValidator : IMapValidator
 
         // Validate tileset file references
         if (map.Tilesets != null)
-        {
-            for (int i = 0; i < map.Tilesets.Count; i++)
+            for (var i = 0; i < map.Tilesets.Count; i++)
             {
                 var tileset = map.Tilesets[i];
                 var location = $"Tileset[{i}] ({tileset.Name})";
@@ -121,12 +118,10 @@ public class TmxDocumentValidator : IMapValidator
                 {
                     var tilesetPath = Path.Combine(mapDirectory, tileset.Source);
                     if (!File.Exists(tilesetPath))
-                    {
                         result.AddError(
                             $"External tileset file not found: {tileset.Source}",
                             $"{location}.Source"
                         );
-                    }
                 }
 
                 // Check tileset image
@@ -134,34 +129,27 @@ public class TmxDocumentValidator : IMapValidator
                 {
                     var imagePath = Path.Combine(mapDirectory, tileset.Image.Source);
                     if (!File.Exists(imagePath))
-                    {
                         result.AddWarning(
                             $"Tileset image not found: {tileset.Image.Source}",
                             $"{location}.Image.Source"
                         );
-                    }
                 }
             }
-        }
 
         // Validate image layer references
         if (map.ImageLayers != null)
-        {
-            for (int i = 0; i < map.ImageLayers.Count; i++)
+            for (var i = 0; i < map.ImageLayers.Count; i++)
             {
                 var imageLayer = map.ImageLayers[i];
                 if (imageLayer.Image != null && !string.IsNullOrEmpty(imageLayer.Image.Source))
                 {
                     var imagePath = Path.Combine(mapDirectory, imageLayer.Image.Source);
                     if (!File.Exists(imagePath))
-                    {
                         result.AddWarning(
                             $"Image layer image not found: {imageLayer.Image.Source}",
                             $"ImageLayer[{i}] ({imageLayer.Name}).Image.Source"
                         );
-                    }
                 }
             }
-        }
     }
 }

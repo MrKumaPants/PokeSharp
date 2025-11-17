@@ -1,11 +1,9 @@
-using System.Collections.Concurrent;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Interfaces;
 using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Movement;
@@ -25,28 +23,28 @@ namespace PokeSharp.Game.Systems;
 public class MovementSystem : SystemBase, IUpdateSystem
 {
     /// <summary>
-    /// Cached direction names to avoid ToString() allocations in logging.
-    /// Indexed by Direction enum value offset by 1 to handle None=-1.
-    /// Index mapping: None=0, South=1, West=2, East=3, North=4
+    ///     Cached direction names to avoid ToString() allocations in logging.
+    ///     Indexed by Direction enum value offset by 1 to handle None=-1.
+    ///     Index mapping: None=0, South=1, West=2, East=3, North=4
     /// </summary>
     private static readonly string[] DirectionNames =
     {
-        "None",  // Index 0 for Direction.None (-1 + 1)
+        "None", // Index 0 for Direction.None (-1 + 1)
         "South", // Index 1 for Direction.South (0 + 1)
-        "West",  // Index 2 for Direction.West (1 + 1)
-        "East",  // Index 3 for Direction.East (2 + 1)
-        "North"  // Index 4 for Direction.North (3 + 1)
+        "West", // Index 2 for Direction.West (1 + 1)
+        "East", // Index 3 for Direction.East (2 + 1)
+        "North", // Index 4 for Direction.North (3 + 1)
     };
+
+    private readonly ICollisionService _collisionService;
 
     // Cache for entities to remove (reused across frames to avoid allocation)
     private readonly List<Entity> _entitiesToRemove = new(32);
     private readonly ILogger<MovementSystem>? _logger;
+    private readonly ISpatialQuery? _spatialQuery;
 
     // Cache for tile sizes per map (reduces redundant queries)
     private readonly Dictionary<int, int> _tileSizeCache = new();
-
-    private readonly ICollisionService _collisionService;
-    private readonly ISpatialQuery? _spatialQuery;
     private ITileBehaviorSystem? _tileBehaviorSystem;
 
     /// <summary>
@@ -68,30 +66,8 @@ public class MovementSystem : SystemBase, IUpdateSystem
     }
 
     /// <summary>
-    ///     Sets the tile behavior system for behavior-based movement.
-    ///     Called after TileBehaviorSystem is initialized.
-    /// </summary>
-    public void SetTileBehaviorSystem(ITileBehaviorSystem tileBehaviorSystem)
-    {
-        _tileBehaviorSystem = tileBehaviorSystem;
-    }
-
-    /// <summary>
-    /// Gets the string name for a direction without allocation.
-    /// </summary>
-    /// <param name="direction">The direction to get the name for.</param>
-    /// <returns>The direction name as a string.</returns>
-    private static string GetDirectionName(Direction direction)
-    {
-        int index = (int)direction + 1; // Offset for None=-1
-        return (index >= 0 && index < DirectionNames.Length)
-            ? DirectionNames[index]
-            : "Unknown";
-    }
-
-    /// <summary>
-    /// Gets the priority for execution order. Lower values execute first.
-    /// Movement executes at priority 100, after input (0) and spatial hash (25).
+    ///     Gets the priority for execution order. Lower values execute first.
+    ///     Movement executes at priority 100, after input (0) and spatial hash (25).
     /// </summary>
     public override int Priority => SystemPriority.Movement;
 
@@ -132,6 +108,26 @@ public class MovementSystem : SystemBase, IUpdateSystem
                 }
             }
         );
+    }
+
+    /// <summary>
+    ///     Sets the tile behavior system for behavior-based movement.
+    ///     Called after TileBehaviorSystem is initialized.
+    /// </summary>
+    public void SetTileBehaviorSystem(ITileBehaviorSystem tileBehaviorSystem)
+    {
+        _tileBehaviorSystem = tileBehaviorSystem;
+    }
+
+    /// <summary>
+    ///     Gets the string name for a direction without allocation.
+    /// </summary>
+    /// <param name="direction">The direction to get the name for.</param>
+    /// <returns>The direction name as a string.</returns>
+    private static string GetDirectionName(Direction direction)
+    {
+        var index = (int)direction + 1; // Offset for None=-1
+        return index >= 0 && index < DirectionNames.Length ? DirectionNames[index] : "Unknown";
     }
 
     /// <summary>
@@ -334,12 +330,19 @@ public class MovementSystem : SystemBase, IUpdateSystem
         // NEW: Check for forced movement from current tile (before calculating target)
         if (_tileBehaviorSystem != null && _spatialQuery != null)
         {
-            var currentTileEntities = _spatialQuery.GetEntitiesAt(position.MapId, position.X, position.Y);
+            var currentTileEntities = _spatialQuery.GetEntitiesAt(
+                position.MapId,
+                position.X,
+                position.Y
+            );
             foreach (var tileEntity in currentTileEntities)
-            {
                 if (tileEntity.Has<TileBehavior>())
                 {
-                    var forcedDir = _tileBehaviorSystem.GetForcedMovement(world, tileEntity, direction);
+                    var forcedDir = _tileBehaviorSystem.GetForcedMovement(
+                        world,
+                        tileEntity,
+                        direction
+                    );
                     if (forcedDir != Direction.None)
                     {
                         direction = forcedDir; // Override direction with forced movement
@@ -361,15 +364,13 @@ public class MovementSystem : SystemBase, IUpdateSystem
                                 targetX++;
                                 break;
                         }
+
                         // Recheck bounds
                         if (!IsWithinMapBounds(world, position.MapId, targetX, targetY))
-                        {
                             return;
-                        }
                         break; // Only check first tile with behavior
                     }
                 }
-            }
         }
 
         // OPTIMIZATION: Query collision info once instead of 2-3 separate calls
@@ -444,7 +445,13 @@ public class MovementSystem : SystemBase, IUpdateSystem
 
                 // Update facing direction
                 movement.FacingDirection = direction;
-                _logger?.LogJump(targetX, targetY, jumpLandX, jumpLandY, GetDirectionName(direction));
+                _logger?.LogJump(
+                    targetX,
+                    targetY,
+                    jumpLandX,
+                    jumpLandY,
+                    GetDirectionName(direction)
+                );
             }
 
             // Block all other directions

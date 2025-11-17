@@ -23,13 +23,9 @@ public class TileBehaviorMapper : IEntityPropertyMapper<TileBehavior>
 
         // Try "behavior_type" first, then "tile_behavior"
         if (properties.TryGetValue("behavior_type", out var behaviorValue))
-        {
             behaviorTypeId = behaviorValue?.ToString();
-        }
         else if (properties.TryGetValue("tile_behavior", out var tileBehaviorValue))
-        {
             behaviorTypeId = tileBehaviorValue?.ToString();
-        }
 
         if (string.IsNullOrWhiteSpace(behaviorTypeId))
             throw new InvalidOperationException(

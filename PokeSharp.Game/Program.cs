@@ -1,5 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
+using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
@@ -11,15 +12,16 @@ using PokeSharp.Game;
 using PokeSharp.Game.Data.Loading;
 using PokeSharp.Game.Data.Services;
 using PokeSharp.Game.Infrastructure.Diagnostics;
+using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Services;
-using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems.Services;
+using Serilog;
 
 // Ensure glyph-heavy logging renders correctly
-Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+Console.OutputEncoding = new UTF8Encoding(false);
 
 // Enable Windows ANSI color support (required for Spectre.Console colors via Serilog)
 if (OperatingSystem.IsWindows())
@@ -30,7 +32,7 @@ if (OperatingSystem.IsWindows())
     var handle = GetStdHandle(STD_OUTPUT_HANDLE);
     if (handle != IntPtr.Zero)
     {
-        GetConsoleMode(handle, out uint mode);
+        GetConsoleMode(handle, out var mode);
         mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
         SetConsoleMode(handle, mode);
     }
@@ -46,7 +48,8 @@ if (OperatingSystem.IsWindows())
 }
 
 // Determine environment (Development, Production, etc.)
-var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+var environment =
+    Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
     ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
     ?? "Production";
 
@@ -69,8 +72,8 @@ try
         var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
         var options = new PokeSharpGameOptions
         {
-            World = sp.GetRequiredService<Arch.Core.World>(),
-            SystemManager = sp.GetRequiredService<PokeSharp.Engine.Systems.Management.SystemManager>(),
+            World = sp.GetRequiredService<World>(),
+            SystemManager = sp.GetRequiredService<SystemManager>(),
             EntityFactory = sp.GetRequiredService<IEntityFactoryService>(),
             ScriptService = sp.GetRequiredService<ScriptService>(),
             BehaviorRegistry = sp.GetRequiredService<TypeRegistry<BehaviorDefinition>>(),
@@ -85,7 +88,7 @@ try
             NpcDefinitionService = sp.GetRequiredService<NpcDefinitionService>(),
             MapDefinitionService = sp.GetRequiredService<MapDefinitionService>(),
             SpriteLoader = sp.GetRequiredService<SpriteLoader>(),
-            TemplateCacheInitializer = sp.GetRequiredService<TemplateCacheInitializer>()
+            TemplateCacheInitializer = sp.GetRequiredService<TemplateCacheInitializer>(),
         };
         return new PokeSharpGame(loggerFactory, options);
     });
@@ -95,7 +98,11 @@ try
 
     // Get logger to log startup
     var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("PokeSharp starting | environment: {Environment}, config: {BasePath}", environment, basePath);
+    logger.LogInformation(
+        "PokeSharp starting | environment: {Environment}, config: {BasePath}",
+        environment,
+        basePath
+    );
 
     // Create and run the game
     try
@@ -111,7 +118,7 @@ try
     finally
     {
         // Ensure all logs are flushed before exit
-        Serilog.Log.CloseAndFlush();
+        Log.CloseAndFlush();
     }
 }
 catch (Exception ex)

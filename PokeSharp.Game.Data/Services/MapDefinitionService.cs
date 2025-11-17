@@ -8,8 +8,8 @@ using PokeSharp.Game.Data.Entities;
 namespace PokeSharp.Game.Data.Services;
 
 /// <summary>
-/// Service for querying map definitions with caching.
-/// Provides O(1) lookups for hot paths while maintaining EF Core query capabilities.
+///     Service for querying map definitions with caching.
+///     Provides O(1) lookups for hot paths while maintaining EF Core query capabilities.
 /// </summary>
 public class MapDefinitionService
 {
@@ -25,11 +25,41 @@ public class MapDefinitionService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    #region Statistics
+
+    /// <summary>
+    ///     Get statistics about loaded maps.
+    ///     Uses AsNoTracking for read-only query performance.
+    /// </summary>
+    public async Task<MapStatistics> GetStatisticsAsync()
+    {
+        var stats = new MapStatistics
+        {
+            TotalMaps = await _context.Maps.CountAsync(),
+            MapsCached = _mapCache.Count,
+            MapsByRegion = await _context
+                .Maps.AsNoTracking()
+                .GroupBy(m => m.Region)
+                .Select(g => new { Region = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Region, x => x.Count),
+            MapsByType = await _context
+                .Maps.AsNoTracking()
+                .Where(m => m.MapType != null)
+                .GroupBy(m => m.MapType!)
+                .Select(g => new { Type = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Type, x => x.Count),
+        };
+
+        return stats;
+    }
+
+    #endregion
+
     #region Map Queries
 
     /// <summary>
-    /// Get map definition by ID (O(1) cached).
-    /// Uses AsNoTracking for read-only access to prevent memory tracking.
+    ///     Get map definition by ID (O(1) cached).
+    ///     Uses AsNoTracking for read-only access to prevent memory tracking.
     /// </summary>
     public MapDefinition? GetMap(MapIdentifier mapId)
     {
@@ -51,46 +81,42 @@ public class MapDefinitionService
     }
 
     /// <summary>
-    /// Get all maps in a region.
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all maps in a region.
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<MapDefinition>> GetMapsByRegionAsync(string region)
     {
         return await _context
-            .Maps
-            .AsNoTracking()
+            .Maps.AsNoTracking()
             .Where(m => m.Region == region)
             .OrderBy(m => m.DisplayName)
             .ToListAsync();
     }
 
     /// <summary>
-    /// Get all maps of a specific type.
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all maps of a specific type.
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<MapDefinition>> GetMapsByTypeAsync(string mapType)
     {
-        return await _context.Maps
-            .AsNoTracking()
-            .Where(m => m.MapType == mapType)
-            .ToListAsync();
+        return await _context.Maps.AsNoTracking().Where(m => m.MapType == mapType).ToListAsync();
     }
 
     /// <summary>
-    /// Get all flyable maps.
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all flyable maps.
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<MapDefinition>> GetFlyableMapsAsync()
     {
-        return await _context.Maps
-            .AsNoTracking()
+        return await _context
+            .Maps.AsNoTracking()
             .Where(m => m.CanFly)
             .OrderBy(m => m.DisplayName)
             .ToListAsync();
     }
 
     /// <summary>
-    /// Get connected map in a specific direction.
+    ///     Get connected map in a specific direction.
     /// </summary>
     public MapDefinition? GetConnectedMap(MapIdentifier mapId, MapDirection direction)
     {
@@ -111,19 +137,16 @@ public class MapDefinitionService
     }
 
     /// <summary>
-    /// Get all maps from a specific mod.
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all maps from a specific mod.
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<MapDefinition>> GetMapsByModAsync(string modId)
     {
-        return await _context.Maps
-            .AsNoTracking()
-            .Where(m => m.SourceMod == modId)
-            .ToListAsync();
+        return await _context.Maps.AsNoTracking().Where(m => m.SourceMod == modId).ToListAsync();
     }
 
     /// <summary>
-    /// Check if map definition exists.
+    ///     Check if map definition exists.
     /// </summary>
     public bool HasMap(MapIdentifier mapId)
     {
@@ -131,55 +154,23 @@ public class MapDefinitionService
     }
 
     /// <summary>
-    /// Get all map IDs (useful for debugging/tools).
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all map IDs (useful for debugging/tools).
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<MapIdentifier>> GetAllMapIdsAsync()
     {
-        return await _context.Maps
-            .AsNoTracking()
+        return await _context
+            .Maps.AsNoTracking()
             .Select(m => m.MapId)
             .OrderBy(id => id.Value)
             .ToListAsync();
     }
 
     #endregion
-
-    #region Statistics
-
-    /// <summary>
-    /// Get statistics about loaded maps.
-    /// Uses AsNoTracking for read-only query performance.
-    /// </summary>
-    public async Task<MapStatistics> GetStatisticsAsync()
-    {
-        var stats = new MapStatistics
-        {
-            TotalMaps = await _context.Maps.CountAsync(),
-            MapsCached = _mapCache.Count,
-            MapsByRegion = await _context
-                .Maps
-                .AsNoTracking()
-                .GroupBy(m => m.Region)
-                .Select(g => new { Region = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Region, x => x.Count),
-            MapsByType = await _context
-                .Maps
-                .AsNoTracking()
-                .Where(m => m.MapType != null)
-                .GroupBy(m => m.MapType!)
-                .Select(g => new { Type = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.Type, x => x.Count),
-        };
-
-        return stats;
-    }
-
-    #endregion
 }
 
 /// <summary>
-/// Direction for map connections.
+///     Direction for map connections.
 /// </summary>
 public enum MapDirection
 {
@@ -190,7 +181,7 @@ public enum MapDirection
 }
 
 /// <summary>
-/// Statistics about loaded map data.
+///     Statistics about loaded map data.
 /// </summary>
 public record MapStatistics
 {

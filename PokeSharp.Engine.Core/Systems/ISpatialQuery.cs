@@ -64,7 +64,7 @@ public interface ISpatialQuery
     /// <param name="y">The Y tile coordinate.</param>
     /// <returns>Collection of entities at this position. May be empty but never null.</returns>
     /// <example>
-    /// <code>
+    ///     <code>
     /// var entities = spatialQuery.GetEntitiesAt(mapId: 1, x: 10, y: 5);
     /// foreach (var entity in entities)
     /// {
@@ -84,7 +84,7 @@ public interface ISpatialQuery
     /// <param name="bounds">The bounding rectangle in tile coordinates.</param>
     /// <returns>Collection of entities within the bounds. May be empty but never null.</returns>
     /// <example>
-    /// <code>
+    ///     <code>
     /// var searchArea = new Rectangle(x: 0, y: 0, width: 10, height: 10);
     /// var entities = spatialQuery.GetEntitiesInBounds(mapId: 1, searchArea);
     /// // Process all entities in 10x10 tile area...

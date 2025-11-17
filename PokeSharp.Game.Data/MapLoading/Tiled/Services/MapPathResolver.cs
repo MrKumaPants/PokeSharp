@@ -1,4 +1,3 @@
-using System.IO;
 using PokeSharp.Engine.Rendering.Assets;
 
 namespace PokeSharp.Game.Data.MapLoading.Tiled.Services;
@@ -40,4 +39,3 @@ public class MapPathResolver
         return Path.Combine(Directory.GetCurrentDirectory(), "Assets");
     }
 }
-

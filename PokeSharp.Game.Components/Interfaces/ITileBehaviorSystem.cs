@@ -1,6 +1,5 @@
 using Arch.Core;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Components.Tiles;
 
 namespace PokeSharp.Game.Components.Interfaces;
 
@@ -23,20 +22,12 @@ public interface ITileBehaviorSystem
     /// <summary>
     ///     Gets forced movement direction from tile behaviors.
     /// </summary>
-    Direction GetForcedMovement(
-        World world,
-        Entity tileEntity,
-        Direction currentDirection
-    );
+    Direction GetForcedMovement(World world, Entity tileEntity, Direction currentDirection);
 
     /// <summary>
     ///     Gets jump direction from tile behaviors.
     /// </summary>
-    Direction GetJumpDirection(
-        World world,
-        Entity tileEntity,
-        Direction fromDirection
-    );
+    Direction GetJumpDirection(World world, Entity tileEntity, Direction fromDirection);
 
     /// <summary>
     ///     Gets required movement mode from tile behaviors (surf, dive).
@@ -48,4 +39,3 @@ public interface ITileBehaviorSystem
     /// </summary>
     bool AllowsRunning(World world, Entity tileEntity);
 }
-

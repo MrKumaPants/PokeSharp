@@ -14,24 +14,24 @@ namespace PokeSharp.Engine.Systems.Management;
 ///     Delegates performance tracking to SystemPerformanceTracker.
 /// </summary>
 /// <remarks>
-/// <para>
-/// Systems should implement either <see cref="IUpdateSystem"/> for game logic
-/// or <see cref="IRenderSystem"/> for rendering logic. The separation ensures
-/// clean architecture and enables optimizations like parallel execution.
-/// </para>
+///     <para>
+///         Systems should implement either <see cref="IUpdateSystem" /> for game logic
+///         or <see cref="IRenderSystem" /> for rendering logic. The separation ensures
+///         clean architecture and enables optimizations like parallel execution.
+///     </para>
 /// </remarks>
 public class SystemManager
 {
-    private readonly object _lock = new();
-    private readonly ILogger<SystemManager>? _logger;
-    private readonly SystemPerformanceTracker _performanceTracker;
-
-    private readonly List<IUpdateSystem> _updateSystems = new();
-    private readonly List<IRenderSystem> _renderSystems = new();
+    private readonly List<IRenderSystem> _cachedEnabledRenderSystems = new();
 
     // Cached enabled systems to avoid LINQ allocations on every frame (120x/sec)
     private readonly List<IUpdateSystem> _cachedEnabledUpdateSystems = new();
-    private readonly List<IRenderSystem> _cachedEnabledRenderSystems = new();
+    private readonly object _lock = new();
+    private readonly ILogger<SystemManager>? _logger;
+    private readonly SystemPerformanceTracker _performanceTracker;
+    private readonly List<IRenderSystem> _renderSystems = new();
+
+    private readonly List<IUpdateSystem> _updateSystems = new();
     private bool _enabledCacheDirty = true;
 
     private bool _initialized;
@@ -79,6 +79,20 @@ public class SystemManager
     }
 
     /// <summary>
+    ///     Gets the total count of registered systems (update + render).
+    /// </summary>
+    public int SystemCount
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _updateSystems.Count + _renderSystems.Count;
+            }
+        }
+    }
+
+    /// <summary>
     ///     Gets a specific system by type from registered systems.
     ///     Searches both update and render systems.
     /// </summary>
@@ -96,20 +110,6 @@ public class SystemManager
 
             // Search render systems
             return _renderSystems.OfType<T>().FirstOrDefault();
-        }
-    }
-
-    /// <summary>
-    ///     Gets the total count of registered systems (update + render).
-    /// </summary>
-    public int SystemCount
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _updateSystems.Count + _renderSystems.Count;
-            }
         }
     }
 
@@ -178,9 +178,7 @@ public class SystemManager
         {
             // Initialize update systems
             foreach (var system in _updateSystems)
-            {
                 if (system is ISystem legacySystem)
-                {
                     try
                     {
                         _logger?.LogSystemInitializing(system.GetType().Name);
@@ -195,14 +193,10 @@ public class SystemManager
                         );
                         throw;
                     }
-                }
-            }
 
             // Initialize render systems
             foreach (var system in _renderSystems)
-            {
                 if (system is ISystem legacySystem)
-                {
                     try
                     {
                         _logger?.LogSystemInitializing(system.GetType().Name);
@@ -217,8 +211,6 @@ public class SystemManager
                         );
                         throw;
                     }
-                }
-            }
         }
 
         _initialized = true;
@@ -237,17 +229,13 @@ public class SystemManager
 
         _cachedEnabledUpdateSystems.Clear();
         foreach (var system in _updateSystems)
-        {
             if (system.Enabled)
                 _cachedEnabledUpdateSystems.Add(system);
-        }
 
         _cachedEnabledRenderSystems.Clear();
         foreach (var system in _renderSystems)
-        {
             if (system.Enabled)
                 _cachedEnabledRenderSystems.Add(system);
-        }
 
         _enabledCacheDirty = false;
     }
@@ -282,7 +270,6 @@ public class SystemManager
         _performanceTracker.IncrementFrame();
 
         foreach (var system in _cachedEnabledUpdateSystems)
-        {
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -299,7 +286,6 @@ public class SystemManager
                     system.GetType().Name
                 );
             }
-        }
 
         // Log performance stats periodically (every 5 seconds at 60fps)
         if (_performanceTracker.FrameCount % 300 == 0)
@@ -321,7 +307,6 @@ public class SystemManager
         }
 
         foreach (var system in _cachedEnabledRenderSystems)
-        {
             try
             {
                 var sw = Stopwatch.StartNew();
@@ -338,7 +323,6 @@ public class SystemManager
                     system.GetType().Name
                 );
             }
-        }
     }
 
     /// <summary>

@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Core.Templates.Loading;
@@ -26,7 +25,7 @@ public static class ComponentDeserializerSetup
         ILogger? logger = null
     )
     {
-        ArgumentNullException.ThrowIfNull(registry, nameof(registry));
+        ArgumentNullException.ThrowIfNull(registry);
 
         logger?.LogInformation("Registering component deserializers...");
 
@@ -57,7 +56,7 @@ public static class ComponentDeserializerSetup
     private static void RegisterTileComponents(ComponentDeserializerRegistry registry)
     {
         // TilePosition
-        registry.Register<TilePosition>(json =>
+        registry.Register(json =>
         {
             var x = json.GetProperty("x").GetInt32();
             var y = json.GetProperty("y").GetInt32();
@@ -65,7 +64,7 @@ public static class ComponentDeserializerSetup
         });
 
         // TileSprite
-        registry.Register<TileSprite>(json =>
+        registry.Register(json =>
         {
             var tilesetId = json.GetProperty("tilesetId").GetString() ?? "default";
             var tileId = json.GetProperty("tileId").GetInt32();
@@ -85,14 +84,14 @@ public static class ComponentDeserializerSetup
         });
 
         // Elevation
-        registry.Register<Elevation>(json =>
+        registry.Register(json =>
         {
             var level = json.GetProperty("level").GetByte();
             return new Elevation(level);
         });
 
         // EncounterZone
-        registry.Register<EncounterZone>(json =>
+        registry.Register(json =>
         {
             var zoneId = json.GetProperty("zoneId").GetString() ?? "default";
             var encounterRate = json.GetProperty("encounterRate").GetInt32();
@@ -103,27 +102,25 @@ public static class ComponentDeserializerSetup
     private static void RegisterMovementComponents(ComponentDeserializerRegistry registry)
     {
         // Collision
-        registry.Register<Collision>(json =>
+        registry.Register(json =>
         {
             var isSolid = json.GetProperty("isSolid").GetBoolean();
             return new Collision(isSolid);
         });
 
         // Position
-        registry.Register<Position>(json =>
+        registry.Register(json =>
         {
             var x = json.GetProperty("x").GetInt32();
             var y = json.GetProperty("y").GetInt32();
             var mapId = 0;
             if (json.TryGetProperty("mapId", out var mapIdElement))
-            {
                 mapId = mapIdElement.GetInt32();
-            }
             return new Position(x, y, mapId);
         });
 
         // Velocity
-        registry.Register<Velocity>(json =>
+        registry.Register(json =>
         {
             var velocityX = json.GetProperty("velocityX").GetSingle();
             var velocityY = json.GetProperty("velocityY").GetSingle();
@@ -131,7 +128,7 @@ public static class ComponentDeserializerSetup
         });
 
         // GridMovement
-        registry.Register<GridMovement>(json =>
+        registry.Register(json =>
         {
             var tilesPerSecond = json.GetProperty("tilesPerSecond").GetSingle();
             return new GridMovement(tilesPerSecond);
@@ -141,7 +138,7 @@ public static class ComponentDeserializerSetup
     private static void RegisterRenderingComponents(ComponentDeserializerRegistry registry)
     {
         // Sprite - Uses Pokemon Emerald extracted sprites
-        registry.Register<Sprite>(json =>
+        registry.Register(json =>
         {
             var spriteName = json.GetProperty("spriteId").GetString() ?? "boy_1";
             var category = json.GetProperty("category").GetString() ?? "generic";
@@ -150,37 +147,31 @@ public static class ComponentDeserializerSetup
 
             // Optional: FlipHorizontal for facing left
             if (json.TryGetProperty("flipHorizontal", out var flipElement))
-            {
                 sprite.FlipHorizontal = flipElement.GetBoolean();
-            }
 
             // Optional: CurrentFrame (defaults to 0)
             if (json.TryGetProperty("currentFrame", out var frameElement))
-            {
                 sprite.CurrentFrame = frameElement.GetInt32();
-            }
 
             return sprite;
         });
 
         // Animation
-        registry.Register<Animation>(json =>
+        registry.Register(json =>
         {
             var animationName = json.GetProperty("animationName").GetString() ?? "default";
             return new Animation(animationName);
         });
 
         // ImageLayer
-        registry.Register<ImageLayer>(json =>
+        registry.Register(json =>
         {
             var textureId = json.GetProperty("textureId").GetString() ?? "default";
             var x = json.GetProperty("x").GetSingle();
             var y = json.GetProperty("y").GetSingle();
             var opacity = 1.0f;
             if (json.TryGetProperty("opacity", out var opacityElement))
-            {
                 opacity = opacityElement.GetSingle();
-            }
             var layerDepth = json.GetProperty("layerDepth").GetSingle();
             var layerIndex = json.GetProperty("layerIndex").GetInt32();
             return new ImageLayer(textureId, x, y, opacity, layerDepth, layerIndex);
@@ -190,14 +181,14 @@ public static class ComponentDeserializerSetup
     private static void RegisterCommonComponents(ComponentDeserializerRegistry registry)
     {
         // Name
-        registry.Register<Name>(json =>
+        registry.Register(json =>
         {
             var name = json.GetProperty("name").GetString() ?? "Unnamed";
             return new Name(name);
         });
 
         // Wallet
-        registry.Register<Wallet>(json =>
+        registry.Register(json =>
         {
             var money = json.GetProperty("money").GetInt32();
             return new Wallet(money);
@@ -207,13 +198,13 @@ public static class ComponentDeserializerSetup
     private static void RegisterPlayerComponents(ComponentDeserializerRegistry registry)
     {
         // Player (empty marker component)
-        registry.Register<Player>(json =>
+        registry.Register(json =>
         {
             return new Player();
         });
 
         // Direction (enum component)
-        registry.Register<Direction>(json =>
+        registry.Register(json =>
         {
             var directionStr = json.GetProperty("direction").GetString();
             return directionStr switch
@@ -228,7 +219,7 @@ public static class ComponentDeserializerSetup
         });
 
         // InputState
-        registry.Register<InputState>(json =>
+        registry.Register(json =>
         {
             var pressedDirection = Direction.None;
             if (json.TryGetProperty("pressedDirection", out var dirElement))
@@ -246,9 +237,7 @@ public static class ComponentDeserializerSetup
 
             var actionPressed = false;
             if (json.TryGetProperty("actionPressed", out var actionElement))
-            {
                 actionPressed = actionElement.GetBoolean();
-            }
 
             return new InputState
             {
@@ -261,27 +250,23 @@ public static class ComponentDeserializerSetup
     private static void RegisterNpcComponents(ComponentDeserializerRegistry registry)
     {
         // Npc
-        registry.Register<Npc>(json =>
+        registry.Register(json =>
         {
             var npcId = json.GetProperty("npcId").GetString() ?? "";
             var isTrainer = false;
             if (json.TryGetProperty("isTrainer", out var isTrainerElement))
-            {
                 isTrainer = isTrainerElement.GetBoolean();
-            }
 
             return new Npc { NpcId = npcId, IsTrainer = isTrainer };
         });
 
         // Behavior
-        registry.Register<Behavior>(json =>
+        registry.Register(json =>
         {
             var behaviorTypeId = json.GetProperty("behaviorTypeId").GetString() ?? "";
             var isActive = true;
             if (json.TryGetProperty("isActive", out var isActiveElement))
-            {
                 isActive = isActiveElement.GetBoolean();
-            }
 
             return new Behavior { BehaviorTypeId = behaviorTypeId, IsActive = isActive };
         });

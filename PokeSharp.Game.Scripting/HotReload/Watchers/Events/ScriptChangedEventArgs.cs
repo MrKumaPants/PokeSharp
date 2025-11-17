@@ -1,7 +1,5 @@
 namespace PokeSharp.Game.Scripting.HotReload;
 
-using PokeSharp.Game.Systems.Services;
-
 public class ScriptChangedEventArgs : EventArgs
 {
     public string FilePath { get; init; } = string.Empty;

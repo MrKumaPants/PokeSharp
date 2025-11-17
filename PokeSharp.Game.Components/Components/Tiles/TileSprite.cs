@@ -42,8 +42,8 @@ public struct TileSprite
     ///     Initializes a new instance of the TileSprite struct.
     /// </summary>
     /// <remarks>
-    /// Elevation is now a separate component, not part of TileSprite.
-    /// Add an Elevation component to the entity for render order and collision.
+    ///     Elevation is now a separate component, not part of TileSprite.
+    ///     Add an Elevation component to the entity for render order and collision.
     /// </remarks>
     public TileSprite(
         string tilesetId,

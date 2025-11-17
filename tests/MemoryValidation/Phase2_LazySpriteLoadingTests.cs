@@ -46,7 +46,9 @@ namespace PokeSharp.Tests.MemoryValidation
         {
             // ARRANGE
             _output.WriteLine("=== TEST CASE F1: BASIC SPRITE LOADING CORRECTNESS ===");
-            _output.WriteLine("Objective: Validate only required sprites are loaded (not all 200+)");
+            _output.WriteLine(
+                "Objective: Validate only required sprites are loaded (not all 200+)"
+            );
             _output.WriteLine("");
 
             // Get initial texture count (baseline)
@@ -85,19 +87,25 @@ namespace PokeSharp.Tests.MemoryValidation
                 if (texturesLoaded > 10)
                 {
                     throw new Exception(
-                        $"Texture loading should be minimal (got {texturesLoaded}). " +
-                        $"OLD SYSTEM would load 200+ sprites. NEW SYSTEM defers loading."
+                        $"Texture loading should be minimal (got {texturesLoaded}). "
+                            + $"OLD SYSTEM would load 200+ sprites. NEW SYSTEM defers loading."
                     );
                 }
 
                 _output.WriteLine("=== TEST RESULT ===");
                 _output.WriteLine("✅ PASS: Lazy sprite loading confirmed");
-                _output.WriteLine($"   - Only {texturesLoaded} textures loaded (tilesets, not sprites)");
+                _output.WriteLine(
+                    $"   - Only {texturesLoaded} textures loaded (tilesets, not sprites)"
+                );
                 _output.WriteLine("   - OLD SYSTEM would have loaded 200+ sprites");
                 _output.WriteLine("   - NEW SYSTEM defers sprite loading until needed");
                 _output.WriteLine("");
-                _output.WriteLine("NOTE: Full sprite collection validation requires MapLoader integration.");
-                _output.WriteLine("This test validates that AssetManager doesn't eagerly load all sprites.");
+                _output.WriteLine(
+                    "NOTE: Full sprite collection validation requires MapLoader integration."
+                );
+                _output.WriteLine(
+                    "This test validates that AssetManager doesn't eagerly load all sprites."
+                );
             }
             catch (System.IO.FileNotFoundException ex)
             {
@@ -132,8 +140,12 @@ namespace PokeSharp.Tests.MemoryValidation
         {
             // ARRANGE
             _output.WriteLine("=== LONG SESSION MEMORY STABILITY TEST ===");
-            _output.WriteLine($"Target: Memory growth ≤{MAX_MEMORY_GROWTH_MB}MB over {CYCLES * MAPS_PER_CYCLE} map transitions");
-            _output.WriteLine($"Pattern: {CYCLES} cycles × {MAPS_PER_CYCLE} maps = {CYCLES * MAPS_PER_CYCLE} total transitions");
+            _output.WriteLine(
+                $"Target: Memory growth ≤{MAX_MEMORY_GROWTH_MB}MB over {CYCLES * MAPS_PER_CYCLE} map transitions"
+            );
+            _output.WriteLine(
+                $"Pattern: {CYCLES} cycles × {MAPS_PER_CYCLE} maps = {CYCLES * MAPS_PER_CYCLE} total transitions"
+            );
 
             var graphicsDevice = CreateMockGraphicsDevice();
             var assetManager = new AssetManager(graphicsDevice, "PokeSharp.Game/Assets");
@@ -148,7 +160,7 @@ namespace PokeSharp.Tests.MemoryValidation
                 "Data/Maps/LittlerootTown.json",
                 "Data/Maps/OldaleTown.json",
                 "Data/Maps/PetalburgCity.json",
-                "Data/Maps/PetalburgWoods.json"
+                "Data/Maps/PetalburgWoods.json",
             };
 
             var cycleMemoryReadings = new List<CycleMemoryMetrics>();
@@ -157,7 +169,7 @@ namespace PokeSharp.Tests.MemoryValidation
             // ACT - Simulate 20 map transitions (4 cycles × 5 maps)
             for (int cycle = 0; cycle < CYCLES; cycle++)
             {
-                _output.WriteLine($"\n{'='} CYCLE {cycle + 1}/{CYCLES} {'=',40}");
+                _output.WriteLine($"\n{'='} CYCLE {cycle + 1}/{CYCLES} {'=', 40}");
                 var cycleStartMemoryMB = GetCurrentMemoryMB();
 
                 for (int mapIndex = 0; mapIndex < MAPS_PER_CYCLE; mapIndex++)
@@ -165,7 +177,9 @@ namespace PokeSharp.Tests.MemoryValidation
                     int transitionNumber = (cycle * MAPS_PER_CYCLE) + mapIndex + 1;
                     string mapName = testMaps[mapIndex];
 
-                    _output.WriteLine($"\n[Transition {transitionNumber}/{CYCLES * MAPS_PER_CYCLE}] Loading: {System.IO.Path.GetFileNameWithoutExtension(mapName)}");
+                    _output.WriteLine(
+                        $"\n[Transition {transitionNumber}/{CYCLES * MAPS_PER_CYCLE}] Loading: {System.IO.Path.GetFileNameWithoutExtension(mapName)}"
+                    );
 
                     // Simulate map transition:
                     // 1. Unload current map
@@ -181,7 +195,9 @@ namespace PokeSharp.Tests.MemoryValidation
                     var cacheMB = assetManager.TextureCacheSizeBytes / 1_000_000.0;
                     var growth = currentMemoryMB - baselineMemoryMB;
 
-                    _output.WriteLine($"  Memory: {currentMemoryMB:F2}MB | Growth: {growth:+0.00;-0.00}MB | Cache: {cacheMB:F2}MB | Textures: {textures}");
+                    _output.WriteLine(
+                        $"  Memory: {currentMemoryMB:F2}MB | Growth: {growth:+0.00;-0.00}MB | Cache: {cacheMB:F2}MB | Textures: {textures}"
+                    );
                 }
 
                 // Force GC and measure memory at end of cycle
@@ -190,14 +206,16 @@ namespace PokeSharp.Tests.MemoryValidation
                 var cycleGrowth = cycleEndMemoryMB - cycleStartMemoryMB;
                 var totalGrowth = cycleEndMemoryMB - baselineMemoryMB;
 
-                cycleMemoryReadings.Add(new CycleMemoryMetrics
-                {
-                    CycleNumber = cycle + 1,
-                    StartMemoryMB = cycleStartMemoryMB,
-                    EndMemoryMB = cycleEndMemoryMB,
-                    CycleGrowthMB = cycleGrowth,
-                    TotalGrowthMB = totalGrowth
-                });
+                cycleMemoryReadings.Add(
+                    new CycleMemoryMetrics
+                    {
+                        CycleNumber = cycle + 1,
+                        StartMemoryMB = cycleStartMemoryMB,
+                        EndMemoryMB = cycleEndMemoryMB,
+                        CycleGrowthMB = cycleGrowth,
+                        TotalGrowthMB = totalGrowth,
+                    }
+                );
 
                 _output.WriteLine($"\nCycle {cycle + 1} Complete:");
                 _output.WriteLine($"  Cycle Growth: {cycleGrowth:+0.00;-0.00}MB");
@@ -208,7 +226,7 @@ namespace PokeSharp.Tests.MemoryValidation
             var finalMemoryMB = GetCurrentMemoryMB();
             var totalMemoryGrowth = finalMemoryMB - baselineMemoryMB;
 
-            _output.WriteLine($"\n{'='} LONG SESSION RESULTS {'=',40}");
+            _output.WriteLine($"\n{'='} LONG SESSION RESULTS {'=', 40}");
             _output.WriteLine($"Baseline Memory:    {baselineMemoryMB:F2}MB");
             _output.WriteLine($"Final Memory:       {finalMemoryMB:F2}MB");
             _output.WriteLine($"Total Growth:       {totalMemoryGrowth:+0.00;-0.00}MB");
@@ -216,12 +234,14 @@ namespace PokeSharp.Tests.MemoryValidation
             _output.WriteLine($"Total Transitions:  {CYCLES * MAPS_PER_CYCLE}");
 
             // Per-cycle analysis
-            _output.WriteLine($"\n{'='} PER-CYCLE BREAKDOWN {'=',40}");
+            _output.WriteLine($"\n{'='} PER-CYCLE BREAKDOWN {'=', 40}");
             foreach (var cycleMetrics in cycleMemoryReadings)
             {
-                _output.WriteLine($"Cycle {cycleMetrics.CycleNumber}: " +
-                    $"Growth={cycleMetrics.CycleGrowthMB:+0.00;-0.00}MB | " +
-                    $"Total={cycleMetrics.TotalGrowthMB:+0.00;-0.00}MB");
+                _output.WriteLine(
+                    $"Cycle {cycleMetrics.CycleNumber}: "
+                        + $"Growth={cycleMetrics.CycleGrowthMB:+0.00;-0.00}MB | "
+                        + $"Total={cycleMetrics.TotalGrowthMB:+0.00;-0.00}MB"
+                );
             }
 
             // Calculate growth trends
@@ -230,7 +250,7 @@ namespace PokeSharp.Tests.MemoryValidation
             var trendGrowth = lastCycleGrowth - firstCycleGrowth;
             var avgCycleGrowth = cycleMemoryReadings.Average(c => c.CycleGrowthMB);
 
-            _output.WriteLine($"\n{'='} STABILITY ANALYSIS {'=',40}");
+            _output.WriteLine($"\n{'='} STABILITY ANALYSIS {'=', 40}");
             _output.WriteLine($"First Cycle Total Growth:  {firstCycleGrowth:+0.00;-0.00}MB");
             _output.WriteLine($"Last Cycle Total Growth:   {lastCycleGrowth:+0.00;-0.00}MB");
             _output.WriteLine($"Trend (First→Last):        {trendGrowth:+0.00;-0.00}MB");
@@ -252,8 +272,8 @@ namespace PokeSharp.Tests.MemoryValidation
             // Primary assertion: Total memory growth must be ≤10MB
             Assert.True(
                 totalMemoryGrowth <= MAX_MEMORY_GROWTH_MB,
-                $"FAIL: Total memory growth ({totalMemoryGrowth:F2}MB) exceeds limit ({MAX_MEMORY_GROWTH_MB}MB). " +
-                $"Indicates memory leak over {CYCLES * MAPS_PER_CYCLE} transitions."
+                $"FAIL: Total memory growth ({totalMemoryGrowth:F2}MB) exceeds limit ({MAX_MEMORY_GROWTH_MB}MB). "
+                    + $"Indicates memory leak over {CYCLES * MAPS_PER_CYCLE} transitions."
             );
 
             // Secondary assertion: Memory should stabilize (no unbounded growth)
@@ -261,8 +281,8 @@ namespace PokeSharp.Tests.MemoryValidation
             var maxAcceptableTrend = 5.0; // Allow up to 5MB trend growth
             Assert.True(
                 Math.Abs(trendGrowth) <= maxAcceptableTrend,
-                $"FAIL: Memory trend shows unbounded growth ({trendGrowth:F2}MB). " +
-                $"Expected stabilization but growth continues."
+                $"FAIL: Memory trend shows unbounded growth ({trendGrowth:F2}MB). "
+                    + $"Expected stabilization but growth continues."
             );
 
             // Tertiary assertion: Individual cycle growth should be small/negative (cleanup working)
@@ -270,15 +290,21 @@ namespace PokeSharp.Tests.MemoryValidation
             var maxAcceptableCycleGrowth = 3.0; // Allow up to 3MB per cycle
             Assert.True(
                 maxCycleGrowth <= maxAcceptableCycleGrowth,
-                $"FAIL: Cycle {cycleMemoryReadings.First(c => c.CycleGrowthMB == maxCycleGrowth).CycleNumber} " +
-                $"grew {maxCycleGrowth:F2}MB. Reference counting cleanup may not be working."
+                $"FAIL: Cycle {cycleMemoryReadings.First(c => c.CycleGrowthMB == maxCycleGrowth).CycleNumber} "
+                    + $"grew {maxCycleGrowth:F2}MB. Reference counting cleanup may not be working."
             );
 
-            _output.WriteLine($"\n{'='} TEST RESULT {'=',40}");
+            _output.WriteLine($"\n{'='} TEST RESULT {'=', 40}");
             _output.WriteLine($"✅ PASS: Memory stable over {CYCLES * MAPS_PER_CYCLE} transitions");
-            _output.WriteLine($"  • Total growth: {totalMemoryGrowth:F2}MB (limit: {MAX_MEMORY_GROWTH_MB}MB)");
-            _output.WriteLine($"  • Trend growth: {trendGrowth:F2}MB (limit: {maxAcceptableTrend}MB)");
-            _output.WriteLine($"  • Max cycle growth: {maxCycleGrowth:F2}MB (limit: {maxAcceptableCycleGrowth}MB)");
+            _output.WriteLine(
+                $"  • Total growth: {totalMemoryGrowth:F2}MB (limit: {MAX_MEMORY_GROWTH_MB}MB)"
+            );
+            _output.WriteLine(
+                $"  • Trend growth: {trendGrowth:F2}MB (limit: {maxAcceptableTrend}MB)"
+            );
+            _output.WriteLine(
+                $"  • Max cycle growth: {maxCycleGrowth:F2}MB (limit: {maxAcceptableCycleGrowth}MB)"
+            );
             _output.WriteLine($"  • Reference counting and cleanup VERIFIED ✓");
         }
 
@@ -329,7 +355,7 @@ namespace PokeSharp.Tests.MemoryValidation
                 BackBufferFormat = SurfaceFormat.Color,
                 DepthStencilFormat = DepthFormat.Depth24,
                 DeviceWindowHandle = IntPtr.Zero,
-                IsFullScreen = false
+                IsFullScreen = false,
             };
 
             return new GraphicsDevice(

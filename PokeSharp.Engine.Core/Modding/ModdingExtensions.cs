@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace PokeSharp.Engine.Core.Modding;
 
 /// <summary>
-/// Extension methods for registering modding services
+///     Extension methods for registering modding services
 /// </summary>
 public static class ModdingExtensions
 {

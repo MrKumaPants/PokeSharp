@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Services;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.Runtime;
 
@@ -55,8 +54,8 @@ namespace PokeSharp.Game.Scripting.Runtime;
 /// </remarks>
 public sealed class ScriptContext
 {
-    private readonly Entity? _entity;
     private readonly IScriptingApiProvider _apis;
+    private readonly Entity? _entity;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="ScriptContext" /> class.
@@ -68,7 +67,7 @@ public sealed class ScriptContext
     /// <remarks>
     ///     <para>
     ///         This constructor uses the facade pattern to reduce parameter count from 9 to 4.
-    ///         The <paramref name="apis"/> provider supplies all domain-specific API services.
+    ///         The <paramref name="apis" /> provider supplies all domain-specific API services.
     ///     </para>
     ///     <para>
     ///         Typically, you won't construct this directly - ScriptService handles instantiation.

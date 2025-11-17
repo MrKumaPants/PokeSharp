@@ -1,5 +1,4 @@
 using PokeSharp.Game.Scripting.Api;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.Services;
 
@@ -17,7 +16,8 @@ public class ScriptingApiProvider(
 ) : IScriptingApiProvider
 {
     /// <inheritdoc />
-    public PlayerApiService Player { get; } = playerApi ?? throw new ArgumentNullException(nameof(playerApi));
+    public PlayerApiService Player { get; } =
+        playerApi ?? throw new ArgumentNullException(nameof(playerApi));
 
     /// <inheritdoc />
     public NpcApiService Npc { get; } = npcApi ?? throw new ArgumentNullException(nameof(npcApi));
@@ -26,11 +26,14 @@ public class ScriptingApiProvider(
     public MapApiService Map { get; } = mapApi ?? throw new ArgumentNullException(nameof(mapApi));
 
     /// <inheritdoc />
-    public GameStateApiService GameState { get; } = gameStateApi ?? throw new ArgumentNullException(nameof(gameStateApi));
+    public GameStateApiService GameState { get; } =
+        gameStateApi ?? throw new ArgumentNullException(nameof(gameStateApi));
 
     /// <inheritdoc />
-    public DialogueApiService Dialogue { get; } = dialogueApi ?? throw new ArgumentNullException(nameof(dialogueApi));
+    public DialogueApiService Dialogue { get; } =
+        dialogueApi ?? throw new ArgumentNullException(nameof(dialogueApi));
 
     /// <inheritdoc />
-    public EffectApiService Effects { get; } = effectApi ?? throw new ArgumentNullException(nameof(effectApi));
+    public EffectApiService Effects { get; } =
+        effectApi ?? throw new ArgumentNullException(nameof(effectApi));
 }

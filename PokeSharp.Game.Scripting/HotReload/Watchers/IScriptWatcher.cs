@@ -1,7 +1,5 @@
 namespace PokeSharp.Game.Scripting.HotReload;
 
-using PokeSharp.Game.Systems.Services;
-
 /// <summary>
 ///     Interface for watching script files for changes.
 ///     Abstracts FileSystemWatcher vs polling implementations.

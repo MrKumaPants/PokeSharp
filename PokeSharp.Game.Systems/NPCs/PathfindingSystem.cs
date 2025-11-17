@@ -1,9 +1,7 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.NPCs;
 using PokeSharp.Game.Systems.Pathfinding;
@@ -33,8 +31,8 @@ public class PathfindingSystem : SystemBase, IUpdateSystem
     }
 
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
-    /// Pathfinding executes at priority 300, after movement (100) and collision (200).
+    ///     Gets the update priority. Lower values execute first.
+    ///     Pathfinding executes at priority 300, after movement (100) and collision (200).
     /// </summary>
     public int UpdatePriority => SystemPriority.Pathfinding;
 

@@ -1,68 +1,62 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Core.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Relationships;
-using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 using RelationshipQueries = PokeSharp.Engine.Systems.Queries.RelationshipQueries;
 
 namespace PokeSharp.Game.Systems;
 
 /// <summary>
-/// System responsible for validating and maintaining entity relationships.
-/// Runs late in the update cycle to clean up broken references.
+///     System responsible for validating and maintaining entity relationships.
+///     Runs late in the update cycle to clean up broken references.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This system performs critical maintenance tasks:
-/// - Validates parent-child relationships
-/// - Validates owner-owned relationships
-/// - Removes references to destroyed entities
-/// - Detects and optionally cleans up orphaned entities
-/// - Logs relationship integrity issues
-/// </para>
-/// <para>
-/// Runs with priority 950 (late update) to allow other systems to complete
-/// their work before relationship validation occurs.
-/// </para>
+///     <para>
+///         This system performs critical maintenance tasks:
+///         - Validates parent-child relationships
+///         - Validates owner-owned relationships
+///         - Removes references to destroyed entities
+///         - Detects and optionally cleans up orphaned entities
+///         - Logs relationship integrity issues
+///     </para>
+///     <para>
+///         Runs with priority 950 (late update) to allow other systems to complete
+///         their work before relationship validation occurs.
+///     </para>
 /// </remarks>
 public class RelationshipSystem : SystemBase, IUpdateSystem
 {
-    private readonly ILogger<RelationshipSystem> _logger;
-    private QueryDescription _parentQuery;
-    private QueryDescription _childrenQuery;
-    private QueryDescription _ownerQuery;
-    private QueryDescription _ownedQuery;
-
     // Reusable collections to avoid per-update allocations
     private readonly List<Entity> _entitiesToFix = new();
+    private readonly ILogger<RelationshipSystem> _logger;
+    private int _brokenChildrenFixed;
+    private int _brokenOwnedFixed;
+    private int _brokenOwnersFixed;
 
     // Statistics for monitoring
     private int _brokenParentsFixed;
-    private int _brokenChildrenFixed;
-    private int _brokenOwnersFixed;
-    private int _brokenOwnedFixed;
+    private QueryDescription _childrenQuery;
     private int _orphansDetected;
-
-    /// <summary>
-    /// Gets or sets whether orphaned entities should be automatically destroyed.
-    /// Default is false for safety.
-    /// </summary>
-    public bool AutoDestroyOrphans { get; set; } = false;
-
-    /// <summary>
-    /// Gets the priority of this system (950 - late update).
-    /// </summary>
-    public override int Priority => 950;
+    private QueryDescription _ownedQuery;
+    private QueryDescription _ownerQuery;
+    private QueryDescription _parentQuery;
 
     public RelationshipSystem(ILogger<RelationshipSystem> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
+
+    /// <summary>
+    ///     Gets or sets whether orphaned entities should be automatically destroyed.
+    ///     Default is false for safety.
+    /// </summary>
+    public bool AutoDestroyOrphans { get; set; } = false;
+
+    /// <summary>
+    ///     Gets the priority of this system (950 - late update).
+    /// </summary>
+    public override int Priority => 950;
 
     public override void Initialize(World world)
     {
@@ -99,7 +93,6 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
             || _brokenOwnersFixed > 0
             || _brokenOwnedFixed > 0
         )
-        {
             _logger.LogWarning(
                 "Relationship cleanup: {Parents} parent(s), {Children} child refs, {Owners} owner(s), {Owned} owned refs fixed",
                 _brokenParentsFixed,
@@ -107,16 +100,13 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
                 _brokenOwnersFixed,
                 _brokenOwnedFixed
             );
-        }
 
         if (_orphansDetected > 0)
-        {
             _logger.LogWarning("Detected {Count} orphaned entities", _orphansDetected);
-        }
     }
 
     /// <summary>
-    /// Validates all Parent components and removes those referencing destroyed entities.
+    ///     Validates all Parent components and removes those referencing destroyed entities.
     /// </summary>
     private void ValidateParentRelationships(World world)
     {
@@ -139,7 +129,6 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
         );
 
         foreach (var entity in _entitiesToFix)
-        {
             if (world.IsAlive(entity))
             {
                 // Mark as invalid instead of removing to avoid expensive ECS structural changes
@@ -157,11 +146,10 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
                     _logger.LogDebug("Marked invalid parent reference for entity {Entity}", entity);
                 }
             }
-        }
     }
 
     /// <summary>
-    /// Validates all Children components and removes destroyed entities from child lists.
+    ///     Validates all Children components and removes destroyed entities from child lists.
     /// </summary>
     private void ValidateChildrenRelationships(World world)
     {
@@ -170,9 +158,7 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
             (Entity entity, ref Children children) =>
             {
                 if (children.Values == null)
-                {
                     return;
-                }
 
                 var initialCount = children.Values.Count;
                 children.Values.RemoveAll(child => !world.IsAlive(child));
@@ -192,7 +178,7 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
     }
 
     /// <summary>
-    /// Validates all Owner components and removes those referencing destroyed entities.
+    ///     Validates all Owner components and removes those referencing destroyed entities.
     /// </summary>
     private void ValidateOwnerRelationships(World world)
     {
@@ -207,14 +193,11 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
                     return;
 
                 if (!world.IsAlive(owner.Value))
-                {
                     _entitiesToFix.Add(entity);
-                }
             }
         );
 
         foreach (var entity in _entitiesToFix)
-        {
             if (world.IsAlive(entity))
             {
                 // Mark as invalid instead of removing to avoid expensive ECS structural changes
@@ -223,11 +206,10 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
                 _brokenOwnersFixed++;
                 _logger.LogDebug("Marked invalid owner reference for entity {Entity}", entity);
             }
-        }
     }
 
     /// <summary>
-    /// Validates all Owned components and removes those referencing destroyed owners.
+    ///     Validates all Owned components and removes those referencing destroyed owners.
     /// </summary>
     private void ValidateOwnedRelationships(World world)
     {
@@ -250,7 +232,6 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
         );
 
         foreach (var entity in _entitiesToFix)
-        {
             if (world.IsAlive(entity))
             {
                 // Mark as invalid instead of removing to avoid expensive ECS structural changes
@@ -268,11 +249,10 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
                     _logger.LogDebug("Marked invalid owned reference for entity {Entity}", entity);
                 }
             }
-        }
     }
 
     /// <summary>
-    /// Gets current relationship validation statistics.
+    ///     Gets current relationship validation statistics.
     /// </summary>
     public RelationshipStats GetStats()
     {
@@ -288,7 +268,7 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
 }
 
 /// <summary>
-/// Statistics about relationship validation performed in the last update.
+///     Statistics about relationship validation performed in the last update.
 /// </summary>
 public struct RelationshipStats
 {

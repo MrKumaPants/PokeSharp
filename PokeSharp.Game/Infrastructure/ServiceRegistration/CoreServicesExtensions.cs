@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Core.Modding;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
+using PokeSharp.Game.Data;
 using PokeSharp.Game.Data.Loading;
 using PokeSharp.Game.Data.Services;
 using PokeSharp.Game.Infrastructure.Services;
@@ -53,7 +54,7 @@ public static class CoreServicesExtensions
     {
         // EF Core In-Memory Database for game data definitions
         // Register as Singleton since we're using In-Memory database for read-only data
-        services.AddDbContext<PokeSharp.Game.Data.GameDataContext>(
+        services.AddDbContext<GameDataContext>(
             options =>
             {
                 options.UseInMemoryDatabase("GameData");
@@ -67,9 +68,9 @@ public static class CoreServicesExtensions
         );
 
         // Data loading and services
-        services.AddSingleton<PokeSharp.Game.Data.Loading.GameDataLoader>();
-        services.AddSingleton<PokeSharp.Game.Data.Services.NpcDefinitionService>();
-        services.AddSingleton<PokeSharp.Game.Data.Services.MapDefinitionService>();
+        services.AddSingleton<GameDataLoader>();
+        services.AddSingleton<NpcDefinitionService>();
+        services.AddSingleton<MapDefinitionService>();
 
         // NPC Sprite Loader - for loading sprites extracted from Pokemon Emerald
         services.AddSingleton<SpriteLoader>();
@@ -80,10 +81,12 @@ public static class CoreServicesExtensions
     /// <summary>
     ///     Registers modding services.
     /// </summary>
-    public static IServiceCollection AddModdingServices(this IServiceCollection services, string modsDirectory = "Mods")
+    public static IServiceCollection AddModdingServices(
+        this IServiceCollection services,
+        string modsDirectory = "Mods"
+    )
     {
-        PokeSharp.Engine.Core.Modding.ModdingExtensions.AddModdingServices(services, modsDirectory);
+        ModdingExtensions.AddModdingServices(services, modsDirectory);
         return services;
     }
 }
-

@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.Services;
 

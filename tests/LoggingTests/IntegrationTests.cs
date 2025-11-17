@@ -160,8 +160,15 @@ public class IntegrationTests
 
             // Error
             var compileError = new InvalidOperationException("Syntax error on line 23");
-            logger.LogExceptionWithContext(compileError, "Failed to compile {Script}", "broken_script.csx");
-            logger.LogOperationFailedWithRecovery("Compile broken_script.csx", "Using previous version");
+            logger.LogExceptionWithContext(
+                compileError,
+                "Failed to compile {Script}",
+                "broken_script.csx"
+            );
+            logger.LogOperationFailedWithRecovery(
+                "Compile broken_script.csx",
+                "Using previous version"
+            );
 
             logger.LogBatchCompleted("Script compilation", 14, 1, 234.5);
         };

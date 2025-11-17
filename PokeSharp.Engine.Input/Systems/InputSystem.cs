@@ -46,8 +46,8 @@ public class InputSystem(
     private float _totalTime;
 
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
-    /// Input executes at priority 0, before all other update systems.
+    ///     Gets the update priority. Lower values execute first.
+    ///     Input executes at priority 0, before all other update systems.
     /// </summary>
     public int UpdatePriority => SystemPriority.Input;
 

@@ -7,8 +7,8 @@ using PokeSharp.Game.Data.Entities;
 namespace PokeSharp.Game.Data.Services;
 
 /// <summary>
-/// Service for querying NPC and Trainer definitions with caching.
-/// Provides O(1) lookups for hot paths while maintaining EF Core query capabilities.
+///     Service for querying NPC and Trainer definitions with caching.
+///     Provides O(1) lookups for hot paths while maintaining EF Core query capabilities.
 /// </summary>
 public class NpcDefinitionService
 {
@@ -25,10 +25,30 @@ public class NpcDefinitionService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    #region Statistics
+
+    /// <summary>
+    ///     Get statistics about loaded data.
+    /// </summary>
+    public async Task<DataStatistics> GetStatisticsAsync()
+    {
+        var stats = new DataStatistics
+        {
+            TotalNpcs = await _context.Npcs.CountAsync(),
+            TotalTrainers = await _context.Trainers.CountAsync(),
+            NpcsCached = _npcCache.Count,
+            TrainersCached = _trainerCache.Count,
+        };
+
+        return stats;
+    }
+
+    #endregion
+
     #region NPC Queries
 
     /// <summary>
-    /// Get NPC definition by ID (O(1) cached).
+    ///     Get NPC definition by ID (O(1) cached).
     /// </summary>
     public NpcDefinition? GetNpc(string npcId)
     {
@@ -53,31 +73,25 @@ public class NpcDefinitionService
     }
 
     /// <summary>
-    /// Get all NPCs of a specific type.
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all NPCs of a specific type.
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<NpcDefinition>> GetNpcsByTypeAsync(string npcType)
     {
-        return await _context.Npcs
-            .AsNoTracking()
-            .Where(n => n.NpcType == npcType)
-            .ToListAsync();
+        return await _context.Npcs.AsNoTracking().Where(n => n.NpcType == npcType).ToListAsync();
     }
 
     /// <summary>
-    /// Get all NPCs from a specific mod.
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all NPCs from a specific mod.
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<NpcDefinition>> GetNpcsByModAsync(string modId)
     {
-        return await _context.Npcs
-            .AsNoTracking()
-            .Where(n => n.SourceMod == modId)
-            .ToListAsync();
+        return await _context.Npcs.AsNoTracking().Where(n => n.SourceMod == modId).ToListAsync();
     }
 
     /// <summary>
-    /// Check if NPC definition exists.
+    ///     Check if NPC definition exists.
     /// </summary>
     public bool HasNpc(string npcId)
     {
@@ -89,7 +103,7 @@ public class NpcDefinitionService
     #region Trainer Queries
 
     /// <summary>
-    /// Get trainer definition by ID (O(1) cached).
+    ///     Get trainer definition by ID (O(1) cached).
     /// </summary>
     public TrainerDefinition? GetTrainer(string trainerId)
     {
@@ -114,31 +128,31 @@ public class NpcDefinitionService
     }
 
     /// <summary>
-    /// Get all trainers of a specific class (e.g., "gym_leader", "youngster").
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all trainers of a specific class (e.g., "gym_leader", "youngster").
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<TrainerDefinition>> GetTrainersByClassAsync(string trainerClass)
     {
-        return await _context.Trainers
-            .AsNoTracking()
+        return await _context
+            .Trainers.AsNoTracking()
             .Where(t => t.TrainerClass == trainerClass)
             .ToListAsync();
     }
 
     /// <summary>
-    /// Get all trainers from a specific mod.
-    /// Uses AsNoTracking for read-only query performance.
+    ///     Get all trainers from a specific mod.
+    ///     Uses AsNoTracking for read-only query performance.
     /// </summary>
     public async Task<List<TrainerDefinition>> GetTrainersByModAsync(string modId)
     {
-        return await _context.Trainers
-            .AsNoTracking()
+        return await _context
+            .Trainers.AsNoTracking()
             .Where(t => t.SourceMod == modId)
             .ToListAsync();
     }
 
     /// <summary>
-    /// Check if trainer definition exists.
+    ///     Check if trainer definition exists.
     /// </summary>
     public bool HasTrainer(string trainerId)
     {
@@ -146,30 +160,10 @@ public class NpcDefinitionService
     }
 
     #endregion
-
-    #region Statistics
-
-    /// <summary>
-    /// Get statistics about loaded data.
-    /// </summary>
-    public async Task<DataStatistics> GetStatisticsAsync()
-    {
-        var stats = new DataStatistics
-        {
-            TotalNpcs = await _context.Npcs.CountAsync(),
-            TotalTrainers = await _context.Trainers.CountAsync(),
-            NpcsCached = _npcCache.Count,
-            TrainersCached = _trainerCache.Count,
-        };
-
-        return stats;
-    }
-
-    #endregion
 }
 
 /// <summary>
-/// Statistics about loaded game data.
+///     Statistics about loaded game data.
 /// </summary>
 public record DataStatistics
 {

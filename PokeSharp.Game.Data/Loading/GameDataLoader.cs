@@ -8,14 +8,14 @@ using PokeSharp.Game.Data.Entities;
 namespace PokeSharp.Game.Data.Loading;
 
 /// <summary>
-/// Loads game data from JSON files into EF Core in-memory database.
-/// Focuses on NPCs and trainers initially.
+///     Loads game data from JSON files into EF Core in-memory database.
+///     Focuses on NPCs and trainers initially.
 /// </summary>
 public class GameDataLoader
 {
     private readonly GameDataContext _context;
-    private readonly ILogger<GameDataLoader> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly ILogger<GameDataLoader> _logger;
 
     public GameDataLoader(GameDataContext context, ILogger<GameDataLoader> logger)
     {
@@ -32,7 +32,7 @@ public class GameDataLoader
     }
 
     /// <summary>
-    /// Load all game data from JSON files.
+    ///     Load all game data from JSON files.
     /// </summary>
     public async Task LoadAllAsync(string dataPath, CancellationToken ct = default)
     {
@@ -57,7 +57,7 @@ public class GameDataLoader
     }
 
     /// <summary>
-    /// Load NPC definitions from JSON files.
+    ///     Load NPC definitions from JSON files.
     /// </summary>
     private async Task<int> LoadNpcsAsync(string path, CancellationToken ct)
     {
@@ -129,7 +129,7 @@ public class GameDataLoader
     }
 
     /// <summary>
-    /// Load trainer definitions from JSON files.
+    ///     Load trainer definitions from JSON files.
     /// </summary>
     private async Task<int> LoadTrainersAsync(string path, CancellationToken ct)
     {
@@ -209,8 +209,8 @@ public class GameDataLoader
     }
 
     /// <summary>
-    /// Load map definitions from Tiled JSON files.
-    /// Stores relative path to file instead of full JSON data.
+    ///     Load map definitions from Tiled JSON files.
+    ///     Stores relative path to file instead of full JSON data.
     /// </summary>
     private async Task<int> LoadMapsAsync(string path, CancellationToken ct)
     {
@@ -223,16 +223,15 @@ public class GameDataLoader
         // Determine Assets root for relative path calculation
         var assetsRoot = ResolveAssetsRoot(path);
 
-        var files = Directory.GetFiles(path, "*.json", SearchOption.AllDirectories)
-            .Where(f => !IsHiddenOrSystemDirectory(f))  // Skip hidden directories like .claude-flow
+        var files = Directory
+            .GetFiles(path, "*.json", SearchOption.AllDirectories)
+            .Where(f => !IsHiddenOrSystemDirectory(f)) // Skip hidden directories like .claude-flow
             .ToArray();
         var count = 0;
 
         // OPTIMIZATION: Load all existing maps once to avoid N+1 queries
         // Using AsNoTracking since we'll manually track changes
-        var existingMaps = await _context
-            .Maps.AsNoTracking()
-            .ToDictionaryAsync(m => m.MapId, ct);
+        var existingMaps = await _context.Maps.AsNoTracking().ToDictionaryAsync(m => m.MapId, ct);
 
         foreach (var file in files)
         {
@@ -316,7 +315,7 @@ public class GameDataLoader
     }
 
     /// <summary>
-    /// Resolves the Assets root directory for relative path calculation.
+    ///     Resolves the Assets root directory for relative path calculation.
     /// </summary>
     private string ResolveAssetsRoot(string mapsPath)
     {
@@ -325,9 +324,7 @@ public class GameDataLoader
         while (current != null)
         {
             if (current.Name.Equals("Assets", StringComparison.OrdinalIgnoreCase))
-            {
                 return current.FullName;
-            }
             current = current.Parent;
         }
 
@@ -338,8 +335,8 @@ public class GameDataLoader
     // Helper methods for extracting properties from Tiled custom properties
 
     /// <summary>
-    /// Converts Tiled's properties array format into a dictionary for easier access.
-    /// Tiled format: [{ "name": "key", "type": "string", "value": "val" }, ...]
+    ///     Converts Tiled's properties array format into a dictionary for easier access.
+    ///     Tiled format: [{ "name": "key", "type": "string", "value": "val" }, ...]
     /// </summary>
     private static Dictionary<string, object> ConvertTiledPropertiesToDictionary(
         List<TiledPropertyDto>? properties
@@ -351,12 +348,8 @@ public class GameDataLoader
             return dict;
 
         foreach (var prop in properties)
-        {
             if (!string.IsNullOrEmpty(prop.Name) && prop.Value != null)
-            {
                 dict[prop.Name] = prop.Value;
-            }
-        }
 
         return dict;
     }
@@ -364,9 +357,7 @@ public class GameDataLoader
     private static string? GetPropertyString(Dictionary<string, object> props, string key)
     {
         if (props.TryGetValue(key, out var value))
-        {
             return value?.ToString();
-        }
         return null;
     }
 
@@ -383,11 +374,12 @@ public class GameDataLoader
             if (bool.TryParse(value?.ToString(), out var result))
                 return result;
         }
+
         return null;
     }
 
     /// <summary>
-    /// Checks if a file path contains hidden or system directories (e.g., .claude-flow, .git).
+    ///     Checks if a file path contains hidden or system directories (e.g., .claude-flow, .git).
     /// </summary>
     private static bool IsHiddenOrSystemDirectory(string filePath)
     {
@@ -399,7 +391,7 @@ public class GameDataLoader
 #region DTOs for JSON Deserialization
 
 /// <summary>
-/// DTO for deserializing NPC JSON files.
+///     DTO for deserializing NPC JSON files.
 /// </summary>
 internal record NpcDefinitionDto
 {
@@ -416,7 +408,7 @@ internal record NpcDefinitionDto
 }
 
 /// <summary>
-/// DTO for deserializing Trainer JSON files.
+///     DTO for deserializing Trainer JSON files.
 /// </summary>
 internal record TrainerDefinitionDto
 {
@@ -438,8 +430,8 @@ internal record TrainerDefinitionDto
 }
 
 /// <summary>
-/// Lightweight DTO for extracting metadata from Tiled JSON.
-/// Only parses the "properties" field; full JSON is stored as-is.
+///     Lightweight DTO for extracting metadata from Tiled JSON.
+///     Only parses the "properties" field; full JSON is stored as-is.
 /// </summary>
 internal record TiledMapMetadataDto
 {
@@ -447,8 +439,8 @@ internal record TiledMapMetadataDto
 }
 
 /// <summary>
-/// DTO for Tiled custom property format.
-/// Tiled stores properties as: { "name": "key", "type": "string", "value": "val" }
+///     DTO for Tiled custom property format.
+///     Tiled stores properties as: { "name": "key", "type": "string", "value": "val" }
 /// </summary>
 internal record TiledPropertyDto
 {

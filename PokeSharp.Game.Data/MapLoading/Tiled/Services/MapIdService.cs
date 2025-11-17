@@ -1,4 +1,3 @@
-using System.IO;
 using PokeSharp.Engine.Core.Types;
 
 namespace PokeSharp.Game.Data.MapLoading.Tiled.Services;
@@ -58,4 +57,3 @@ public class MapIdService
         return _mapNameToId.TryGetValue(mapName, out var id) ? id : null;
     }
 }
-

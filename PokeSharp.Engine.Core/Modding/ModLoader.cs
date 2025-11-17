@@ -4,16 +4,14 @@ using Microsoft.Extensions.Logging;
 namespace PokeSharp.Engine.Core.Modding;
 
 /// <summary>
-/// Discovers and loads mods from the Mods directory.
-/// Handles dependency resolution and load order.
+///     Discovers and loads mods from the Mods directory.
+///     Handles dependency resolution and load order.
 /// </summary>
 public sealed class ModLoader
 {
+    private readonly List<LoadedMod> _loadedMods = new();
     private readonly ILogger<ModLoader> _logger;
     private readonly string _modsDirectory;
-    private readonly List<LoadedMod> _loadedMods = new();
-
-    public IReadOnlyList<LoadedMod> LoadedMods => _loadedMods;
 
     public ModLoader(ILogger<ModLoader> logger, string modsDirectory)
     {
@@ -21,8 +19,10 @@ public sealed class ModLoader
         _modsDirectory = modsDirectory;
     }
 
+    public IReadOnlyList<LoadedMod> LoadedMods => _loadedMods;
+
     /// <summary>
-    /// Discovers all mods in the Mods directory
+    ///     Discovers all mods in the Mods directory
     /// </summary>
     public List<LoadedMod> DiscoverMods()
     {
@@ -30,7 +30,10 @@ public sealed class ModLoader
 
         if (!Directory.Exists(_modsDirectory))
         {
-            _logger.LogInformation("[steelblue1]WF[/] Mods directory not found | creating: [cyan]{Path}[/]", _modsDirectory);
+            _logger.LogInformation(
+                "[steelblue1]WF[/] Mods directory not found | creating: [cyan]{Path}[/]",
+                _modsDirectory
+            );
             Directory.CreateDirectory(_modsDirectory);
             return _loadedMods;
         }
@@ -43,7 +46,6 @@ public sealed class ModLoader
         );
 
         foreach (var modDir in modDirectories)
-        {
             try
             {
                 var manifestPath = Path.Combine(modDir, "mod.json");
@@ -64,7 +66,10 @@ public sealed class ModLoader
 
                 if (manifest == null)
                 {
-                    _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Failed to deserialize | path: [cyan]{Path}[/]", manifestPath);
+                    _logger.LogWarning(
+                        "[steelblue1]WF[/] [orange3]⚠[/] Failed to deserialize | path: [cyan]{Path}[/]",
+                        manifestPath
+                    );
                     continue;
                 }
 
@@ -82,15 +87,18 @@ public sealed class ModLoader
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[steelblue1]WF[/] [orange3]⚠[/] Mod load error | directory: [cyan]{Dir}[/]", modDir);
+                _logger.LogError(
+                    ex,
+                    "[steelblue1]WF[/] [orange3]⚠[/] Mod load error | directory: [cyan]{Dir}[/]",
+                    modDir
+                );
             }
-        }
 
         return _loadedMods;
     }
 
     /// <summary>
-    /// Sorts mods by dependencies and load order
+    ///     Sorts mods by dependencies and load order
     /// </summary>
     public List<LoadedMod> SortByLoadOrder(List<LoadedMod> mods)
     {
@@ -104,11 +112,9 @@ public sealed class ModLoader
                 return;
 
             if (processing.Contains(mod.Manifest.ModId))
-            {
                 throw new InvalidOperationException(
                     $"Circular dependency detected involving mod: {mod.Manifest.ModId}"
                 );
-            }
 
             processing.Add(mod.Manifest.ModId);
 
@@ -117,11 +123,9 @@ public sealed class ModLoader
             {
                 var dep = mods.FirstOrDefault(m => m.Manifest.ModId == depId);
                 if (dep == null)
-                {
                     throw new InvalidOperationException(
                         $"Mod '{mod.Manifest.ModId}' depends on '{depId}' which is not loaded"
                     );
-                }
                 Visit(dep);
             }
 
@@ -130,9 +134,7 @@ public sealed class ModLoader
             {
                 var after = mods.FirstOrDefault(m => m.Manifest.ModId == afterId);
                 if (after != null) // Soft dependency - don't fail if missing
-                {
                     Visit(after);
-                }
             }
 
             processing.Remove(mod.Manifest.ModId);
@@ -144,9 +146,7 @@ public sealed class ModLoader
         var prioritySorted = mods.OrderBy(m => m.Manifest.LoadPriority).ToList();
 
         foreach (var mod in prioritySorted)
-        {
             Visit(mod);
-        }
 
         _logger.LogInformation(
             "[steelblue1]WF[/] Mod load order | sequence: [cyan]{Order}[/]",
@@ -158,7 +158,7 @@ public sealed class ModLoader
 }
 
 /// <summary>
-/// Represents a loaded mod with its manifest and file system location
+///     Represents a loaded mod with its manifest and file system location
 /// </summary>
 public sealed class LoadedMod
 {
@@ -166,12 +166,15 @@ public sealed class LoadedMod
     public required string RootPath { get; init; }
 
     /// <summary>
-    /// Resolves a relative path within this mod's directory
+    ///     Resolves a relative path within this mod's directory
     /// </summary>
     public string ResolvePath(string relativePath)
     {
         return Path.Combine(RootPath, relativePath);
     }
 
-    public override string ToString() => Manifest.ToString();
+    public override string ToString()
+    {
+        return Manifest.ToString();
+    }
 }

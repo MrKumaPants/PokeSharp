@@ -34,4 +34,3 @@ public struct TileBehavior
         IsInitialized = false;
     }
 }
-

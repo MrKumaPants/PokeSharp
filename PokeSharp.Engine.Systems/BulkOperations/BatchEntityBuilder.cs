@@ -36,9 +36,9 @@ namespace PokeSharp.Engine.Systems.BulkOperations;
 /// </remarks>
 public sealed class BatchEntityBuilder
 {
-    private readonly World _world;
-    private readonly List<(Type type, object component)> _sharedComponents = new();
     private readonly List<(Type type, Delegate factory)> _componentFactories = new();
+    private readonly List<(Type type, object component)> _sharedComponents = new();
+    private readonly World _world;
     private int _count = 1;
 
     /// <summary>
@@ -65,7 +65,7 @@ public sealed class BatchEntityBuilder
     /// </example>
     public BatchEntityBuilder WithCount(int count)
     {
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         _count = count;
         return this;
     }
@@ -110,7 +110,7 @@ public sealed class BatchEntityBuilder
     public BatchEntityBuilder WithComponentFactory<T>(Func<int, T> factory)
         where T : struct
     {
-        ArgumentNullException.ThrowIfNull(factory, nameof(factory));
+        ArgumentNullException.ThrowIfNull(factory);
         _componentFactories.Add((typeof(T), factory));
         return this;
     }
@@ -132,25 +132,21 @@ public sealed class BatchEntityBuilder
     {
         var entities = new Entity[_count];
 
-        for (int i = 0; i < _count; i++)
+        for (var i = 0; i < _count; i++)
         {
             // Create entity
             var entity = _world.Create();
 
             // Add shared components (same for all entities)
             foreach (var (type, component) in _sharedComponents)
-            {
                 AddComponentDynamic(entity, type, component);
-            }
 
             // Add factory-generated components (unique per entity)
             foreach (var (type, factory) in _componentFactories)
             {
                 var component = factory.DynamicInvoke(i);
                 if (component != null)
-                {
                     AddComponentDynamic(entity, type, component);
-                }
             }
 
             entities[i] = entity;
@@ -180,14 +176,12 @@ public sealed class BatchEntityBuilder
     /// </example>
     public Entity[] Build(Action<Entity, int> configure)
     {
-        ArgumentNullException.ThrowIfNull(configure, nameof(configure));
+        ArgumentNullException.ThrowIfNull(configure);
 
         var entities = Build();
 
-        for (int i = 0; i < entities.Length; i++)
-        {
+        for (var i = 0; i < entities.Length; i++)
             configure(entities[i], i);
-        }
 
         return entities;
     }
@@ -221,11 +215,9 @@ public sealed class BatchEntityBuilder
             });
 
         if (addMethod == null)
-        {
             throw new InvalidOperationException(
                 $"Could not find Entity.Add<T> method for component type {componentType.Name}"
             );
-        }
 
         var genericAdd = addMethod.MakeGenericMethod(componentType);
         genericAdd.Invoke(entity, [component]);

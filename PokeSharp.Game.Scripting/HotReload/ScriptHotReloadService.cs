@@ -7,7 +7,6 @@ using PokeSharp.Game.Scripting.HotReload.Cache;
 using PokeSharp.Game.Scripting.HotReload.Compilation;
 using PokeSharp.Game.Scripting.HotReload.Notifications;
 using PokeSharp.Game.Scripting.HotReload.Watchers;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.HotReload;
 
@@ -31,20 +30,20 @@ namespace PokeSharp.Game.Scripting.HotReload;
 public class ScriptHotReloadService : IDisposable
 {
     private readonly ScriptBackupManager _backupManager;
+    private readonly Timer _cleanupTimer;
     private readonly IScriptCompiler _compiler;
     private readonly int _debounceDelayMs;
 
     // Debouncing infrastructure
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _debouncers = new();
     private readonly ConcurrentDictionary<string, DateTime> _lastDebounceTime = new();
-    private readonly System.Threading.Timer _cleanupTimer;
     private readonly ILogger<ScriptHotReloadService> _logger;
     private readonly IHotReloadNotificationService _notificationService;
     private readonly object _reloadLock = new();
     private readonly HotReloadStatistics _statistics = new();
     private readonly WatcherFactory _watcherFactory;
     private int _debouncedEventsCount;
-    private bool _disposed = false;
+    private bool _disposed;
 
     private IScriptWatcher? _watcher;
 
@@ -94,11 +93,11 @@ public class ScriptHotReloadService : IDisposable
         );
 
         // Start cleanup timer to remove orphaned debouncers every 30 seconds
-        _cleanupTimer = new System.Threading.Timer(
+        _cleanupTimer = new Timer(
             CleanupOrphanedDebouncers,
             null,
             30000, // 30 seconds in milliseconds
-            30000  // 30 seconds in milliseconds
+            30000 // 30 seconds in milliseconds
         );
     }
 
@@ -108,7 +107,8 @@ public class ScriptHotReloadService : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
 
         // Synchronously stop watching
@@ -129,6 +129,7 @@ public class ScriptHotReloadService : IDisposable
             kvp.Value?.Cancel();
             kvp.Value?.Dispose();
         }
+
         _debouncers.Clear();
         _lastDebounceTime.Clear();
 
@@ -611,32 +612,23 @@ public class ScriptHotReloadService : IDisposable
 
         // Find debouncers that have been idle for more than 60 seconds
         foreach (var kvp in _debouncers)
-        {
-            if (!_lastDebounceTime.TryGetValue(kvp.Key, out var lastTime) ||
-                (now - lastTime).TotalSeconds > 60)
-            {
+            if (
+                !_lastDebounceTime.TryGetValue(kvp.Key, out var lastTime)
+                || (now - lastTime).TotalSeconds > 60
+            )
                 orphanedKeys.Add(kvp.Key);
-            }
-        }
 
         // Remove orphaned debouncers
         foreach (var key in orphanedKeys)
-        {
             if (_debouncers.TryRemove(key, out var cts))
             {
                 cts?.Cancel();
                 cts?.Dispose();
                 _lastDebounceTime.TryRemove(key, out _);
             }
-        }
 
         if (orphanedKeys.Count > 0)
-        {
-            _logger.LogDebug(
-                "Cleaned up {Count} orphaned debouncers",
-                orphanedKeys.Count
-            );
-        }
+            _logger.LogDebug("Cleaned up {Count} orphaned debouncers", orphanedKeys.Count);
     }
 
     private void OnWatcherError(object? sender, ScriptWatcherErrorEventArgs e)

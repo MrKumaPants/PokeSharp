@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using Arch.Core;
-using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Common.Validation;
@@ -27,11 +26,11 @@ public sealed class EntityFactoryService(
     private readonly ILogger<EntityFactoryService> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
 
-    private readonly TemplateCache _templateCache =
-        templateCache ?? throw new ArgumentNullException(nameof(templateCache));
-
     private readonly EntityPoolManager _poolManager =
         poolManager ?? throw new ArgumentNullException(nameof(poolManager));
+
+    private readonly TemplateCache _templateCache =
+        templateCache ?? throw new ArgumentNullException(nameof(templateCache));
 
     /// <inheritdoc />
     public Entity SpawnFromTemplate(
@@ -40,8 +39,8 @@ public sealed class EntityFactoryService(
         EntitySpawnContext? context = null
     )
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentNullException.ThrowIfNull(world);
 
         // Retrieve template from cache
         var template = _templateCache.Get(templateId);
@@ -133,9 +132,9 @@ public sealed class EntityFactoryService(
     /// <inheritdoc />
     public Entity SpawnFromTemplate(string templateId, World world, Action<EntityBuilder> configure)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
-        ArgumentNullException.ThrowIfNull(configure, nameof(configure));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(configure);
 
         // Build context from fluent API
         var builder = new EntityBuilder();
@@ -164,8 +163,8 @@ public sealed class EntityFactoryService(
     /// <inheritdoc />
     public IEnumerable<Entity> SpawnBatch(IEnumerable<string> templateIds, World world)
     {
-        ArgumentNullException.ThrowIfNull(templateIds, nameof(templateIds));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
+        ArgumentNullException.ThrowIfNull(templateIds);
+        ArgumentNullException.ThrowIfNull(world);
 
         var entities = new List<Entity>();
         List<string> templateIdList = [.. templateIds];
@@ -195,7 +194,7 @@ public sealed class EntityFactoryService(
     /// <inheritdoc />
     public ValidationResult ValidateTemplate(string templateId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
 
         var template = _templateCache.Get(templateId);
         if (template == null)
@@ -210,15 +209,185 @@ public sealed class EntityFactoryService(
     /// <inheritdoc />
     public bool HasTemplate(string templateId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
         return _templateCache.Get(templateId) != null;
     }
 
     /// <inheritdoc />
     public IEnumerable<string> GetTemplateIdsByTag(string tag)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tag, nameof(tag));
+        ArgumentException.ThrowIfNullOrWhiteSpace(tag);
         return _templateCache.GetByTag(tag).Select(t => t.TemplateId);
+    }
+
+    /// <summary>
+    ///     Spawn multiple entities from the same template efficiently.
+    ///     More performant than calling SpawnFromTemplate in a loop because it:
+    ///     - Resolves template hierarchy only once
+    ///     - Validates template once
+    ///     - Reuses reflection cache
+    /// </summary>
+    /// <param name="templateId">Template ID to spawn from</param>
+    /// <param name="world">World to spawn entities in</param>
+    /// <param name="count">Number of entities to spawn</param>
+    /// <param name="configureEach">Optional per-entity configuration with index</param>
+    /// <returns>Array of spawned entities</returns>
+    /// <example>
+    ///     <code>
+    /// // Spawn 100 enemies with different positions
+    /// var enemies = factory.SpawnBatchFromTemplate("enemy/goblin", world, 100,
+    ///     (builder, i) => {
+    ///         builder.OverrideComponent(new Position(i * 50, 100));
+    ///     }
+    /// );
+    /// </code>
+    /// </example>
+    public Entity[] SpawnBatchFromTemplate(
+        string templateId,
+        World world,
+        int count,
+        Action<EntityBuilder, int>? configureEach = null
+    )
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
+
+        _logger.LogDebug(
+            "Batch spawning {Count} entities from template {TemplateId}",
+            count,
+            templateId
+        );
+
+        // Retrieve and validate template once
+        var template = _templateCache.Get(templateId);
+        if (template == null)
+        {
+            _logger.LogTemplateMissing(templateId);
+            throw new ArgumentException(
+                $"Template '{templateId}' not found in cache",
+                nameof(templateId)
+            );
+        }
+
+        // Resolve template inheritance chain once
+        var resolvedTemplate = ResolveTemplateInheritance(template);
+
+        // Validate resolved template once
+        var validationResult = ValidateTemplateInternal(resolvedTemplate);
+        if (!validationResult.IsValid)
+        {
+            _logger.LogError(
+                "Template validation failed for {TemplateId}: {Errors}",
+                templateId,
+                string.Join(", ", validationResult.Errors)
+            );
+            throw new InvalidOperationException(
+                $"Template '{templateId}' is invalid: {string.Join(", ", validationResult.Errors)}"
+            );
+        }
+
+        var entities = new Entity[count];
+
+        for (var i = 0; i < count; i++)
+        {
+            EntitySpawnContext? context = null;
+
+            // Apply per-entity configuration if provided
+            if (configureEach != null)
+            {
+                var builder = new EntityBuilder();
+                configureEach(builder, i);
+
+                // Convert builder to spawn context
+                context = new EntitySpawnContext
+                {
+                    Tag = builder.Tag,
+                    Overrides = builder.ComponentOverrides.ToDictionary(
+                        kvp => kvp.Key.Name,
+                        kvp => kvp.Value
+                    ),
+                };
+
+                if (builder.CustomProperties.Any())
+                    context.Metadata = builder.CustomProperties.ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => kvp.Value
+                    );
+            }
+
+            // Build component array from resolved template (resolved once above)
+            var components = BuildComponentArray(resolvedTemplate, context);
+
+            // Create entity (use pool if available)
+            Entity entity;
+            try
+            {
+                var poolName = GetPoolNameFromTemplateId(templateId);
+                entity = _poolManager.Acquire(poolName);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                // Pool doesn't exist - this indicates a configuration error
+                _logger.LogError(
+                    "Pool not found for template '{TemplateId}' in batch spawn: {Error}. This may cause memory leaks.",
+                    templateId,
+                    ex.Message
+                );
+                entity = world.Create();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("exhausted"))
+            {
+                // Pool exhausted during batch spawn - fail fast
+                _logger.LogError(
+                    "Pool exhausted during batch spawn for template '{TemplateId}': {Error}",
+                    templateId,
+                    ex.Message
+                );
+                throw;
+            }
+
+            // Add each component using cached reflection
+            foreach (var component in components)
+            {
+                var componentType = component.GetType();
+                var addMethod = GetCachedAddMethod(componentType);
+                addMethod.Invoke(world, [entity, component]);
+            }
+
+            entities[i] = entity;
+        }
+
+        _logger.LogInformation(
+            "Successfully spawned {Count} entities from template {TemplateId}",
+            count,
+            templateId
+        );
+
+        return entities;
+    }
+
+    /// <summary>
+    ///     Release multiple entities back to pool or destroy them.
+    ///     Uses entity pool manager if available, otherwise destroys entities directly.
+    /// </summary>
+    /// <param name="entities">Entities to release</param>
+    /// <param name="world">World to destroy entities in (used if no pool manager)</param>
+    /// <example>
+    ///     <code>
+    /// // Clean up spawned entities
+    /// factory.ReleaseBatch(spawnedEnemies, world);
+    /// </code>
+    /// </example>
+    public void ReleaseBatch(Entity[] entities, World world)
+    {
+        ArgumentNullException.ThrowIfNull(entities);
+        ArgumentNullException.ThrowIfNull(world);
+
+        _logger.LogDebug("Releasing batch of {Count} entities", entities.Length);
+
+        foreach (var entity in entities)
+            _poolManager.Release(entity);
     }
 
     // Private helper methods
@@ -389,188 +558,10 @@ public sealed class EntityFactoryService(
 
         // Add new components from overrides that aren't in template
         if (context?.Overrides != null)
-        {
             foreach (var (typeName, componentData) in context.Overrides)
-            {
                 if (!addedTypes.Contains(typeName))
-                {
                     components.Add(componentData);
-                }
-            }
-        }
 
         return components;
-    }
-
-    /// <summary>
-    ///     Spawn multiple entities from the same template efficiently.
-    ///     More performant than calling SpawnFromTemplate in a loop because it:
-    ///     - Resolves template hierarchy only once
-    ///     - Validates template once
-    ///     - Reuses reflection cache
-    /// </summary>
-    /// <param name="templateId">Template ID to spawn from</param>
-    /// <param name="world">World to spawn entities in</param>
-    /// <param name="count">Number of entities to spawn</param>
-    /// <param name="configureEach">Optional per-entity configuration with index</param>
-    /// <returns>Array of spawned entities</returns>
-    /// <example>
-    ///     <code>
-    /// // Spawn 100 enemies with different positions
-    /// var enemies = factory.SpawnBatchFromTemplate("enemy/goblin", world, 100,
-    ///     (builder, i) => {
-    ///         builder.OverrideComponent(new Position(i * 50, 100));
-    ///     }
-    /// );
-    /// </code>
-    /// </example>
-    public Entity[] SpawnBatchFromTemplate(
-        string templateId,
-        World world,
-        int count,
-        Action<EntityBuilder, int>? configureEach = null
-    )
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(templateId, nameof(templateId));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count, nameof(count));
-
-        _logger.LogDebug(
-            "Batch spawning {Count} entities from template {TemplateId}",
-            count,
-            templateId
-        );
-
-        // Retrieve and validate template once
-        var template = _templateCache.Get(templateId);
-        if (template == null)
-        {
-            _logger.LogTemplateMissing(templateId);
-            throw new ArgumentException(
-                $"Template '{templateId}' not found in cache",
-                nameof(templateId)
-            );
-        }
-
-        // Resolve template inheritance chain once
-        var resolvedTemplate = ResolveTemplateInheritance(template);
-
-        // Validate resolved template once
-        var validationResult = ValidateTemplateInternal(resolvedTemplate);
-        if (!validationResult.IsValid)
-        {
-            _logger.LogError(
-                "Template validation failed for {TemplateId}: {Errors}",
-                templateId,
-                string.Join(", ", validationResult.Errors)
-            );
-            throw new InvalidOperationException(
-                $"Template '{templateId}' is invalid: {string.Join(", ", validationResult.Errors)}"
-            );
-        }
-
-        var entities = new Entity[count];
-
-        for (int i = 0; i < count; i++)
-        {
-            EntitySpawnContext? context = null;
-
-            // Apply per-entity configuration if provided
-            if (configureEach != null)
-            {
-                var builder = new EntityBuilder();
-                configureEach(builder, i);
-
-                // Convert builder to spawn context
-                context = new EntitySpawnContext
-                {
-                    Tag = builder.Tag,
-                    Overrides = builder.ComponentOverrides.ToDictionary(
-                        kvp => kvp.Key.Name,
-                        kvp => kvp.Value
-                    ),
-                };
-
-                if (builder.CustomProperties.Any())
-                    context.Metadata = builder.CustomProperties.ToDictionary(
-                        kvp => kvp.Key,
-                        kvp => kvp.Value
-                    );
-            }
-
-            // Build component array from resolved template (resolved once above)
-            var components = BuildComponentArray(resolvedTemplate, context);
-
-            // Create entity (use pool if available)
-            Entity entity;
-            try
-            {
-                var poolName = GetPoolNameFromTemplateId(templateId);
-                entity = _poolManager.Acquire(poolName);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                // Pool doesn't exist - this indicates a configuration error
-                _logger.LogError(
-                    "Pool not found for template '{TemplateId}' in batch spawn: {Error}. This may cause memory leaks.",
-                    templateId,
-                    ex.Message
-                );
-                entity = world.Create();
-            }
-            catch (InvalidOperationException ex) when (ex.Message.Contains("exhausted"))
-            {
-                // Pool exhausted during batch spawn - fail fast
-                _logger.LogError(
-                    "Pool exhausted during batch spawn for template '{TemplateId}': {Error}",
-                    templateId,
-                    ex.Message
-                );
-                throw;
-            }
-
-            // Add each component using cached reflection
-            foreach (var component in components)
-            {
-                var componentType = component.GetType();
-                var addMethod = GetCachedAddMethod(componentType);
-                addMethod.Invoke(world, [entity, component]);
-            }
-
-            entities[i] = entity;
-        }
-
-        _logger.LogInformation(
-            "Successfully spawned {Count} entities from template {TemplateId}",
-            count,
-            templateId
-        );
-
-        return entities;
-    }
-
-    /// <summary>
-    ///     Release multiple entities back to pool or destroy them.
-    ///     Uses entity pool manager if available, otherwise destroys entities directly.
-    /// </summary>
-    /// <param name="entities">Entities to release</param>
-    /// <param name="world">World to destroy entities in (used if no pool manager)</param>
-    /// <example>
-    ///     <code>
-    /// // Clean up spawned entities
-    /// factory.ReleaseBatch(spawnedEnemies, world);
-    /// </code>
-    /// </example>
-    public void ReleaseBatch(Entity[] entities, World world)
-    {
-        ArgumentNullException.ThrowIfNull(entities, nameof(entities));
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
-
-        _logger.LogDebug("Releasing batch of {Count} entities", entities.Length);
-
-        foreach (var entity in entities)
-        {
-            _poolManager.Release(entity);
-        }
     }
 }

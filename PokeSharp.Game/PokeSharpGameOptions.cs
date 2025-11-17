@@ -6,11 +6,11 @@ using PokeSharp.Engine.Systems.Pooling;
 using PokeSharp.Game.Data.Loading;
 using PokeSharp.Game.Data.Services;
 using PokeSharp.Game.Infrastructure.Diagnostics;
+using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Services;
-using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game;
@@ -106,4 +106,3 @@ public sealed class PokeSharpGameOptions
     /// </summary>
     public TemplateCacheInitializer TemplateCacheInitializer { get; init; } = null!;
 }
-

@@ -11,32 +11,32 @@ namespace PokeSharp.Engine.Systems.Management;
 ///     OPTIMIZED: Uses ConcurrentDictionary for lock-free performance tracking.
 /// </summary>
 /// <remarks>
-/// <para>
-/// This class is responsible for collecting execution time metrics for all systems,
-/// detecting slow systems, and logging performance statistics periodically.
-/// </para>
-/// <para>
-/// <b>Features:</b>
-/// </para>
-/// <list type="bullet">
-///     <item>Per-system metrics tracking (avg, max, last execution time)</item>
-///     <item>Configurable performance thresholds via PerformanceConfiguration</item>
-///     <item>Throttled slow system warnings to avoid log spam</item>
-///     <item>Periodic performance statistics logging</item>
-///     <item>Lock-free thread-safe metric collection using ConcurrentDictionary</item>
-/// </list>
-/// <para>
-/// <b>Performance Optimizations:</b>
-/// </para>
-/// <list type="bullet">
-///     <item>ConcurrentDictionary eliminates lock contention (was causing Gen2 GC spikes)</item>
-///     <item>GetOrAdd avoids separate TryGetValue + Add operations</item>
-///     <item>Reduced allocations in hot path (no dictionary cloning per frame)</item>
-/// </list>
-/// <para>
-/// <b>Example Usage:</b>
-/// </para>
-/// <code>
+///     <para>
+///         This class is responsible for collecting execution time metrics for all systems,
+///         detecting slow systems, and logging performance statistics periodically.
+///     </para>
+///     <para>
+///         <b>Features:</b>
+///     </para>
+///     <list type="bullet">
+///         <item>Per-system metrics tracking (avg, max, last execution time)</item>
+///         <item>Configurable performance thresholds via PerformanceConfiguration</item>
+///         <item>Throttled slow system warnings to avoid log spam</item>
+///         <item>Periodic performance statistics logging</item>
+///         <item>Lock-free thread-safe metric collection using ConcurrentDictionary</item>
+///     </list>
+///     <para>
+///         <b>Performance Optimizations:</b>
+///     </para>
+///     <list type="bullet">
+///         <item>ConcurrentDictionary eliminates lock contention (was causing Gen2 GC spikes)</item>
+///         <item>GetOrAdd avoids separate TryGetValue + Add operations</item>
+///         <item>Reduced allocations in hot path (no dictionary cloning per frame)</item>
+///     </list>
+///     <para>
+///         <b>Example Usage:</b>
+///     </para>
+///     <code>
 /// var config = PerformanceConfiguration.Development;
 /// var tracker = new SystemPerformanceTracker(logger, config);
 ///
@@ -56,20 +56,18 @@ namespace PokeSharp.Engine.Systems.Management;
 /// </remarks>
 public class SystemPerformanceTracker
 {
+    // LINQ ALLOCATION ELIMINATION: Reusable list for sorting metrics
+    // OLD: OrderByDescending().ToList() = 5-10 KB/sec allocation overhead every 5 seconds
+    // NEW: Reuse List<> + List.Sort() = zero allocations (list capacity retained between calls)
+    private readonly List<KeyValuePair<string, SystemMetrics>> _cachedSortedMetrics = new();
     private readonly PerformanceConfiguration _config;
+    private readonly ConcurrentDictionary<string, ulong> _lastSlowWarningFrame = new();
     private readonly ILogger? _logger;
 
     // CRITICAL OPTIMIZATION: Use ConcurrentDictionary instead of Dictionary + lock
     // OLD: Dictionary + lock = 600+ lock acquisitions/sec + lock contention + Gen2 GC pressure
     // NEW: ConcurrentDictionary = lock-free reads, minimal contention on writes
     private readonly ConcurrentDictionary<string, SystemMetrics> _metrics = new();
-    private readonly ConcurrentDictionary<string, ulong> _lastSlowWarningFrame = new();
-    private ulong _frameCounter;
-
-    // LINQ ALLOCATION ELIMINATION: Reusable list for sorting metrics
-    // OLD: OrderByDescending().ToList() = 5-10 KB/sec allocation overhead every 5 seconds
-    // NEW: Reuse List<> + List.Sort() = zero allocations (list capacity retained between calls)
-    private readonly List<KeyValuePair<string, SystemMetrics>> _cachedSortedMetrics = new();
 
     /// <summary>
     ///     Creates a new performance tracker.
@@ -81,6 +79,11 @@ public class SystemPerformanceTracker
         _logger = logger;
         _config = config ?? PerformanceConfiguration.Default;
     }
+
+    /// <summary>
+    ///     Gets the current frame count.
+    /// </summary>
+    public ulong FrameCount { get; private set; }
 
     /// <summary>
     ///     Tracks execution time for a system and issues warnings if slow.
@@ -113,10 +116,10 @@ public class SystemPerformanceTracker
             var lastWarning = _lastSlowWarningFrame.GetOrAdd(systemName, 0);
 
             // Only warn if cooldown period has passed since last warning for this system
-            if (_frameCounter - lastWarning >= _config.SlowSystemWarningCooldownFrames)
+            if (FrameCount - lastWarning >= _config.SlowSystemWarningCooldownFrames)
             {
                 // Update warning frame (TryUpdate ensures we don't overwrite a newer value from another thread)
-                _lastSlowWarningFrame.TryUpdate(systemName, _frameCounter, lastWarning);
+                _lastSlowWarningFrame.TryUpdate(systemName, FrameCount, lastWarning);
 
                 var percentOfFrame = elapsedMs / _config.TargetFrameTimeMs * 100;
                 _logger?.LogSlowSystem(systemName, elapsedMs, percentOfFrame);
@@ -129,13 +132,8 @@ public class SystemPerformanceTracker
     /// </summary>
     public void IncrementFrame()
     {
-        _frameCounter++;
+        FrameCount++;
     }
-
-    /// <summary>
-    ///     Gets the current frame count.
-    /// </summary>
-    public ulong FrameCount => _frameCounter;
 
     /// <summary>
     ///     Gets metrics for a specific system.
@@ -182,8 +180,9 @@ public class SystemPerformanceTracker
         // Clear() retains capacity, so list only grows once and then reuses memory
         _cachedSortedMetrics.Clear();
         _cachedSortedMetrics.AddRange(_metrics);
-        _cachedSortedMetrics.Sort((a, b) =>
-            b.Value.AverageUpdateMs.CompareTo(a.Value.AverageUpdateMs));
+        _cachedSortedMetrics.Sort(
+            (a, b) => b.Value.AverageUpdateMs.CompareTo(a.Value.AverageUpdateMs)
+        );
 
         // Log all systems using the custom template
         foreach (var kvp in _cachedSortedMetrics)

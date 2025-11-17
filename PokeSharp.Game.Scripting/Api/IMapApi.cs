@@ -1,7 +1,6 @@
 using Arch.Core;
 using PokeSharp.Engine.Core.Types;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.Api;
 

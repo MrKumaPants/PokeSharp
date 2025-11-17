@@ -7,7 +7,11 @@ using PokeSharp.Game.Scripting.Runtime;
 /// </summary>
 public class JumpEastBehavior : TileBehaviorScriptBase
 {
-    public override bool IsBlockedFrom(ScriptContext ctx, Direction fromDirection, Direction toDirection)
+    public override bool IsBlockedFrom(
+        ScriptContext ctx,
+        Direction fromDirection,
+        Direction toDirection
+    )
     {
         // Block movement from west (can't climb up)
         if (fromDirection == Direction.West)

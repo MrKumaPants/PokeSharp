@@ -30,7 +30,7 @@ public class MapLoaderConfig
     ///     Whether to throw exceptions on validation errors.
     ///     If false, validation errors are logged as warnings.
     /// </summary>
-    public bool ThrowOnValidationError { get; set; } = false;
+    public bool ThrowOnValidationError { get; set; }
 
     /// <summary>
     ///     Whether to cache loaded tileset textures.

@@ -2,12 +2,9 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Input;
 using PokeSharp.Engine.Common.Logging;
-using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Rendering.Components;
 using PokeSharp.Engine.Rendering.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Player;
-using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 
 namespace PokeSharp.Game.Input;
 

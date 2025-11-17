@@ -134,10 +134,8 @@ public class SystemPerformanceTrackerTests
         var tracker = new SystemPerformanceTracker(mockLogger.Object, config);
 
         // Act - Advance frame counter to pass cooldown check (needs >= 10 frames)
-        for (int i = 0; i < 10; i++)
-        {
+        for (var i = 0; i < 10; i++)
             tracker.IncrementFrame();
-        }
 
         // Execute a slow system (3ms > 1.667ms threshold)
         tracker.TrackSystemPerformance("SlowSystem", 3.0);
@@ -170,7 +168,7 @@ public class SystemPerformanceTrackerTests
         var tracker = new SystemPerformanceTracker(mockLogger.Object, config);
 
         // Act - Execute slow system 10 times with frame increments
-        for (int i = 0; i < 10; i++)
+        for (var i = 0; i < 10; i++)
         {
             tracker.IncrementFrame();
             tracker.TrackSystemPerformance("SlowSystem", 3.0);
@@ -204,7 +202,7 @@ public class SystemPerformanceTrackerTests
     public void Constructor_AcceptsNullLogger()
     {
         // Act & Assert - Should not throw
-        var tracker = new SystemPerformanceTracker(null, null);
+        var tracker = new SystemPerformanceTracker();
         tracker.TrackSystemPerformance("TestSystem", 5.0);
     }
 
@@ -212,7 +210,7 @@ public class SystemPerformanceTrackerTests
     public void Constructor_UsesDefaultConfigWhenNull()
     {
         // Arrange & Act
-        var tracker = new SystemPerformanceTracker(null, null);
+        var tracker = new SystemPerformanceTracker();
         tracker.TrackSystemPerformance("TestSystem", 5.0);
 
         // Assert - Should use default configuration without errors

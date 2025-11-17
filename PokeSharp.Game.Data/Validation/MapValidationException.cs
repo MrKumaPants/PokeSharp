@@ -1,15 +1,10 @@
 namespace PokeSharp.Game.Data.Validation;
 
 /// <summary>
-/// Exception thrown when map validation fails
+///     Exception thrown when map validation fails
 /// </summary>
 public class MapValidationException : Exception
 {
-    /// <summary>
-    /// The validation result containing all errors and warnings
-    /// </summary>
-    public ValidationResult ValidationResult { get; }
-
     public MapValidationException(ValidationResult validationResult)
         : base(validationResult.GetErrorMessage())
     {
@@ -31,4 +26,9 @@ public class MapValidationException : Exception
     {
         ValidationResult = validationResult;
     }
+
+    /// <summary>
+    ///     The validation result containing all errors and warnings
+    /// </summary>
+    public ValidationResult ValidationResult { get; }
 }

@@ -188,10 +188,7 @@ public class PerformanceRegressionTests : IDisposable
         // Arrange - Create 100 entities with movement
         for (int i = 0; i < 100; i++)
         {
-            _world.Create(
-                new Position { X = i, Y = i },
-                new GridMovement { IsMoving = false }
-            );
+            _world.Create(new Position { X = i, Y = i }, new GridMovement { IsMoving = false });
         }
 
         // Warm up
@@ -391,7 +388,8 @@ public class PerformanceRegressionTests : IDisposable
         var gen0Collections = gen0After - gen0Before;
 
         // Generate report
-        var report = $@"
+        var report =
+            $@"
 === PERFORMANCE REGRESSION REPORT ===
 Test Date: {DateTime.Now:yyyy-MM-dd HH:mm:ss}
 Entity Count: 50 sprites with animations

@@ -63,7 +63,7 @@ public sealed class BulkQueryOperations
 
         _world.Query(
             in query,
-            (Entity entity) =>
+            entity =>
             {
                 entities.Add(entity);
             }
@@ -165,11 +165,11 @@ public sealed class BulkQueryOperations
     /// </example>
     public void ForEach(in QueryDescription query, Action<Entity> action)
     {
-        ArgumentNullException.ThrowIfNull(action, nameof(action));
+        ArgumentNullException.ThrowIfNull(action);
 
         _world.Query(
             in query,
-            (Entity entity) =>
+            entity =>
             {
                 action(entity);
             }
@@ -196,7 +196,7 @@ public sealed class BulkQueryOperations
     public void ForEach<T>(in QueryDescription query, Action<Entity, T> action)
         where T : struct
     {
-        ArgumentNullException.ThrowIfNull(action, nameof(action));
+        ArgumentNullException.ThrowIfNull(action);
 
         _world.Query(
             in query,
@@ -228,12 +228,8 @@ public sealed class BulkQueryOperations
         var entitiesToDestroy = CollectEntities(query);
 
         foreach (var entity in entitiesToDestroy)
-        {
             if (_world.IsAlive(entity))
-            {
                 _world.Destroy(entity);
-            }
-        }
 
         return entitiesToDestroy.Count;
     }
@@ -257,11 +253,11 @@ public sealed class BulkQueryOperations
     public int AddComponentToMatching<T>(in QueryDescription query, T component)
         where T : struct
     {
-        int count = 0;
+        var count = 0;
 
         _world.Query(
             in query,
-            (Entity entity) =>
+            entity =>
             {
                 if (!entity.Has<T>())
                 {
@@ -290,11 +286,11 @@ public sealed class BulkQueryOperations
     public int RemoveComponentFromMatching<T>(in QueryDescription query)
         where T : struct
     {
-        int count = 0;
+        var count = 0;
 
         _world.Query(
             in query,
-            (Entity entity) =>
+            entity =>
             {
                 if (entity.Has<T>())
                 {
@@ -321,10 +317,10 @@ public sealed class BulkQueryOperations
     /// </example>
     public int CountMatching(in QueryDescription query)
     {
-        int count = 0;
+        var count = 0;
         _world.Query(
             in query,
-            (Entity entity) =>
+            entity =>
             {
                 count++;
             }
@@ -349,11 +345,11 @@ public sealed class BulkQueryOperations
     /// </example>
     public bool HasMatching(in QueryDescription query)
     {
-        bool hasAny = false;
+        var hasAny = false;
 
         _world.Query(
             in query,
-            (Entity entity) =>
+            entity =>
             {
                 hasAny = true;
                 // Early exit after first match would be ideal, but Query doesn't support it

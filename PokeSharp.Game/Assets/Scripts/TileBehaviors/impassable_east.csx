@@ -7,7 +7,11 @@ using PokeSharp.Game.Scripting.Runtime;
 /// </summary>
 public class ImpassableEastBehavior : TileBehaviorScriptBase
 {
-    public override bool IsBlockedFrom(ScriptContext ctx, Direction fromDirection, Direction toDirection)
+    public override bool IsBlockedFrom(
+        ScriptContext ctx,
+        Direction fromDirection,
+        Direction toDirection
+    )
     {
         // Block if moving from east
         if (fromDirection == Direction.East)

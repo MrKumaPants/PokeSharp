@@ -12,8 +12,7 @@ public class CollisionMapper : IEntityPropertyMapper<Collision>
     public bool CanMap(Dictionary<string, object> properties)
     {
         // Can map if has "solid" or "collidable" property
-        return properties.ContainsKey("solid")
-            || properties.ContainsKey("collidable");
+        return properties.ContainsKey("solid") || properties.ContainsKey("collidable");
     }
 
     public Collision Map(Dictionary<string, object> properties)

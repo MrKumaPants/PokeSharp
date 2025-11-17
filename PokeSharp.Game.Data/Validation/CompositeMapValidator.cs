@@ -18,14 +18,6 @@ public class CompositeMapValidator : IMapValidator
     }
 
     /// <summary>
-    ///     Adds a validator to the composite.
-    /// </summary>
-    public void AddValidator(IMapValidator validator)
-    {
-        _validators.Add(validator);
-    }
-
-    /// <summary>
     ///     Validates the map using all registered validators.
     ///     Aggregates all errors and warnings from all validators.
     /// </summary>
@@ -46,6 +38,14 @@ public class CompositeMapValidator : IMapValidator
         }
 
         return aggregateResult;
+    }
+
+    /// <summary>
+    ///     Adds a validator to the composite.
+    /// </summary>
+    public void AddValidator(IMapValidator validator)
+    {
+        _validators.Add(validator);
     }
 
     /// <summary>

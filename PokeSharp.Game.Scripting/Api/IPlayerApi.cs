@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Systems.Services;
 
 namespace PokeSharp.Game.Scripting.Api;
 

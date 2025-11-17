@@ -1,23 +1,15 @@
 using Microsoft.EntityFrameworkCore;
-using PokeSharp.Engine.Core.Types;
 using PokeSharp.Game.Data.Entities;
 using PokeSharp.Game.Data.ValueConverters;
 
 namespace PokeSharp.Game.Data;
 
 /// <summary>
-/// EF Core DbContext for game data definitions (NPCs, trainers, maps, etc.).
-/// Uses in-memory database for fast, read-only access.
+///     EF Core DbContext for game data definitions (NPCs, trainers, maps, etc.).
+///     Uses in-memory database for fast, read-only access.
 /// </summary>
 public class GameDataContext : DbContext
 {
-    // NPC-related entities
-    public DbSet<NpcDefinition> Npcs { get; set; } = null!;
-    public DbSet<TrainerDefinition> Trainers { get; set; } = null!;
-
-    // Map entities
-    public DbSet<MapDefinition> Maps { get; set; } = null!;
-
     // TODO: Add when implementing Pokemon system
     // public DbSet<Species> Species { get; set; } = null!;
     // public DbSet<Move> Moves { get; set; } = null!;
@@ -26,6 +18,13 @@ public class GameDataContext : DbContext
 
     public GameDataContext(DbContextOptions<GameDataContext> options)
         : base(options) { }
+
+    // NPC-related entities
+    public DbSet<NpcDefinition> Npcs { get; set; } = null!;
+    public DbSet<TrainerDefinition> Trainers { get; set; } = null!;
+
+    // Map entities
+    public DbSet<MapDefinition> Maps { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,7 +36,7 @@ public class GameDataContext : DbContext
     }
 
     /// <summary>
-    /// Configure NpcDefinition entity.
+    ///     Configure NpcDefinition entity.
     /// </summary>
     private void ConfigureNpcDefinition(ModelBuilder modelBuilder)
     {
@@ -50,13 +49,12 @@ public class GameDataContext : DbContext
             entity.HasIndex(n => n.DisplayName);
 
             // Value converter for SpriteId
-            entity.Property(n => n.SpriteId)
-                .HasConversion(new SpriteIdValueConverter());
+            entity.Property(n => n.SpriteId).HasConversion(new SpriteIdValueConverter());
         });
     }
 
     /// <summary>
-    /// Configure TrainerDefinition entity.
+    ///     Configure TrainerDefinition entity.
     /// </summary>
     private void ConfigureTrainerDefinition(ModelBuilder modelBuilder)
     {
@@ -69,15 +67,14 @@ public class GameDataContext : DbContext
             entity.HasIndex(t => t.DisplayName);
 
             // Value converter for SpriteId
-            entity.Property(t => t.SpriteId)
-                .HasConversion(new SpriteIdValueConverter());
+            entity.Property(t => t.SpriteId).HasConversion(new SpriteIdValueConverter());
 
             // PartyJson will be deserialized on-demand
         });
     }
 
     /// <summary>
-    /// Configure MapDefinition entity.
+    ///     Configure MapDefinition entity.
     /// </summary>
     private void ConfigureMapDefinition(ModelBuilder modelBuilder)
     {
@@ -92,16 +89,11 @@ public class GameDataContext : DbContext
 
             // Value converters for MapIdentifier
             var mapIdConverter = new MapIdentifierValueConverter();
-            entity.Property(m => m.MapId)
-                .HasConversion(mapIdConverter);
-            entity.Property(m => m.NorthMapId)
-                .HasConversion(mapIdConverter);
-            entity.Property(m => m.SouthMapId)
-                .HasConversion(mapIdConverter);
-            entity.Property(m => m.EastMapId)
-                .HasConversion(mapIdConverter);
-            entity.Property(m => m.WestMapId)
-                .HasConversion(mapIdConverter);
+            entity.Property(m => m.MapId).HasConversion(mapIdConverter);
+            entity.Property(m => m.NorthMapId).HasConversion(mapIdConverter);
+            entity.Property(m => m.SouthMapId).HasConversion(mapIdConverter);
+            entity.Property(m => m.EastMapId).HasConversion(mapIdConverter);
+            entity.Property(m => m.WestMapId).HasConversion(mapIdConverter);
 
             // TiledDataJson stores complete Tiled map data
             // Will be deserialized on-demand by MapLoader

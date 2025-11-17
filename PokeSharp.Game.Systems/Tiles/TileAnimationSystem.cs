@@ -2,7 +2,6 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Tiles;
 using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 
@@ -22,8 +21,8 @@ public class TileAnimationSystem(ILogger<TileAnimationSystem>? logger = null)
     private int _animatedTileCount = -1; // Track for logging on first update
 
     /// <summary>
-    /// Gets the priority for execution order. Lower values execute first.
-    /// Tile animation executes at priority 850, after animation (800) and camera follow (825).
+    ///     Gets the priority for execution order. Lower values execute first.
+    ///     Tile animation executes at priority 850, after animation (800) and camera follow (825).
     /// </summary>
     public override int Priority => SystemPriority.TileAnimation;
 

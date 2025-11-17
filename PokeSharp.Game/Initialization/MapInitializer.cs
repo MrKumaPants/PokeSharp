@@ -1,12 +1,10 @@
 using Arch.Core;
 using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Types;
 using PokeSharp.Engine.Rendering.Systems;
 using PokeSharp.Game.Components.Maps;
-using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 using PokeSharp.Game.Systems;
 using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
@@ -35,6 +33,7 @@ public class MapInitializer(
     {
         _spriteTextureLoader = loader ?? throw new ArgumentNullException(nameof(loader));
     }
+
     /// <summary>
     ///     Loads a map from EF Core definition (NEW: Definition-based loading).
     ///     Creates individual entities for each tile with appropriate components.
@@ -113,7 +112,11 @@ public class MapInitializer(
     ///     Completes post-loading steps for a map: sprite loading, lifecycle registration,
     ///     spatial hash invalidation, and render system setup.
     /// </summary>
-    private async Task CompleteMapLoadingAsync(Entity mapInfoEntity, MapInfo mapInfo, string mapName)
+    private async Task CompleteMapLoadingAsync(
+        Entity mapInfoEntity,
+        MapInfo mapInfo,
+        string mapName
+    )
     {
         var tilesetTextureIds = mapLoader.GetLoadedTextureIds(mapInfo.MapId);
 
@@ -159,25 +162,34 @@ public class MapInitializer(
     {
         if (_spriteTextureLoader == null)
         {
-            logger.LogWarning("SpriteTextureLoader not set - skipping sprite loading for map {MapId}", mapId.Value);
+            logger.LogWarning(
+                "SpriteTextureLoader not set - skipping sprite loading for map {MapId}",
+                mapId.Value
+            );
             return new HashSet<string>();
         }
 
         var requiredSpriteIds = mapLoader.GetRequiredSpriteIds();
         try
         {
-            var spriteTextureKeys = await _spriteTextureLoader.LoadSpritesForMapAsync(mapId, requiredSpriteIds);
+            var spriteTextureKeys = await _spriteTextureLoader.LoadSpritesForMapAsync(
+                mapId,
+                requiredSpriteIds
+            );
             logger.LogAssetStatus(
                 "Map sprites loaded",
                 ("mapId", mapId.Value),
-                ("spriteCount", spriteTextureKeys.Count));
+                ("spriteCount", spriteTextureKeys.Count)
+            );
             return spriteTextureKeys;
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex,
+            logger.LogWarning(
+                ex,
                 "Failed to load sprites for map {MapId}, using fallback textures",
-                mapId.Value);
+                mapId.Value
+            );
             return new HashSet<string>();
         }
     }

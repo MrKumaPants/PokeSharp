@@ -48,13 +48,14 @@ public class FormatOutputTests
         var logger = ConsoleLoggerFactory.Create<FormatOutputTests>();
 
         // Act & Assert
-        var act = () => logger.LogInformation(
-            "Entity {EntityId} at position ({X}, {Y}) with velocity {Velocity:F2}",
-            123,
-            10,
-            20,
-            5.67890
-        );
+        var act = () =>
+            logger.LogInformation(
+                "Entity {EntityId} at position ({X}, {Y}) with velocity {Velocity:F2}",
+                123,
+                10,
+                20,
+                5.67890
+            );
 
         act.Should().NotThrow();
     }
@@ -106,7 +107,13 @@ public class FormatOutputTests
             // Cleanup
             if (Directory.Exists(logDirectory))
             {
-                try { Directory.Delete(logDirectory, true); } catch { /* Ignore cleanup errors */ }
+                try
+                {
+                    Directory.Delete(logDirectory, true);
+                }
+                catch
+                { /* Ignore cleanup errors */
+                }
             }
         }
     }

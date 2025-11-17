@@ -1,11 +1,7 @@
-using System.Linq;
 using Arch.Core;
-using Arch.Core.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Systems.Management;
-using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Data.MapLoading.Tiled.Services;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
@@ -39,9 +35,7 @@ public class AnimatedTileProcessor
 
         var created = 0;
         foreach (var loadedTileset in tilesets)
-        {
             created += CreateAnimatedTileEntitiesForTileset(world, loadedTileset.Tileset);
-        }
 
         return created;
     }
@@ -233,4 +227,3 @@ public class AnimatedTileProcessor
         return new Rectangle(sourceX, sourceY, tileWidth, tileHeight);
     }
 }
-

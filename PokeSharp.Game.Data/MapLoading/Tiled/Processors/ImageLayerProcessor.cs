@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
@@ -18,7 +16,10 @@ public class ImageLayerProcessor
     private readonly IAssetProvider _assetManager;
     private readonly ILogger<ImageLayerProcessor>? _logger;
 
-    public ImageLayerProcessor(IAssetProvider assetManager, ILogger<ImageLayerProcessor>? logger = null)
+    public ImageLayerProcessor(
+        IAssetProvider assetManager,
+        ILogger<ImageLayerProcessor>? logger = null
+    )
     {
         _assetManager = assetManager;
         _logger = logger;
@@ -58,10 +59,7 @@ public class ImageLayerProcessor
             var imagePath = imageLayer.Image.Source;
             if (string.IsNullOrEmpty(imagePath))
             {
-                _logger?.LogOperationSkipped(
-                    $"Image layer '{imageLayer.Name}'",
-                    "no image source"
-                );
+                _logger?.LogOperationSkipped($"Image layer '{imageLayer.Name}'", "no image source");
                 continue;
             }
 
@@ -70,7 +68,6 @@ public class ImageLayerProcessor
 
             // Load texture if not already loaded
             if (!_assetManager.HasTexture(textureId))
-            {
                 try
                 {
                     // Resolve relative path from map directory
@@ -80,13 +77,9 @@ public class ImageLayerProcessor
                     // Otherwise (e.g., in tests with stub), use the path directly
                     string pathForLoader;
                     if (_assetManager is AssetManager assetManager)
-                    {
                         pathForLoader = Path.GetRelativePath(assetManager.AssetRoot, fullImagePath);
-                    }
                     else
-                    {
                         pathForLoader = imagePath;
-                    }
 
                     _assetManager.LoadTexture(textureId, pathForLoader);
                 }
@@ -100,7 +93,6 @@ public class ImageLayerProcessor
                     );
                     continue;
                 }
-            }
 
             // Calculate layer depth based on position in layer stack
             // Image layers should interleave with tile layers
@@ -155,4 +147,3 @@ public class ImageLayerProcessor
         return 1.0f - normalized; // Invert so lower IDs = higher depth (back)
     }
 }
-

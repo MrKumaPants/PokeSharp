@@ -1,11 +1,10 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 
 namespace PokeSharp.Engine.Core.Modding;
 
 /// <summary>
-/// Loads and parses JSON Patch files from disk
+///     Loads and parses JSON Patch files from disk
 /// </summary>
 public sealed class PatchFileLoader
 {
@@ -17,7 +16,7 @@ public sealed class PatchFileLoader
     }
 
     /// <summary>
-    /// Loads a patch file from disk
+    ///     Loads a patch file from disk
     /// </summary>
     public ModPatch? LoadPatchFile(string filePath)
     {
@@ -25,7 +24,10 @@ public sealed class PatchFileLoader
         {
             if (!File.Exists(filePath))
             {
-                _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Patch file not found: [cyan]{Path}[/]", filePath);
+                _logger.LogWarning(
+                    "[steelblue1]WF[/] [orange3]⚠[/] Patch file not found: [cyan]{Path}[/]",
+                    filePath
+                );
                 return null;
             }
 
@@ -37,15 +39,16 @@ public sealed class PatchFileLoader
 
             if (patch == null)
             {
-                _logger.LogWarning("[steelblue1]WF[/] [orange3]⚠[/] Failed to deserialize patch file: [cyan]{Path}[/]", filePath);
+                _logger.LogWarning(
+                    "[steelblue1]WF[/] [orange3]⚠[/] Failed to deserialize patch file: [cyan]{Path}[/]",
+                    filePath
+                );
                 return null;
             }
 
             // Validate all operations
             foreach (var operation in patch.Operations)
-            {
                 operation.Validate();
-            }
 
             _logger.LogDebug(
                 "[steelblue1]WF[/] Loaded patch file: [cyan]{Path}[/] -> {Target} ([yellow]{Count}[/] operations)",
@@ -58,13 +61,17 @@ public sealed class PatchFileLoader
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[steelblue1]WF[/] [red]✗[/] Error loading patch file: [cyan]{Path}[/]", filePath);
+            _logger.LogError(
+                ex,
+                "[steelblue1]WF[/] [red]✗[/] Error loading patch file: [cyan]{Path}[/]",
+                filePath
+            );
             return null;
         }
     }
 
     /// <summary>
-    /// Loads all patch files specified in a mod manifest
+    ///     Loads all patch files specified in a mod manifest
     /// </summary>
     public List<ModPatch> LoadModPatches(LoadedMod mod)
     {
@@ -76,9 +83,7 @@ public sealed class PatchFileLoader
             var patch = LoadPatchFile(fullPath);
 
             if (patch != null)
-            {
                 patches.Add(patch);
-            }
         }
 
         return patches;

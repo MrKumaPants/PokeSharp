@@ -3,12 +3,12 @@ using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 namespace PokeSharp.Game.Data.Validation;
 
 /// <summary>
-/// Interface for validating Tiled map data
+///     Interface for validating Tiled map data
 /// </summary>
 public interface IMapValidator
 {
     /// <summary>
-    /// Validates a TMX document
+    ///     Validates a TMX document
     /// </summary>
     /// <param name="map">The TMX document to validate</param>
     /// <param name="mapPath">Path to the map file (for relative path validation)</param>
@@ -17,27 +17,27 @@ public interface IMapValidator
 }
 
 /// <summary>
-/// Result of map validation
+///     Result of map validation
 /// </summary>
 public class ValidationResult
 {
     /// <summary>
-    /// Whether the validation passed (no errors)
+    ///     Whether the validation passed (no errors)
     /// </summary>
     public bool IsValid => Errors.Count == 0;
 
     /// <summary>
-    /// List of validation errors (must be fixed)
+    ///     List of validation errors (must be fixed)
     /// </summary>
     public List<ValidationError> Errors { get; set; } = new();
 
     /// <summary>
-    /// List of validation warnings (should be reviewed)
+    ///     List of validation warnings (should be reviewed)
     /// </summary>
     public List<ValidationWarning> Warnings { get; set; } = new();
 
     /// <summary>
-    /// Adds an error to the validation result
+    ///     Adds an error to the validation result
     /// </summary>
     public void AddError(string message, string? location = null)
     {
@@ -45,7 +45,7 @@ public class ValidationResult
     }
 
     /// <summary>
-    /// Adds a warning to the validation result
+    ///     Adds a warning to the validation result
     /// </summary>
     public void AddWarning(string message, string? location = null)
     {
@@ -53,7 +53,7 @@ public class ValidationResult
     }
 
     /// <summary>
-    /// Gets a formatted error message for all errors
+    ///     Gets a formatted error message for all errors
     /// </summary>
     public string GetErrorMessage()
     {
@@ -72,7 +72,7 @@ public class ValidationResult
     }
 
     /// <summary>
-    /// Gets a formatted warning message for all warnings
+    ///     Gets a formatted warning message for all warnings
     /// </summary>
     public string GetWarningMessage()
     {
@@ -91,7 +91,7 @@ public class ValidationResult
     }
 
     /// <summary>
-    /// Legacy ToString for backwards compatibility
+    ///     Legacy ToString for backwards compatibility
     /// </summary>
     public override string ToString()
     {
@@ -105,14 +105,14 @@ public class ValidationResult
 }
 
 /// <summary>
-/// Represents a validation error that must be fixed
+///     Represents a validation error that must be fixed
 /// </summary>
 /// <param name="Message">Error message</param>
 /// <param name="Location">Optional location where the error occurred</param>
 public record ValidationError(string Message, string? Location = null);
 
 /// <summary>
-/// Represents a validation warning that should be reviewed
+///     Represents a validation warning that should be reviewed
 /// </summary>
 /// <param name="Message">Warning message</param>
 /// <param name="Location">Optional location where the warning occurred</param>

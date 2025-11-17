@@ -24,13 +24,9 @@ public class ScriptMapper : IEntityPropertyMapper<TileScript>
         string? scriptPath = null;
 
         if (properties.TryGetValue("script", out var scriptValue))
-        {
             scriptPath = scriptValue?.ToString();
-        }
         else if (properties.TryGetValue("on_step", out var stepValue))
-        {
             scriptPath = stepValue?.ToString();
-        }
 
         if (string.IsNullOrWhiteSpace(scriptPath))
             throw new InvalidOperationException("Script property is empty or whitespace");

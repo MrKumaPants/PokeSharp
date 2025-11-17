@@ -10,12 +10,13 @@ using PokeSharp.Game.Data.Loading;
 using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 using PokeSharp.Game.Data.PropertyMapping;
 using PokeSharp.Game.Data.Services;
+using PokeSharp.Game.Infrastructure.Configuration;
 using PokeSharp.Game.Infrastructure.Diagnostics;
+using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Initialization;
 using PokeSharp.Game.Input;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Services;
-using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
 
@@ -27,37 +28,37 @@ namespace PokeSharp.Game;
 /// </summary>
 public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
 {
-    private readonly IEntityFactoryService _entityFactory;
-    private readonly ScriptService _scriptService;
-    private readonly TypeRegistry<BehaviorDefinition> _behaviorRegistry;
-    private readonly TypeRegistry<TileBehaviorDefinition> _tileBehaviorRegistry;
     private readonly IScriptingApiProvider _apiProvider;
-    private readonly ILoggerFactory _loggerFactory;
-    private readonly PerformanceMonitor _performanceMonitor;
-    private readonly InputManager _inputManager;
-    private readonly PlayerFactory _playerFactory;
-    private readonly IGameTimeService _gameTime;
-    private readonly EntityPoolManager _poolManager;
+    private readonly TypeRegistry<BehaviorDefinition> _behaviorRegistry;
     private readonly GameDataLoader _dataLoader;
-    private readonly NpcDefinitionService _npcDefinitionService;
-    private readonly MapDefinitionService _mapDefinitionService;
-    private readonly SpriteLoader _spriteLoader;
-    private readonly TemplateCacheInitializer _templateCacheInitializer;
+    private readonly IEntityFactoryService _entityFactory;
+    private readonly IGameTimeService _gameTime;
     private readonly GraphicsDeviceManager _graphics;
+    private readonly InputManager _inputManager;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly MapDefinitionService _mapDefinitionService;
+    private readonly NpcDefinitionService _npcDefinitionService;
+    private readonly PerformanceMonitor _performanceMonitor;
+    private readonly PlayerFactory _playerFactory;
+    private readonly EntityPoolManager _poolManager;
+    private readonly ScriptService _scriptService;
+    private readonly SpriteLoader _spriteLoader;
 
     // Services that depend on GraphicsDevice (created in Initialize)
     private readonly SystemManager _systemManager;
+    private readonly TemplateCacheInitializer _templateCacheInitializer;
+    private readonly TypeRegistry<TileBehaviorDefinition> _tileBehaviorRegistry;
     private readonly World _world;
 
     private GameInitializer _gameInitializer = null!;
-    private MapInitializer _mapInitializer = null!;
-    private NPCBehaviorInitializer _npcBehaviorInitializer = null!;
-    private TileBehaviorInitializer _tileBehaviorInitializer = null!;
-    private SpriteTextureLoader? _spriteTextureLoader;
+    private Task? _initializationTask;
 
     // Async initialization state
     private bool _isInitialized;
-    private Task? _initializationTask;
+    private MapInitializer _mapInitializer = null!;
+    private NPCBehaviorInitializer _npcBehaviorInitializer = null!;
+    private SpriteTextureLoader? _spriteTextureLoader;
+    private TileBehaviorInitializer _tileBehaviorInitializer = null!;
 
     /// <summary>
     ///     Initializes a new instance of the PokeSharpGame class.
@@ -68,30 +69,115 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
         ArgumentNullException.ThrowIfNull(options);
 
         _loggerFactory = loggerFactory;
-        _world = options.World ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.World)} cannot be null");
-        _systemManager = options.SystemManager ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.SystemManager)} cannot be null");
-        _entityFactory = options.EntityFactory ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.EntityFactory)} cannot be null");
-        _scriptService = options.ScriptService ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.ScriptService)} cannot be null");
-        _behaviorRegistry = options.BehaviorRegistry ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.BehaviorRegistry)} cannot be null");
-        _tileBehaviorRegistry = options.TileBehaviorRegistry ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.TileBehaviorRegistry)} cannot be null");
-        _performanceMonitor = options.PerformanceMonitor ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.PerformanceMonitor)} cannot be null");
-        _inputManager = options.InputManager ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.InputManager)} cannot be null");
-        _playerFactory = options.PlayerFactory ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.PlayerFactory)} cannot be null");
-        _apiProvider = options.ApiProvider ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.ApiProvider)} cannot be null");
-        _gameTime = options.GameTime ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.GameTime)} cannot be null");
-        _poolManager = options.PoolManager ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.PoolManager)} cannot be null");
-        _dataLoader = options.DataLoader ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.DataLoader)} cannot be null");
-        _npcDefinitionService = options.NpcDefinitionService ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.NpcDefinitionService)} cannot be null");
-        _mapDefinitionService = options.MapDefinitionService ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.MapDefinitionService)} cannot be null");
-        _spriteLoader = options.SpriteLoader ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.SpriteLoader)} cannot be null");
-        _templateCacheInitializer = options.TemplateCacheInitializer ?? throw new ArgumentNullException(nameof(options), $"{nameof(options.TemplateCacheInitializer)} cannot be null");
+        _world =
+            options.World
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.World)} cannot be null"
+            );
+        _systemManager =
+            options.SystemManager
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.SystemManager)} cannot be null"
+            );
+        _entityFactory =
+            options.EntityFactory
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.EntityFactory)} cannot be null"
+            );
+        _scriptService =
+            options.ScriptService
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.ScriptService)} cannot be null"
+            );
+        _behaviorRegistry =
+            options.BehaviorRegistry
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.BehaviorRegistry)} cannot be null"
+            );
+        _tileBehaviorRegistry =
+            options.TileBehaviorRegistry
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.TileBehaviorRegistry)} cannot be null"
+            );
+        _performanceMonitor =
+            options.PerformanceMonitor
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.PerformanceMonitor)} cannot be null"
+            );
+        _inputManager =
+            options.InputManager
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.InputManager)} cannot be null"
+            );
+        _playerFactory =
+            options.PlayerFactory
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.PlayerFactory)} cannot be null"
+            );
+        _apiProvider =
+            options.ApiProvider
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.ApiProvider)} cannot be null"
+            );
+        _gameTime =
+            options.GameTime
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.GameTime)} cannot be null"
+            );
+        _poolManager =
+            options.PoolManager
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.PoolManager)} cannot be null"
+            );
+        _dataLoader =
+            options.DataLoader
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.DataLoader)} cannot be null"
+            );
+        _npcDefinitionService =
+            options.NpcDefinitionService
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.NpcDefinitionService)} cannot be null"
+            );
+        _mapDefinitionService =
+            options.MapDefinitionService
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.MapDefinitionService)} cannot be null"
+            );
+        _spriteLoader =
+            options.SpriteLoader
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.SpriteLoader)} cannot be null"
+            );
+        _templateCacheInitializer =
+            options.TemplateCacheInitializer
+            ?? throw new ArgumentNullException(
+                nameof(options),
+                $"{nameof(options.TemplateCacheInitializer)} cannot be null"
+            );
 
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
-        
+
         // Window configuration - defaults to 800x600
         // Can be overridden via configuration in the future
-            var windowConfig = Infrastructure.Configuration.GameWindowConfig.CreateDefault();
+        var windowConfig = GameWindowConfig.CreateDefault();
         _graphics.PreferredBackBufferWidth = windowConfig.Width;
         _graphics.PreferredBackBufferHeight = windowConfig.Height;
         IsMouseVisible = windowConfig.IsMouseVisible;
@@ -171,19 +257,18 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
 
             // Create PropertyMapperRegistry for tile property mapping (collision, behaviors, etc.)
             var mapperRegistryLogger = _loggerFactory.CreateLogger<PropertyMapperRegistry>();
-            var propertyMapperRegistry = PropertyMapperServiceExtensions.CreatePropertyMapperRegistry(
-                mapperRegistryLogger
-            );
+            var propertyMapperRegistry =
+                PropertyMapperServiceExtensions.CreatePropertyMapperRegistry(mapperRegistryLogger);
 
             var mapLoaderLogger = _loggerFactory.CreateLogger<MapLoader>();
             var mapLoader = new MapLoader(
                 assetManager,
                 _systemManager,
                 propertyMapperRegistry,
-                entityFactory: _entityFactory,
-                npcDefinitionService: _npcDefinitionService,
-                mapDefinitionService: _mapDefinitionService,
-                logger: mapLoaderLogger
+                _entityFactory,
+                _npcDefinitionService,
+                _mapDefinitionService,
+                mapLoaderLogger
             );
 
             // Create initializers
@@ -202,9 +287,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
 
             // Pre-load sprite manifests FIRST (required before SpriteAnimationSystem runs)
             await _spriteLoader.LoadAllSpritesAsync();
-            _loggerFactory
-                .CreateLogger<PokeSharpGame>()
-                .LogInformation("Sprite manifests loaded");
+            _loggerFactory.CreateLogger<PokeSharpGame>().LogInformation("Sprite manifests loaded");
 
             // Initialize core game systems (SpriteAnimationSystem needs sprite cache ready)
             _gameInitializer.Initialize(GraphicsDevice);
@@ -226,7 +309,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
                 _gameInitializer.MapLifecycleManager // This is now initialized!
             );
 
-            var npcBehaviorInitializerLogger = _loggerFactory.CreateLogger<NPCBehaviorInitializer>();
+            var npcBehaviorInitializerLogger =
+                _loggerFactory.CreateLogger<NPCBehaviorInitializer>();
             _npcBehaviorInitializer = new NPCBehaviorInitializer(
                 npcBehaviorInitializerLogger,
                 _loggerFactory,
@@ -241,7 +325,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
             await _npcBehaviorInitializer.InitializeAsync();
 
             // Initialize tile behavior system
-            var tileBehaviorInitializerLogger = _loggerFactory.CreateLogger<TileBehaviorInitializer>();
+            var tileBehaviorInitializerLogger =
+                _loggerFactory.CreateLogger<TileBehaviorInitializer>();
             _tileBehaviorInitializer = new TileBehaviorInitializer(
                 tileBehaviorInitializerLogger,
                 _loggerFactory,
@@ -257,9 +342,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
             // Set sprite texture loader in MapInitializer (must be called after MapInitializer is created)
             // This was moved from LoadSpriteTextures() to here due to initialization order
             if (_spriteTextureLoader != null)
-            {
                 _mapInitializer.SetSpriteTextureLoader(_spriteTextureLoader);
-            }
 
             // Load test map and create map entity (NEW: Definition-based loading)
             await _mapInitializer.LoadMap("test-map");
@@ -294,9 +377,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
     ///     Loads game content. Called by MonoGame during initialization.
     ///     Content loading is handled in LoadSpriteTextures() after initialization.
     /// </summary>
-    protected override void LoadContent()
-    {
-    }
+    protected override void LoadContent() { }
 
     /// <summary>
     ///     Initializes lazy sprite loading system.
@@ -349,6 +430,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
                     Exit();
                     return;
                 }
+
                 // Task completed successfully - mark as initialized
                 _isInitialized = true;
             }
@@ -391,10 +473,8 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
 
         // Only render if initialization is complete
         if (_isInitialized)
-        {
             // ✅ FIXED: Call Render() to execute rendering
             _systemManager.Render(_world);
-        }
 
         base.Draw(gameTime);
     }
@@ -405,9 +485,7 @@ public class PokeSharpGame : Microsoft.Xna.Framework.Game, IAsyncDisposable
     protected override void Dispose(bool disposing)
     {
         if (disposing)
-        {
             _world?.Dispose();
-        }
 
         base.Dispose(disposing);
     }

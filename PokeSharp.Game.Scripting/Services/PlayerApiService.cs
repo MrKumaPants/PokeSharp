@@ -4,9 +4,7 @@ using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Game.Components.Common;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Components.Player;
 using PokeSharp.Game.Scripting.Api;
-using PokeSharp.Game.Systems.Services;
 using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 
 namespace PokeSharp.Game.Scripting.Services;
@@ -16,11 +14,12 @@ namespace PokeSharp.Game.Scripting.Services;
 /// </summary>
 public class PlayerApiService(World world, ILogger<PlayerApiService> logger) : IPlayerApi
 {
+    private const string DefaultPlayerName = "PLAYER";
+
     private readonly ILogger<PlayerApiService> _logger =
         logger ?? throw new ArgumentNullException(nameof(logger));
 
     private readonly World _world = world ?? throw new ArgumentNullException(nameof(world));
-    private const string DefaultPlayerName = "PLAYER";
 
     /// <summary>
     ///     Gets the player's chosen name.

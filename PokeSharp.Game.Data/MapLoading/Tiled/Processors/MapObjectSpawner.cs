@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
@@ -22,8 +20,8 @@ namespace PokeSharp.Game.Data.MapLoading.Tiled.Processors;
 public class MapObjectSpawner
 {
     private readonly IEntityFactoryService? _entityFactory;
-    private readonly NpcDefinitionService? _npcDefinitionService;
     private readonly ILogger<MapObjectSpawner>? _logger;
+    private readonly NpcDefinitionService? _npcDefinitionService;
 
     public MapObjectSpawner(
         IEntityFactoryService? entityFactory = null,
@@ -126,9 +124,7 @@ public class MapObjectSpawner
 
                         // Handle NPC/Trainer definitions (NEW: uses EF Core definitions)
                         if (templateId.StartsWith("npc/") || templateId.StartsWith("trainer/"))
-                        {
                             ApplyNpcDefinition(builder, obj, templateId, requiredSpriteIds);
-                        }
                     }
                 );
 
@@ -184,10 +180,15 @@ public class MapObjectSpawner
                         var spriteId = npcDef.SpriteId.Value;
                         // PHASE 2: Collect sprite ID for lazy loading
                         requiredSpriteIds?.Add(spriteId);
-                        _logger?.LogTrace("Collected sprite ID for lazy loading: {SpriteId}", spriteId.Value);
+                        _logger?.LogTrace(
+                            "Collected sprite ID for lazy loading: {SpriteId}",
+                            spriteId.Value
+                        );
 
                         // Use SpriteId properties directly
-                        builder.OverrideComponent(new Sprite(spriteId.SpriteName, spriteId.Category));
+                        builder.OverrideComponent(
+                            new Sprite(spriteId.SpriteName, spriteId.Category)
+                        );
                     }
 
                     builder.OverrideComponent(new GridMovement(npcDef.MovementSpeed));
@@ -237,10 +238,15 @@ public class MapObjectSpawner
                         var spriteId = trainerDef.SpriteId.Value;
                         // PHASE 2: Collect sprite ID for lazy loading
                         requiredSpriteIds?.Add(spriteId);
-                        _logger?.LogTrace("Collected sprite ID for lazy loading: {SpriteId}", spriteId.Value);
+                        _logger?.LogTrace(
+                            "Collected sprite ID for lazy loading: {SpriteId}",
+                            spriteId.Value
+                        );
 
                         // Use SpriteId properties directly
-                        builder.OverrideComponent(new Sprite(spriteId.SpriteName, spriteId.Category));
+                        builder.OverrideComponent(
+                            new Sprite(spriteId.SpriteName, spriteId.Category)
+                        );
                     }
 
                     // Add trainer-specific component (when Trainer component exists)
@@ -285,9 +291,7 @@ public class MapObjectSpawner
         {
             var npcId = npcIdProp?.ToString();
             if (!string.IsNullOrWhiteSpace(npcId))
-            {
                 builder.OverrideComponent(new Npc(npcId));
-            }
         }
 
         // Manual displayName from map
@@ -295,19 +299,13 @@ public class MapObjectSpawner
         {
             var displayName = displayNameProp?.ToString();
             if (!string.IsNullOrWhiteSpace(displayName))
-            {
                 builder.OverrideComponent(new Name(displayName));
-            }
         }
 
         // Manual movement speed from map
         if (obj.Properties.TryGetValue("movementSpeed", out var speedProp))
-        {
             if (float.TryParse(speedProp.ToString(), out var speed))
-            {
                 builder.OverrideComponent(new GridMovement(speed));
-            }
-        }
     }
 
     /// <summary>
@@ -333,9 +331,7 @@ public class MapObjectSpawner
                         && int.TryParse(coords[0].Trim(), out var x)
                         && int.TryParse(coords[1].Trim(), out var y)
                     )
-                    {
                         points.Add(new Point(x, y));
-                    }
                 }
 
                 if (points.Count > 0)
@@ -345,9 +341,7 @@ public class MapObjectSpawner
                         obj.Properties.TryGetValue("waypointWaitTime", out var waitProp)
                         && float.TryParse(waitProp.ToString(), out var waitTime)
                     )
-                    {
                         waypointWaitTime = waitTime;
-                    }
 
                     builder.OverrideComponent(
                         new MovementRoute(points.ToArray(), true, waypointWaitTime)
@@ -358,6 +352,4 @@ public class MapObjectSpawner
             }
         }
     }
-
 }
-

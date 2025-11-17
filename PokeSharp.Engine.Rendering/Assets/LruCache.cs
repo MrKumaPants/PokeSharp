@@ -4,8 +4,8 @@ using Microsoft.Extensions.Logging;
 namespace PokeSharp.Engine.Rendering.Assets;
 
 /// <summary>
-/// Least Recently Used (LRU) cache for textures with memory budget enforcement.
-/// Automatically evicts least recently used items when memory limit is exceeded.
+///     Least Recently Used (LRU) cache for textures with memory budget enforcement.
+///     Automatically evicts least recently used items when memory limit is exceeded.
 /// </summary>
 /// <typeparam name="TKey">Cache key type</typeparam>
 /// <typeparam name="TValue">Cache value type (must implement IDisposable for cleanup)</typeparam>
@@ -13,12 +13,12 @@ public class LruCache<TKey, TValue>
     where TKey : notnull
     where TValue : IDisposable
 {
-    private readonly long _maxSizeBytes;
     private readonly ConcurrentDictionary<TKey, CacheEntry> _cache = new();
-    private readonly LinkedList<TKey> _lruList = new();
     private readonly object _lock = new();
-    private readonly Func<TValue, long> _sizeCalculator;
     private readonly ILogger? _logger;
+    private readonly LinkedList<TKey> _lruList = new();
+    private readonly long _maxSizeBytes;
+    private readonly Func<TValue, long> _sizeCalculator;
     private long _currentSizeBytes;
 
     public LruCache(
@@ -33,17 +33,17 @@ public class LruCache<TKey, TValue>
     }
 
     /// <summary>
-    /// Gets the current memory usage in bytes
+    ///     Gets the current memory usage in bytes
     /// </summary>
     public long CurrentSize => Interlocked.Read(ref _currentSizeBytes);
 
     /// <summary>
-    /// Gets the number of items in the cache
+    ///     Gets the number of items in the cache
     /// </summary>
     public int Count => _cache.Count;
 
     /// <summary>
-    /// Adds or updates an item in the cache, evicting LRU items if needed
+    ///     Adds or updates an item in the cache, evicting LRU items if needed
     /// </summary>
     public void AddOrUpdate(TKey key, TValue value)
     {
@@ -67,9 +67,7 @@ public class LruCache<TKey, TValue>
 
             // Evict LRU items if adding this would exceed budget
             while (_currentSizeBytes + size > _maxSizeBytes && _lruList.Count > 0)
-            {
                 EvictLru();
-            }
 
             // Add new entry
             var node = _lruList.AddFirst(key);
@@ -87,7 +85,7 @@ public class LruCache<TKey, TValue>
     }
 
     /// <summary>
-    /// Gets an item from the cache, updating its LRU position
+    ///     Gets an item from the cache, updating its LRU position
     /// </summary>
     public bool TryGetValue(TKey key, out TValue? value)
     {
@@ -113,7 +111,7 @@ public class LruCache<TKey, TValue>
     }
 
     /// <summary>
-    /// Removes a specific item from the cache
+    ///     Removes a specific item from the cache
     /// </summary>
     public bool Remove(TKey key)
     {
@@ -132,21 +130,20 @@ public class LruCache<TKey, TValue>
                 );
                 return true;
             }
+
             return false;
         }
     }
 
     /// <summary>
-    /// Clears all items from the cache
+    ///     Clears all items from the cache
     /// </summary>
     public void Clear()
     {
         lock (_lock)
         {
             foreach (var entry in _cache.Values)
-            {
                 entry.Value.Dispose();
-            }
 
             _cache.Clear();
             _lruList.Clear();
@@ -157,7 +154,7 @@ public class LruCache<TKey, TValue>
     }
 
     /// <summary>
-    /// Evicts the least recently used item
+    ///     Evicts the least recently used item
     /// </summary>
     private void EvictLru()
     {

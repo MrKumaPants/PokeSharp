@@ -32,7 +32,10 @@ public static class LoggerExtensions
             ["ExceptionSource"] = ex.Source ?? "Unknown",
         };
 
-        var contextString = string.Join(", ", contextData.Select(kvp => $"[cyan]{kvp.Key}[/]=[yellow]{kvp.Value}[/]"));
+        var contextString = string.Join(
+            ", ",
+            contextData.Select(kvp => $"[cyan]{kvp.Key}[/]=[yellow]{kvp.Value}[/]")
+        );
         var fullMessage = $"{message} | Context: {contextString}";
 
         logger.LogError(ex, fullMessage, args);
@@ -64,7 +67,10 @@ public static class LoggerExtensions
         }
         else
         {
-            logger.LogInformation("[lightsteelblue1]MEM[/] Memory: [yellow]{MemoryMb:F2}MB[/]", totalMemoryMb);
+            logger.LogInformation(
+                "[lightsteelblue1]MEM[/] Memory: [yellow]{MemoryMb:F2}MB[/]",
+                totalMemoryMb
+            );
         }
     }
 

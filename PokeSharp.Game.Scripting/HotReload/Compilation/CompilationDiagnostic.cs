@@ -1,7 +1,5 @@
 namespace PokeSharp.Game.Scripting.HotReload.Compilation;
 
-using PokeSharp.Game.Systems.Services;
-
 /// <summary>
 ///     Detailed compilation diagnostic information for error reporting and rollback decisions.
 /// </summary>

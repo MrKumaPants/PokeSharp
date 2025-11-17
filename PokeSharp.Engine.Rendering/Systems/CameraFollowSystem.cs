@@ -21,8 +21,8 @@ public class CameraFollowSystem(ILogger<CameraFollowSystem>? logger = null)
     private QueryDescription _playerQuery;
 
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
-    /// Camera follow executes at priority 825, after animation (800) and before tile animation (850).
+    ///     Gets the update priority. Lower values execute first.
+    ///     Camera follow executes at priority 825, after animation (800) and before tile animation (850).
     /// </summary>
     public int UpdatePriority => SystemPriority.CameraFollow;
 

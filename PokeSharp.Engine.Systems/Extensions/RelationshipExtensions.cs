@@ -1,48 +1,44 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Arch.Core;
 using Arch.Core.Extensions;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Queries;
 using PokeSharp.Game.Components.Relationships;
 
 namespace PokeSharp.Engine.Systems.Extensions;
 
 /// <summary>
-/// Extension methods for easy manipulation of entity relationships.
+///     Extension methods for easy manipulation of entity relationships.
 /// </summary>
 /// <remarks>
-/// These extensions provide a clean, fluent API for working with parent-child
-/// and owner-owned relationships without directly manipulating components.
+///     These extensions provide a clean, fluent API for working with parent-child
+///     and owner-owned relationships without directly manipulating components.
 /// </remarks>
 public static class RelationshipExtensions
 {
     #region Parent-Child Relationships
 
     /// <summary>
-    /// Sets the parent of a child entity, establishing a parent-child relationship.
+    ///     Sets the parent of a child entity, establishing a parent-child relationship.
     /// </summary>
     /// <param name="child">The child entity.</param>
     /// <param name="parent">The parent entity.</param>
     /// <param name="world">The world containing both entities.</param>
     /// <exception cref="ArgumentException">Thrown if either entity is not alive.</exception>
     /// <remarks>
-    /// <para>
-    /// This method:
-    /// 1. Validates both entities are alive
-    /// 2. Removes any existing parent relationship from the child
-    /// 3. Adds Parent component to child
-    /// 4. Adds or updates Children component on parent
-    /// </para>
-    /// <para>
-    /// <b>Example:</b>
-    /// <code>
+    ///     <para>
+    ///         This method:
+    ///         1. Validates both entities are alive
+    ///         2. Removes any existing parent relationship from the child
+    ///         3. Adds Parent component to child
+    ///         4. Adds or updates Children component on parent
+    ///     </para>
+    ///     <para>
+    ///         <b>Example:</b>
+    ///         <code>
     /// var trainer = world.Create();
     /// var pokemon = world.Create();
     /// pokemon.SetParent(trainer, world);
     /// </code>
-    /// </para>
+    ///     </para>
     /// </remarks>
     public static void SetParent(this Entity child, Entity parent, World world)
     {
@@ -60,6 +56,7 @@ public static class RelationshipExtensions
                 ref var oldChildren = ref oldParent.Get<Children>();
                 oldChildren.Values?.Remove(child);
             }
+
             child.Remove<Parent>();
         }
 
@@ -68,30 +65,24 @@ public static class RelationshipExtensions
 
         // Add to parent's children list
         if (!parent.Has<Children>())
-        {
             parent.Add(new Children { Values = new List<Entity>() });
-        }
 
         ref var children = ref parent.Get<Children>();
         if (children.Values == null)
-        {
             children.Values = new List<Entity>();
-        }
 
         if (!children.Values.Contains(child))
-        {
             children.Values.Add(child);
-        }
     }
 
     /// <summary>
-    /// Removes the parent relationship from a child entity.
+    ///     Removes the parent relationship from a child entity.
     /// </summary>
     /// <param name="child">The child entity.</param>
     /// <param name="world">The world containing the entity.</param>
     /// <remarks>
-    /// This method safely removes the Parent component and updates the
-    /// parent's Children component to remove this child reference.
+    ///     This method safely removes the Parent component and updates the
+    ///     parent's Children component to remove this child reference.
     /// </remarks>
     public static void RemoveParent(this Entity child, World world)
     {
@@ -112,14 +103,14 @@ public static class RelationshipExtensions
     }
 
     /// <summary>
-    /// Gets the parent entity of a child, if it exists and is valid.
+    ///     Gets the parent entity of a child, if it exists and is valid.
     /// </summary>
     /// <param name="child">The child entity.</param>
     /// <param name="world">The world containing the entities.</param>
     /// <returns>The parent entity if it exists and is alive, otherwise null.</returns>
     /// <remarks>
-    /// <b>Example:</b>
-    /// <code>
+    ///     <b>Example:</b>
+    ///     <code>
     /// var parent = pokemon.GetParent(world);
     /// if (parent.HasValue) {
     ///     Console.WriteLine($"Pokemon's trainer: {parent.Value}");
@@ -136,22 +127,22 @@ public static class RelationshipExtensions
     }
 
     /// <summary>
-    /// Gets all children of a parent entity.
+    ///     Gets all children of a parent entity.
     /// </summary>
     /// <param name="parent">The parent entity.</param>
     /// <param name="world">The world containing the entities.</param>
     /// <returns>An enumerable of all valid (alive) children.</returns>
     /// <remarks>
-    /// This method automatically filters out any destroyed entities,
-    /// ensuring you only get valid child references.
-    /// <para>
-    /// <b>Example:</b>
-    /// <code>
+    ///     This method automatically filters out any destroyed entities,
+    ///     ensuring you only get valid child references.
+    ///     <para>
+    ///         <b>Example:</b>
+    ///         <code>
     /// foreach (var pokemon in trainer.GetChildren(world)) {
     ///     Console.WriteLine($"Trainer has: {pokemon}");
     /// }
     /// </code>
-    /// </para>
+    ///     </para>
     /// </remarks>
     public static IEnumerable<Entity> GetChildren(this Entity parent, World world)
     {
@@ -166,7 +157,7 @@ public static class RelationshipExtensions
     }
 
     /// <summary>
-    /// Gets the count of valid children for a parent entity.
+    ///     Gets the count of valid children for a parent entity.
     /// </summary>
     /// <param name="parent">The parent entity.</param>
     /// <param name="world">The world containing the entities.</param>
@@ -181,7 +172,7 @@ public static class RelationshipExtensions
     #region Owner-Owned Relationships
 
     /// <summary>
-    /// Sets the owner of an owned entity, establishing an ownership relationship.
+    ///     Sets the owner of an owned entity, establishing an ownership relationship.
     /// </summary>
     /// <param name="owned">The entity to be owned.</param>
     /// <param name="owner">The owner entity.</param>
@@ -189,19 +180,19 @@ public static class RelationshipExtensions
     /// <param name="ownershipType">The type of ownership (default: Permanent).</param>
     /// <exception cref="ArgumentException">Thrown if either entity is not alive.</exception>
     /// <remarks>
-    /// <para>
-    /// This method establishes bidirectional ownership:
-    /// 1. Adds Owned component to the owned entity
-    /// 2. Adds Owner component to the owner entity
-    /// </para>
-    /// <para>
-    /// <b>Example:</b>
-    /// <code>
+    ///     <para>
+    ///         This method establishes bidirectional ownership:
+    ///         1. Adds Owned component to the owned entity
+    ///         2. Adds Owner component to the owner entity
+    ///     </para>
+    ///     <para>
+    ///         <b>Example:</b>
+    ///         <code>
     /// var player = world.Create();
     /// var item = world.Create();
     /// item.SetOwner(player, world, OwnershipType.Permanent);
     /// </code>
-    /// </para>
+    ///     </para>
     /// </remarks>
     public static void SetOwner(
         this Entity owned,
@@ -217,28 +208,24 @@ public static class RelationshipExtensions
 
         // Remove existing ownership if present
         if (owned.Has<Owned>())
-        {
             owned.Remove<Owned>();
-        }
 
         // Set new owner
         owned.Add(new Owned { OwnerEntity = owner, AcquiredAt = DateTime.UtcNow });
 
         // Set owner relationship
         if (!owner.Has<Owner>() || owner.Get<Owner>().Value != owned)
-        {
             owner.Set(new Owner { Value = owned, Type = ownershipType });
-        }
     }
 
     /// <summary>
-    /// Removes the owner relationship from an owned entity.
+    ///     Removes the owner relationship from an owned entity.
     /// </summary>
     /// <param name="owned">The owned entity.</param>
     /// <param name="world">The world containing the entity.</param>
     /// <remarks>
-    /// This removes both the Owned component from the entity and the Owner
-    /// component from the owner entity.
+    ///     This removes both the Owned component from the entity and the Owner
+    ///     component from the owner entity.
     /// </remarks>
     public static void RemoveOwner(this Entity owned, World world)
     {
@@ -252,9 +239,7 @@ public static class RelationshipExtensions
         {
             var ownerComp = owner.Get<Owner>();
             if (ownerComp.Value == owned)
-            {
                 owner.Remove<Owner>();
-            }
         }
 
         // Remove owned component
@@ -262,14 +247,14 @@ public static class RelationshipExtensions
     }
 
     /// <summary>
-    /// Gets the owner entity of an owned entity, if it exists and is valid.
+    ///     Gets the owner entity of an owned entity, if it exists and is valid.
     /// </summary>
     /// <param name="owned">The owned entity.</param>
     /// <param name="world">The world containing the entities.</param>
     /// <returns>The owner entity if it exists and is alive, otherwise null.</returns>
     /// <remarks>
-    /// <b>Example:</b>
-    /// <code>
+    ///     <b>Example:</b>
+    ///     <code>
     /// var owner = item.GetOwner(world);
     /// if (owner.HasValue) {
     ///     Console.WriteLine($"Item owned by: {owner.Value}");
@@ -286,15 +271,15 @@ public static class RelationshipExtensions
     }
 
     /// <summary>
-    /// Gets all entities owned by an owner entity.
+    ///     Gets all entities owned by an owner entity.
     /// </summary>
     /// <param name="owner">The owner entity.</param>
     /// <param name="world">The world containing the entities.</param>
     /// <returns>An enumerable of all entities owned by this owner.</returns>
     /// <remarks>
-    /// This queries all Owned components in the world and filters for those
-    /// referencing this owner. For better performance with many owned entities,
-    /// consider using the Children component pattern instead.
+    ///     This queries all Owned components in the world and filters for those
+    ///     referencing this owner. For better performance with many owned entities,
+    ///     consider using the Children component pattern instead.
     /// </remarks>
     public static IEnumerable<Entity> GetOwnedEntities(this Entity owner, World world)
     {
@@ -310,9 +295,7 @@ public static class RelationshipExtensions
             (Entity entity, ref Owned owned) =>
             {
                 if (owned.OwnerEntity == owner && world.IsAlive(entity))
-                {
                     ownedEntities.Add(entity);
-                }
             }
         );
 
@@ -320,7 +303,7 @@ public static class RelationshipExtensions
     }
 
     /// <summary>
-    /// Gets the ownership type for an owned entity.
+    ///     Gets the ownership type for an owned entity.
     /// </summary>
     /// <param name="owned">The owned entity.</param>
     /// <param name="world">The world containing the entities.</param>

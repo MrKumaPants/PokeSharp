@@ -33,11 +33,7 @@ public class GameWindowConfig
     /// </summary>
     public static GameWindowConfig CreateDevelopment()
     {
-        return new GameWindowConfig
-        {
-            Width = 1024,
-            Height = 768
-        };
+        return new GameWindowConfig { Width = 1024, Height = 768 };
     }
 
     /// <summary>
@@ -48,4 +44,3 @@ public class GameWindowConfig
         return new GameWindowConfig();
     }
 }
-

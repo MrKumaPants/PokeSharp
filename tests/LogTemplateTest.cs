@@ -53,7 +53,7 @@ public class LogTemplateTests
             ("Loading map", "map_name", "TestMap"),
             ("Position", "x", 10, "y", 20),
             ("Performance", "fps", 60.5, "ms", 16.67),
-            ("Error", "message", "Test error", "exception", "TestException")
+            ("Error", "message", "Test error", "exception", "TestException"),
         };
 
         foreach (var testCase in testCases)
@@ -117,8 +117,10 @@ public class LogTemplateTests
         var interpolationTime = sw.Elapsed;
 
         // LogTemplates should be faster or equal (source generated)
-        Assert.True(templateTime <= interpolationTime * 1.1,
-            $"LogTemplate took {templateTime.TotalMilliseconds}ms vs interpolation {interpolationTime.TotalMilliseconds}ms");
+        Assert.True(
+            templateTime <= interpolationTime * 1.1,
+            $"LogTemplate took {templateTime.TotalMilliseconds}ms vs interpolation {interpolationTime.TotalMilliseconds}ms"
+        );
     }
 
     [Fact]
@@ -137,8 +139,7 @@ public class LogTemplateTests
         long allocated = endMemory - startMemory;
 
         // Should allocate less than 1MB for 1000 logs
-        Assert.True(allocated < 1024 * 1024,
-            $"Allocated {allocated / 1024}KB for 1000 logs");
+        Assert.True(allocated < 1024 * 1024, $"Allocated {allocated / 1024}KB for 1000 logs");
     }
 
     [Fact]
@@ -152,7 +153,7 @@ public class LogTemplateTests
             "[blue]Info[/]",
             "[cyan]Debug[/]",
             "[bold]Bold Text[/]",
-            "[dim]Dim Text[/]"
+            "[dim]Dim Text[/]",
         };
 
         foreach (var markup in testMarkup)
@@ -173,7 +174,7 @@ public class LogTemplateTests
             { LogLevel.Information, "blue" },
             { LogLevel.Warning, "yellow" },
             { LogLevel.Error, "red" },
-            { LogLevel.Critical, "red bold" }
+            { LogLevel.Critical, "red bold" },
         };
 
         foreach (var (level, expectedColor) in colorMap)
@@ -195,13 +196,19 @@ public class LogTemplateTests
         for (int i = 0; i < 10; i++)
         {
             int taskId = i;
-            tasks.Add(Task.Run(() =>
-            {
-                for (int j = 0; j < 100; j++)
+            tasks.Add(
+                Task.Run(() =>
                 {
-                    _testLogger.LogInformation("Task {TaskId} iteration {Iteration}", taskId, j);
-                }
-            }));
+                    for (int j = 0; j < 100; j++)
+                    {
+                        _testLogger.LogInformation(
+                            "Task {TaskId} iteration {Iteration}",
+                            taskId,
+                            j
+                        );
+                    }
+                })
+            );
         }
 
         // Should complete without exceptions
@@ -222,7 +229,7 @@ public class LogTemplateTests
             "Newlines:\nLine 2",
             "Tabs:\tTabbed",
             "Special chars: <>&[]{}",
-            "Backslashes: C:\\Users\\Test\\"
+            "Backslashes: C:\\Users\\Test\\",
         };
 
         foreach (var str in specialStrings)
@@ -240,8 +247,12 @@ public class LogTemplateTests
     {
         _logOutput.Clear();
 
-        _testLogger.LogInformation("Integer: {Int}, Float: {Float:F2}, Percent: {Percent:P}",
-            42, 3.14159, 0.85);
+        _testLogger.LogInformation(
+            "Integer: {Int}, Float: {Float:F2}, Percent: {Percent:P}",
+            42,
+            3.14159,
+            0.85
+        );
 
         var output = _logOutput.ToString();
 
@@ -257,7 +268,8 @@ public class LogTemplateTests
         var sourceFiles = Directory.GetFiles(
             "/mnt/c/Users/nate0/RiderProjects/PokeSharp",
             "*.cs",
-            SearchOption.AllDirectories);
+            SearchOption.AllDirectories
+        );
 
         int totalLogCalls = 0;
         int templateLogCalls = 0;
@@ -272,9 +284,16 @@ public class LogTemplateTests
             {
                 var line = lines[i].Trim();
 
-                if (line.Contains("Log") && (line.Contains("Information") ||
-                    line.Contains("Warning") || line.Contains("Error") ||
-                    line.Contains("Debug") || line.Contains("Trace")))
+                if (
+                    line.Contains("Log")
+                    && (
+                        line.Contains("Information")
+                        || line.Contains("Warning")
+                        || line.Contains("Error")
+                        || line.Contains("Debug")
+                        || line.Contains("Trace")
+                    )
+                )
                 {
                     totalLogCalls++;
 
@@ -292,14 +311,15 @@ public class LogTemplateTests
             }
         }
 
-        double templatePercentage = totalLogCalls > 0
-            ? (double)templateLogCalls / totalLogCalls * 100
-            : 0;
+        double templatePercentage =
+            totalLogCalls > 0 ? (double)templateLogCalls / totalLogCalls * 100 : 0;
 
         // Should be > 90% template usage
-        Assert.True(templatePercentage >= 90,
-            $"Template usage: {templatePercentage:F1}% ({templateLogCalls}/{totalLogCalls} logs). " +
-            $"Found {directLogCalls} direct interpolation calls.");
+        Assert.True(
+            templatePercentage >= 90,
+            $"Template usage: {templatePercentage:F1}% ({templateLogCalls}/{totalLogCalls} logs). "
+                + $"Found {directLogCalls} direct interpolation calls."
+        );
     }
 }
 
@@ -341,8 +361,13 @@ internal class TestLogger : ILogger
 
     public bool IsEnabled(LogLevel logLevel) => true;
 
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
-        Exception? exception, Func<TState, Exception?, string> formatter)
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter
+    )
     {
         _output.AppendLine($"[{logLevel}] {_categoryName}: {formatter(state, exception)}");
     }

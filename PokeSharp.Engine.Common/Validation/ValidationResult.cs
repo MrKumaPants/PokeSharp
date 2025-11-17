@@ -135,9 +135,7 @@ public class ValidationResult
     {
         var result = new ValidationResult { Context = context };
         foreach (var error in errors)
-        {
             result.AddError(error);
-        }
         return result;
     }
 
@@ -151,9 +149,7 @@ public class ValidationResult
     {
         var result = new ValidationResult { Context = context };
         foreach (var warning in warnings)
-        {
             result.AddWarning(warning);
-        }
         return result;
     }
 
@@ -164,7 +160,7 @@ public class ValidationResult
     /// <param name="other">ValidationResult to merge</param>
     public void Merge(ValidationResult other)
     {
-        ArgumentNullException.ThrowIfNull(other, nameof(other));
+        ArgumentNullException.ThrowIfNull(other);
         Errors.AddRange(other.Errors);
         Warnings.AddRange(other.Warnings);
     }

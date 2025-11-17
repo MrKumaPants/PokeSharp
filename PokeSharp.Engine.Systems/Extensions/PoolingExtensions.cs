@@ -19,7 +19,7 @@ public static class PoolingExtensions
     /// <param name="poolName">Name of the pool that owns this entity</param>
     public static void MarkPooled(this Entity entity, string poolName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(poolName, nameof(poolName));
+        ArgumentException.ThrowIfNullOrWhiteSpace(poolName);
 
         entity.Add(
             new Pooled
@@ -111,7 +111,7 @@ public static class PoolingExtensions
     public static void SafeDestroy(
         this Entity entity,
         World world,
-        Pooling.EntityPoolManager? poolManager = null
+        EntityPoolManager? poolManager = null
     )
     {
         if (entity.IsPooled())

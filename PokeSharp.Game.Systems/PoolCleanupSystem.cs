@@ -1,7 +1,6 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Core.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
 
 namespace PokeSharp.Game.Systems;
@@ -16,16 +15,32 @@ namespace PokeSharp.Game.Systems;
 /// </remarks>
 public class PoolCleanupSystem : SystemBase, IUpdateSystem
 {
-    private readonly EntityPoolManager _poolManager;
     private readonly ILogger<PoolCleanupSystem>? _logger;
-
-    // Configuration thresholds
-    private float _warningThreshold = 0.9f; // Warn at 90% usage
-    private float _criticalThreshold = 0.95f; // Critical at 95% usage
+    private readonly EntityPoolManager _poolManager;
 
     // Timing for periodic checks (avoid checking every frame)
     private float _checkInterval = 1.0f; // Check every second
-    private float _timeSinceLastCheck = 0f;
+    private float _criticalThreshold = 0.95f; // Critical at 95% usage
+    private float _timeSinceLastCheck;
+
+    // Configuration thresholds
+    private float _warningThreshold = 0.9f; // Warn at 90% usage
+
+    /// <summary>
+    ///     Creates a new pool cleanup system.
+    /// </summary>
+    /// <param name="poolManager">Entity pool manager to monitor</param>
+    /// <param name="logger">Optional logger for warnings</param>
+    public PoolCleanupSystem(
+        EntityPoolManager poolManager,
+        ILogger<PoolCleanupSystem>? logger = null
+    )
+    {
+        ArgumentNullException.ThrowIfNull(poolManager);
+
+        _poolManager = poolManager;
+        _logger = logger;
+    }
 
     /// <summary>
     ///     Gets the update priority. Lower values execute first.
@@ -38,20 +53,32 @@ public class PoolCleanupSystem : SystemBase, IUpdateSystem
     /// </summary>
     public override int Priority => SystemPriority.PoolCleanup;
 
-    /// <summary>
-    ///     Creates a new pool cleanup system.
-    /// </summary>
-    /// <param name="poolManager">Entity pool manager to monitor</param>
-    /// <param name="logger">Optional logger for warnings</param>
-    public PoolCleanupSystem(
-        EntityPoolManager poolManager,
-        ILogger<PoolCleanupSystem>? logger = null
-    )
+    public override void Update(World world, float deltaTime)
     {
-        ArgumentNullException.ThrowIfNull(poolManager, nameof(poolManager));
+        // Throttle checks to avoid overhead
+        _timeSinceLastCheck += deltaTime;
+        if (_timeSinceLastCheck < _checkInterval)
+            return;
 
-        _poolManager = poolManager;
-        _logger = logger;
+        _timeSinceLastCheck = 0f;
+
+        // Get pool statistics
+        var stats = _poolManager.GetStatistics();
+
+        // Monitor each pool for health issues
+        foreach (var (poolName, poolStats) in stats.PerPoolStats)
+            MonitorPoolHealth(poolName, poolStats);
+
+        // Log overall statistics (debug only)
+        if (_logger?.IsEnabled(LogLevel.Debug) ?? false)
+            _logger.LogDebug(
+                "Pool Manager Stats: {PoolCount} pools, {ActiveCount} active entities, "
+                    + "{AvailableCount} available, {ReuseRate:P2} reuse rate",
+                stats.TotalPools,
+                stats.TotalActive,
+                stats.TotalAvailable,
+                stats.OverallReuseRate
+            );
     }
 
     /// <summary>
@@ -82,38 +109,6 @@ public class PoolCleanupSystem : SystemBase, IUpdateSystem
         _checkInterval = checkInterval;
     }
 
-    public override void Update(World world, float deltaTime)
-    {
-        // Throttle checks to avoid overhead
-        _timeSinceLastCheck += deltaTime;
-        if (_timeSinceLastCheck < _checkInterval)
-            return;
-
-        _timeSinceLastCheck = 0f;
-
-        // Get pool statistics
-        var stats = _poolManager.GetStatistics();
-
-        // Monitor each pool for health issues
-        foreach (var (poolName, poolStats) in stats.PerPoolStats)
-        {
-            MonitorPoolHealth(poolName, poolStats);
-        }
-
-        // Log overall statistics (debug only)
-        if (_logger?.IsEnabled(LogLevel.Debug) ?? false)
-        {
-            _logger.LogDebug(
-                "Pool Manager Stats: {PoolCount} pools, {ActiveCount} active entities, "
-                    + "{AvailableCount} available, {ReuseRate:P2} reuse rate",
-                stats.TotalPools,
-                stats.TotalActive,
-                stats.TotalAvailable,
-                stats.OverallReuseRate
-            );
-        }
-    }
-
     private void MonitorPoolHealth(string poolName, PoolStatistics stats)
     {
         // Calculate usage percentage
@@ -121,7 +116,6 @@ public class PoolCleanupSystem : SystemBase, IUpdateSystem
 
         // Critical: Pool near exhaustion
         if (usagePercent >= _criticalThreshold)
-        {
             _logger?.LogError(
                 "CRITICAL: Pool '{PoolName}' is {UsagePercent:P0} full! "
                     + "({ActiveCount}/{MaxSize} entities active, {AvailableCount} available). "
@@ -132,10 +126,8 @@ public class PoolCleanupSystem : SystemBase, IUpdateSystem
                 stats.MaxSize,
                 stats.AvailableCount
             );
-        }
         // Warning: Pool getting full
         else if (usagePercent >= _warningThreshold)
-        {
             _logger?.LogWarning(
                 "Pool '{PoolName}' is {UsagePercent:P0} full "
                     + "({ActiveCount}/{MaxSize} entities active, {AvailableCount} available). "
@@ -146,11 +138,9 @@ public class PoolCleanupSystem : SystemBase, IUpdateSystem
                 stats.MaxSize,
                 stats.AvailableCount
             );
-        }
 
         // Log performance metrics
         if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
-        {
             _logger.LogTrace(
                 "Pool '{PoolName}': {ReuseRate:P2} reuse rate, "
                     + "{AcquireTime:F3}ms avg acquire time",
@@ -158,14 +148,12 @@ public class PoolCleanupSystem : SystemBase, IUpdateSystem
                 stats.ReuseRate,
                 stats.AverageAcquireTimeMs
             );
-        }
 
         // Detect potential memory leaks (entities not being released)
         if (stats.TotalReleases > 0)
         {
             var releaseRatio = (float)stats.TotalReleases / stats.TotalAcquisitions;
             if (releaseRatio < 0.8f && stats.TotalAcquisitions > 100)
-            {
                 _logger?.LogWarning(
                     "Pool '{PoolName}' has low release rate ({ReleaseRatio:P0}). "
                         + "Possible memory leak: {Acquisitions} acquisitions but only {Releases} releases.",
@@ -174,7 +162,6 @@ public class PoolCleanupSystem : SystemBase, IUpdateSystem
                     stats.TotalAcquisitions,
                     stats.TotalReleases
                 );
-            }
         }
     }
 

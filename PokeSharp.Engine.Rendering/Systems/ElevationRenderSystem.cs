@@ -12,28 +12,27 @@ using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.Player;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Tiles;
-using AnimationComponent = PokeSharp.Game.Components.Rendering.Animation;
 
 namespace PokeSharp.Engine.Rendering.Systems;
 
 /// <summary>
-/// Elevation-based rendering system using Pokemon Emerald's elevation model.
-/// Renders all tiles and sprites sorted by: elevation (primary) + Y position (secondary).
-/// This allows proper layering of bridges, overhead structures, and multi-level maps.
+///     Elevation-based rendering system using Pokemon Emerald's elevation model.
+///     Renders all tiles and sprites sorted by: elevation (primary) + Y position (secondary).
+///     This allows proper layering of bridges, overhead structures, and multi-level maps.
 /// </summary>
 /// <remarks>
-/// <para>
-/// <b>Render Order Formula:</b>
-/// layerDepth = (elevation * 16) + (y / mapHeight)
-/// </para>
-/// <para>
-/// <b>Elevation Levels (Pokemon Emerald):</b>
-/// - 0: Ground level (water, pits)
-/// - 3: Standard elevation (most tiles and objects)
-/// - 6: Bridges, elevated platforms
-/// - 9-12: Overhead structures
-/// - 15: Maximum elevation
-/// </para>
+///     <para>
+///         <b>Render Order Formula:</b>
+///         layerDepth = (elevation * 16) + (y / mapHeight)
+///     </para>
+///     <para>
+///         <b>Elevation Levels (Pokemon Emerald):</b>
+///         - 0: Ground level (water, pits)
+///         - 3: Standard elevation (most tiles and objects)
+///         - 6: Bridges, elevated platforms
+///         - 9-12: Overhead structures
+///         - 15: Maximum elevation
+///     </para>
 /// </remarks>
 public class ElevationRenderSystem(
     GraphicsDevice graphicsDevice,
@@ -41,77 +40,39 @@ public class ElevationRenderSystem(
     ILogger<ElevationRenderSystem>? logger = null
 ) : SystemBase, IRenderSystem
 {
-    // Tile size is set from map data via SetTileSize()
-    private int _tileSize = 16; // Default fallback, overridden by map data
-
-    /// <summary>
-    ///     Gets the tile size currently used for rendering.
-    /// </summary>
-    public int TileSize => _tileSize;
     private const float MapHeight = RenderingConstants.MaxRenderDistance;
 
-    private readonly AssetManager _assetManager =
-        assetManager ?? throw new ArgumentNullException(nameof(assetManager));
-
-    /// <summary>
-    /// Gets the AssetManager used by this render system.
-    /// </summary>
-    public AssetManager AssetManager => _assetManager;
-
-    /// <summary>
-    ///     Updates the tile size used by the renderer (falls back to 16 if invalid).
-    /// </summary>
-    public void SetTileSize(int tileSize)
-    {
-        var clamped = tileSize > 0 ? tileSize : 16; // Fallback to 16 if invalid
-        if (_tileSize == clamped)
-            return;
-
-        _tileSize = clamped;
-        _cachedCameraBounds = null;
-        _cachedCameraTransform = Matrix.Identity;
-        _logger?.LogRenderTileSizeSet(_tileSize);
-    }
-
-    /// <summary>
-    /// Sets the sprite texture loader for lazy loading.
-    /// Creates a strongly-typed delegate to avoid reflection overhead on every texture miss.
-    /// </summary>
-    /// <param name="loader">The sprite texture loader instance (expected to have LoadSpriteTexture(string, string) method)</param>
-    public void SetSpriteTextureLoader(object? loader)
-    {
-        _spriteTextureLoader = loader;
-
-        if (loader != null)
-        {
-            // Create delegate once during initialization to eliminate reflection overhead
-            var loaderType = loader.GetType();
-            var method = loaderType.GetMethod("LoadSpriteTexture",
-                new[] { typeof(string), typeof(string) });
-
-            if (method != null)
-            {
-                _spriteLoadDelegate = (Action<string, string>)
-                    Delegate.CreateDelegate(typeof(Action<string, string>), loader, method);
-                _logger?.LogSpriteLoaderRegistered();
-            }
-            else
-            {
-                _spriteLoadDelegate = null;
-                _logger?.LogWarning("LoadSpriteTexture method not found on sprite loader");
-            }
-        }
-        else
-        {
-            _spriteLoadDelegate = null;
-        }
-    }
+    // Reusable Vector2/Rectangle instances to avoid allocations (400-600 per frame eliminated)
+    private static Vector2 _reusablePosition = Vector2.Zero;
+    private static Vector2 _reusableTileOrigin = Vector2.Zero;
+    private static Rectangle _reusableSourceRect = Rectangle.Empty;
 
     // Cache query descriptions to avoid allocation every frame
     private readonly QueryDescription _cameraQuery = QueryCache.Get<Player, Camera>();
 
     private readonly GraphicsDevice _graphicsDevice =
         graphicsDevice ?? throw new ArgumentNullException(nameof(graphicsDevice));
+
+    // Image layers (backgrounds, overlays)
+    private readonly QueryDescription _imageLayerQuery = QueryCache.Get<ImageLayer>();
+
+    private readonly ILogger<ElevationRenderSystem>? _logger = logger;
+
+    // Sprite queries (moving and static)
+    private readonly QueryDescription _movingSpriteQuery = QueryCache.Get<
+        Position,
+        Sprite,
+        GridMovement,
+        Elevation
+    >();
+
+    private readonly SpriteBatch _spriteBatch = new(graphicsDevice);
+
+    private readonly QueryDescription _staticSpriteQuery = QueryCache.Get<
+        Position,
+        Sprite,
+        Elevation
+    >();
 
     // Tile queries (with and without LayerOffset for parallax)
     private readonly QueryDescription _tileQuery = QueryCache.Get<
@@ -127,46 +88,10 @@ public class ElevationRenderSystem(
         Elevation
     >();
 
-    private readonly ILogger<ElevationRenderSystem>? _logger = logger;
-
-    // Lazy sprite texture loader (set after initialization)
-    private object? _spriteTextureLoader;
-
-    /// <summary>
-    /// Cached delegate for sprite loading to avoid reflection overhead.
-    /// Created once during SetSpriteTextureLoader to eliminate GetType() and GetMethod() calls on every texture miss.
-    /// Reduces lazy load time from ~2.0ms to ~0.5-1.0ms (60% improvement).
-    /// </summary>
-    private Action<string, string>? _spriteLoadDelegate;
-
-    // Sprite queries (moving and static)
-    private readonly QueryDescription _movingSpriteQuery = QueryCache.Get<
-        Position,
-        Sprite,
-        GridMovement,
-        Elevation
-    >();
-
-    private readonly QueryDescription _staticSpriteQuery = QueryCache.Get<
-        Position,
-        Sprite,
-        Elevation
-    >();
-
-    // Image layers (backgrounds, overlays)
-    private readonly QueryDescription _imageLayerQuery = QueryCache.Get<ImageLayer>();
-
-    private readonly SpriteBatch _spriteBatch = new(graphicsDevice);
-
     private Rectangle? _cachedCameraBounds;
 
     // Cache camera transform to avoid recalculating
     private Matrix _cachedCameraTransform = Matrix.Identity;
-
-    // Reusable Vector2/Rectangle instances to avoid allocations (400-600 per frame eliminated)
-    private static Vector2 _reusablePosition = Vector2.Zero;
-    private static Vector2 _reusableTileOrigin = Vector2.Zero;
-    private static Rectangle _reusableSourceRect = Rectangle.Empty;
 
     // Performance profiling
     private bool _enableDetailedProfiling;
@@ -182,19 +107,42 @@ public class ElevationRenderSystem(
         _spriteTime,
         _batchEndTime;
 
+    /// <summary>
+    ///     Cached delegate for sprite loading to avoid reflection overhead.
+    ///     Created once during SetSpriteTextureLoader to eliminate GetType() and GetMethod() calls on every texture miss.
+    ///     Reduces lazy load time from ~2.0ms to ~0.5-1.0ms (60% improvement).
+    /// </summary>
+    private Action<string, string>? _spriteLoadDelegate;
+
+    // Lazy sprite texture loader (set after initialization)
+    private object? _spriteTextureLoader;
+
+    // Tile size is set from map data via SetTileSize()
+
+    /// <summary>
+    ///     Gets the tile size currently used for rendering.
+    /// </summary>
+    public int TileSize { get; private set; } = 16;
+
+    /// <summary>
+    ///     Gets the AssetManager used by this render system.
+    /// </summary>
+    public AssetManager AssetManager { get; } =
+        assetManager ?? throw new ArgumentNullException(nameof(assetManager));
+
     /// <inheritdoc />
     public override int Priority => SystemPriority.Render;
 
     /// <summary>
-    /// Gets the render order. Lower values render first.
-    /// Order 1 renders entities after background (0) but before UI (2).
+    ///     Gets the render order. Lower values render first.
+    ///     Order 1 renders entities after background (0) but before UI (2).
     /// </summary>
     public int RenderOrder => 1;
 
     /// <inheritdoc />
     /// <remarks>
-    /// This is a render-only system. The Update method is not used.
-    /// All rendering logic is in the Render method.
+    ///     This is a render-only system. The Update method is not used.
+    ///     All rendering logic is in the Render method.
     /// </remarks>
     public override void Update(World world, float deltaTime)
     {
@@ -226,7 +174,7 @@ public class ElevationRenderSystem(
                 DepthStencilState.None, // Disable depth buffer for 2D sprite transparency
                 RasterizerState.CullNone,
                 null,
-                transformMatrix: _cachedCameraTransform
+                _cachedCameraTransform
             );
 
             // Render image layers (they sort with everything via layerDepth)
@@ -241,11 +189,14 @@ public class ElevationRenderSystem(
             if (_frameCounter % RenderingConstants.PerformanceLogInterval == 0)
             {
                 var totalEntities = totalTilesRendered + spriteCount + imageLayerCount;
-                _logger?.LogRenderStats(totalEntities, totalTilesRendered, spriteCount, _frameCounter);
+                _logger?.LogRenderStats(
+                    totalEntities,
+                    totalTilesRendered,
+                    spriteCount,
+                    _frameCounter
+                );
                 if (imageLayerCount > 0)
-                {
                     _logger?.LogImageLayersRendered(imageLayerCount);
-                }
             }
 
             _lastEntityCount = totalTilesRendered + spriteCount + imageLayerCount;
@@ -266,7 +217,59 @@ public class ElevationRenderSystem(
     }
 
     /// <summary>
-    /// Render with detailed profiling enabled (slower, for diagnostics only).
+    ///     Updates the tile size used by the renderer (falls back to 16 if invalid).
+    /// </summary>
+    public void SetTileSize(int tileSize)
+    {
+        var clamped = tileSize > 0 ? tileSize : 16; // Fallback to 16 if invalid
+        if (TileSize == clamped)
+            return;
+
+        TileSize = clamped;
+        _cachedCameraBounds = null;
+        _cachedCameraTransform = Matrix.Identity;
+        _logger?.LogRenderTileSizeSet(TileSize);
+    }
+
+    /// <summary>
+    ///     Sets the sprite texture loader for lazy loading.
+    ///     Creates a strongly-typed delegate to avoid reflection overhead on every texture miss.
+    /// </summary>
+    /// <param name="loader">The sprite texture loader instance (expected to have LoadSpriteTexture(string, string) method)</param>
+    public void SetSpriteTextureLoader(object? loader)
+    {
+        _spriteTextureLoader = loader;
+
+        if (loader != null)
+        {
+            // Create delegate once during initialization to eliminate reflection overhead
+            var loaderType = loader.GetType();
+            var method = loaderType.GetMethod(
+                "LoadSpriteTexture",
+                new[] { typeof(string), typeof(string) }
+            );
+
+            if (method != null)
+            {
+                _spriteLoadDelegate =
+                    (Action<string, string>)
+                        Delegate.CreateDelegate(typeof(Action<string, string>), loader, method);
+                _logger?.LogSpriteLoaderRegistered();
+            }
+            else
+            {
+                _spriteLoadDelegate = null;
+                _logger?.LogWarning("LoadSpriteTexture method not found on sprite loader");
+            }
+        }
+        else
+        {
+            _spriteLoadDelegate = null;
+        }
+    }
+
+    /// <summary>
+    ///     Render with detailed profiling enabled (slower, for diagnostics only).
     /// </summary>
     private void RenderWithProfiling(World world)
     {
@@ -283,7 +286,7 @@ public class ElevationRenderSystem(
             DepthStencilState.None, // Disable depth buffer for 2D sprite transparency
             RasterizerState.CullNone,
             null,
-            transformMatrix: _cachedCameraTransform
+            _cachedCameraTransform
         );
         swBatchBegin.Stop();
         _batchBeginTime = swBatchBegin.Elapsed.TotalMilliseconds;
@@ -310,11 +313,15 @@ public class ElevationRenderSystem(
         {
             var totalEntities = totalTilesRendered + spriteCount + imageLayerCount;
             _logger?.LogRenderStats(totalEntities, totalTilesRendered, spriteCount, _frameCounter);
-            _logger?.LogRenderBreakdown(_setupTime, _batchBeginTime, _tileTime, _spriteTime, _batchEndTime);
+            _logger?.LogRenderBreakdown(
+                _setupTime,
+                _batchBeginTime,
+                _tileTime,
+                _spriteTime,
+                _batchEndTime
+            );
             if (imageLayerCount > 0)
-            {
                 _logger?.LogImageLayersRendered(imageLayerCount);
-            }
         }
 
         _lastEntityCount = totalTilesRendered + spriteCount + imageLayerCount;
@@ -323,7 +330,7 @@ public class ElevationRenderSystem(
     }
 
     /// <summary>
-    /// Enables or disables detailed per-frame profiling breakdown.
+    ///     Enables or disables detailed per-frame profiling breakdown.
     /// </summary>
     public void SetDetailedProfiling(bool enabled)
     {
@@ -332,8 +339,8 @@ public class ElevationRenderSystem(
     }
 
     /// <summary>
-    /// Preloads all textures used by tiles in the world to avoid loading spikes during gameplay.
-    /// Call this after loading a new map.
+    ///     Preloads all textures used by tiles in the world to avoid loading spikes during gameplay.
+    ///     Call this after loading a new map.
     /// </summary>
     public void PreloadMapAssets(World world)
     {
@@ -375,10 +382,8 @@ public class ElevationRenderSystem(
 
         // Optionally preload sprite textures if lazy loader is available
         if (_spriteTextureLoader != null)
-        {
             foreach (var textureId in texturesNeeded)
-            {
-                if (!_assetManager.HasTexture(textureId) && textureId.StartsWith("sprites/"))
+                if (!AssetManager.HasTexture(textureId) && textureId.StartsWith("sprites/"))
                 {
                     // Parse sprite category/name from texture key
                     var parts = textureId.Split('/');
@@ -389,8 +394,6 @@ public class ElevationRenderSystem(
                         TryLazyLoadSprite(category, spriteName, textureId);
                     }
                 }
-            }
-        }
 
         sw.Stop();
         _logger?.LogWorkflowStatus(
@@ -401,7 +404,7 @@ public class ElevationRenderSystem(
     }
 
     /// <summary>
-    /// Updates the cached camera transform and bounds once per frame.
+    ///     Updates the cached camera transform and bounds once per frame.
     /// </summary>
     private void UpdateCameraCache(World world)
     {
@@ -418,15 +421,15 @@ public class ElevationRenderSystem(
                 // Calculate camera bounds for culling
                 const int margin = 2;
                 var left =
-                    (int)(camera.Position.X / _tileSize)
-                    - camera.Viewport.Width / 2 / _tileSize / (int)camera.Zoom
+                    (int)(camera.Position.X / TileSize)
+                    - camera.Viewport.Width / 2 / TileSize / (int)camera.Zoom
                     - margin;
                 var top =
-                    (int)(camera.Position.Y / _tileSize)
-                    - camera.Viewport.Height / 2 / _tileSize / (int)camera.Zoom
+                    (int)(camera.Position.Y / TileSize)
+                    - camera.Viewport.Height / 2 / TileSize / (int)camera.Zoom
                     - margin;
-                var width = camera.Viewport.Width / _tileSize / (int)camera.Zoom + margin * 2;
-                var height = camera.Viewport.Height / _tileSize / (int)camera.Zoom + margin * 2;
+                var width = camera.Viewport.Width / TileSize / (int)camera.Zoom + margin * 2;
+                var height = camera.Viewport.Height / TileSize / (int)camera.Zoom + margin * 2;
 
                 _cachedCameraBounds = new Rectangle(left, top, width, height);
 
@@ -437,8 +440,8 @@ public class ElevationRenderSystem(
     }
 
     /// <summary>
-    /// Renders all tiles with elevation-based depth sorting.
-    /// OPTIMIZED: Single unified query eliminates duplicate iteration and expensive Has() checks.
+    ///     Renders all tiles with elevation-based depth sorting.
+    ///     OPTIMIZED: Single unified query eliminates duplicate iteration and expensive Has() checks.
     /// </summary>
     private int RenderAllTiles(World world)
     {
@@ -480,7 +483,7 @@ public class ElevationRenderSystem(
                         }
 
                     // Get tileset texture (cached in AssetManager)
-                    if (!_assetManager.HasTexture(sprite.TilesetId))
+                    if (!AssetManager.HasTexture(sprite.TilesetId))
                     {
                         if (tilesRendered == 0) // Only warn once
                             _logger?.LogWarning(
@@ -490,7 +493,7 @@ public class ElevationRenderSystem(
                         return;
                     }
 
-                    var texture = _assetManager.GetTexture(sprite.TilesetId);
+                    var texture = AssetManager.GetTexture(sprite.TilesetId);
 
                     // OPTIMIZATION: Check for LayerOffset inline (faster than separate query)
                     // TryGet is faster than Has() + Get() because it's a single lookup
@@ -499,14 +502,14 @@ public class ElevationRenderSystem(
                     {
                         // Apply layer offset for parallax effect
                         // +1 to Y for bottom-left origin alignment
-                        _reusablePosition.X = pos.X * _tileSize + offset.X;
-                        _reusablePosition.Y = (pos.Y + 1) * _tileSize + offset.Y;
+                        _reusablePosition.X = pos.X * TileSize + offset.X;
+                        _reusablePosition.Y = (pos.Y + 1) * TileSize + offset.Y;
                     }
                     else
                     {
                         // Standard positioning (+1 to Y for bottom-left origin alignment)
-                        _reusablePosition.X = pos.X * _tileSize;
-                        _reusablePosition.Y = (pos.Y + 1) * _tileSize;
+                        _reusablePosition.X = pos.X * TileSize;
+                        _reusablePosition.Y = (pos.Y + 1) * TileSize;
                     }
 
                     // Calculate elevation-based layer depth
@@ -549,9 +552,9 @@ public class ElevationRenderSystem(
     }
 
     /// <summary>
-    /// Renders all sprites with elevation-based depth sorting.
-    /// OPTIMIZED: Single unified query eliminates duplicate iteration.
-    /// Uses TryGet pattern to check for GridMovement component inline.
+    ///     Renders all sprites with elevation-based depth sorting.
+    ///     OPTIMIZED: Single unified query eliminates duplicate iteration.
+    ///     Uses TryGet pattern to check for GridMovement component inline.
     /// </summary>
     private int RenderAllSprites(World world)
     {
@@ -569,19 +572,20 @@ public class ElevationRenderSystem(
             // - TryGet is fast inline component check
             world.Query(
                 in _staticSpriteQuery,
-                (Entity entity, ref Position position, ref Sprite sprite, ref Elevation elevation) =>
+                (
+                    Entity entity,
+                    ref Position position,
+                    ref Sprite sprite,
+                    ref Elevation elevation
+                ) =>
                 {
                     spriteCount++;
 
                     // Check if this sprite has movement component (inline optimization)
                     if (world.TryGet(entity, out GridMovement movement))
-                    {
                         RenderMovingSprite(ref position, ref sprite, ref movement, ref elevation);
-                    }
                     else
-                    {
                         RenderStaticSprite(ref position, ref sprite, ref elevation);
-                    }
                 }
             );
         }
@@ -606,12 +610,12 @@ public class ElevationRenderSystem(
             var textureKey = sprite.TextureKey;
 
             // Lazy load texture if not already loaded
-            if (!_assetManager.HasTexture(textureKey))
+            if (!AssetManager.HasTexture(textureKey))
             {
                 TryLazyLoadSprite(sprite.Category, sprite.SpriteName, textureKey);
 
                 // If still not found after lazy load attempt, skip rendering
-                if (!_assetManager.HasTexture(textureKey))
+                if (!AssetManager.HasTexture(textureKey))
                 {
                     _logger?.LogWarning(
                         "    WARNING: Texture '{TextureKey}' NOT FOUND - skipping sprite ({Category}/{SpriteName})",
@@ -623,7 +627,7 @@ public class ElevationRenderSystem(
                 }
             }
 
-            var texture = _assetManager.GetTexture(textureKey);
+            var texture = AssetManager.GetTexture(textureKey);
 
             // Determine source rectangle - reuse static Rectangle to avoid allocation
             var sourceRect = sprite.SourceRect;
@@ -640,7 +644,7 @@ public class ElevationRenderSystem(
             // Add tile size to Y to align sprite feet with tile bottom
             // Reuse static Vector2 to avoid allocation
             _reusablePosition.X = position.PixelX;
-            _reusablePosition.Y = position.PixelY + _tileSize;
+            _reusablePosition.Y = position.PixelY + TileSize;
 
             // BEST PRACTICE FOR MOVING ENTITIES: Use TARGET position for depth sorting
             // When moving/jumping, sort based on where the entity is going, not where they started.
@@ -651,13 +655,13 @@ public class ElevationRenderSystem(
             if (movement.IsMoving)
             {
                 // Use target grid position for sorting
-                var targetGridY = (int)(movement.TargetPosition.Y / _tileSize);
-                groundY = (targetGridY + 1) * _tileSize; // +1 for bottom of tile
+                var targetGridY = (int)(movement.TargetPosition.Y / TileSize);
+                groundY = (targetGridY + 1) * TileSize; // +1 for bottom of tile
             }
             else
             {
                 // Use current grid position
-                groundY = (position.Y + 1) * _tileSize;
+                groundY = (position.Y + 1) * TileSize;
             }
 
             var layerDepth = CalculateElevationDepth(elevation.Value, groundY);
@@ -705,12 +709,12 @@ public class ElevationRenderSystem(
             var textureKey = sprite.TextureKey;
 
             // Lazy load texture if not already loaded
-            if (!_assetManager.HasTexture(textureKey))
+            if (!AssetManager.HasTexture(textureKey))
             {
                 TryLazyLoadSprite(sprite.Category, sprite.SpriteName, textureKey);
 
                 // If still not found after lazy load attempt, skip rendering
-                if (!_assetManager.HasTexture(textureKey))
+                if (!AssetManager.HasTexture(textureKey))
                 {
                     _logger?.LogWarning(
                         "    WARNING: Texture '{TextureKey}' NOT FOUND - skipping sprite ({Category}/{SpriteName})",
@@ -722,7 +726,7 @@ public class ElevationRenderSystem(
                 }
             }
 
-            var texture = _assetManager.GetTexture(textureKey);
+            var texture = AssetManager.GetTexture(textureKey);
 
             // Determine source rectangle - reuse static Rectangle to avoid allocation
             var sourceRect = sprite.SourceRect;
@@ -739,7 +743,7 @@ public class ElevationRenderSystem(
             // Add tile size to Y to align sprite feet with tile bottom
             // Reuse static Vector2 to avoid allocation
             _reusablePosition.X = position.PixelX;
-            _reusablePosition.Y = position.PixelY + _tileSize;
+            _reusablePosition.Y = position.PixelY + TileSize;
 
             // BEST PRACTICE: Calculate layer depth based on entity's GRID position, not visual pixel position.
             // This ensures:
@@ -750,7 +754,7 @@ public class ElevationRenderSystem(
             // The grid position represents where the entity logically is for gameplay purposes.
             // The pixel position is just the visual interpolation for smooth movement.
             // For a 16x16 tile grid, the entity's ground Y is at the bottom of their grid tile.
-            float groundY = (position.Y + 1) * _tileSize; // +1 because we want bottom of tile
+            float groundY = (position.Y + 1) * TileSize; // +1 because we want bottom of tile
             var layerDepth = CalculateElevationDepth(elevation.Value, groundY);
 
             // Determine sprite effects (flip horizontal for left-facing)
@@ -784,10 +788,9 @@ public class ElevationRenderSystem(
         }
     }
 
-
     /// <summary>
-    /// Attempts to lazy-load a sprite texture if a loader is registered.
-    /// Uses cached delegate for zero-reflection performance (60% faster than reflection-based approach).
+    ///     Attempts to lazy-load a sprite texture if a loader is registered.
+    ///     Uses cached delegate for zero-reflection performance (60% faster than reflection-based approach).
     /// </summary>
     /// <param name="category">Sprite category (e.g., "NPCs", "Objects")</param>
     /// <param name="spriteName">Sprite name identifier</param>
@@ -804,10 +807,8 @@ public class ElevationRenderSystem(
             _spriteLoadDelegate(category, spriteName);
 
             // Verify the texture was actually loaded
-            if (_assetManager.HasTexture(textureKey))
-            {
+            if (AssetManager.HasTexture(textureKey))
                 _logger?.LogSpriteLoadedOnDemand(textureKey);
-            }
         }
         catch (Exception ex)
         {
@@ -817,9 +818,9 @@ public class ElevationRenderSystem(
     }
 
     /// <summary>
-    /// Calculates layer depth using Pokemon Emerald's elevation model.
-    /// Formula: layerDepth = 1.0 - ((elevation * 16) + (y / mapHeight))
-    /// This allows 16 Y-sorted positions per elevation level.
+    ///     Calculates layer depth using Pokemon Emerald's elevation model.
+    ///     Formula: layerDepth = 1.0 - ((elevation * 16) + (y / mapHeight))
+    ///     This allows 16 Y-sorted positions per elevation level.
     /// </summary>
     /// <param name="elevation">Elevation level (0-15).</param>
     /// <param name="yPosition">Y position for sorting within elevation.</param>
@@ -831,18 +832,18 @@ public class ElevationRenderSystem(
 
         // Elevation contributes 16 units per level (allowing 16 Y-sorted positions per elevation)
         // Y position contributes fractional depth within elevation
-        var depth = (elevation * 16.0f) + normalizedY;
+        var depth = elevation * 16.0f + normalizedY;
 
         // Invert for SpriteBatch (0.0 = front, 1.0 = back)
         // Max depth is (15 * 16) + 1 = 241
-        var layerDepth = 1.0f - (depth / 241.0f);
+        var layerDepth = 1.0f - depth / 241.0f;
 
         // Clamp to valid range
         return MathHelper.Clamp(layerDepth, 0.0f, 1.0f);
     }
 
     /// <summary>
-    /// Renders all image layers with proper Z-ordering and transparency.
+    ///     Renders all image layers with proper Z-ordering and transparency.
     /// </summary>
     /// <param name="world">The ECS world.</param>
     /// <returns>Number of image layers rendered.</returns>
@@ -857,7 +858,7 @@ public class ElevationRenderSystem(
                 (ref ImageLayer imageLayer) =>
                 {
                     // Get texture from AssetManager
-                    if (!_assetManager.HasTexture(imageLayer.TextureId))
+                    if (!AssetManager.HasTexture(imageLayer.TextureId))
                     {
                         if (rendered == 0) // Only warn once
                             _logger?.LogWarning(
@@ -867,7 +868,7 @@ public class ElevationRenderSystem(
                         return;
                     }
 
-                    var texture = _assetManager.GetTexture(imageLayer.TextureId);
+                    var texture = AssetManager.GetTexture(imageLayer.TextureId);
 
                     // Render the full image at the specified position
                     _spriteBatch.Draw(

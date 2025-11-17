@@ -16,19 +16,18 @@ namespace PokeSharp.Engine.Systems.Pooling;
 /// </remarks>
 public class EntityPool
 {
-    private readonly World _world;
-    private readonly Queue<Entity> _availableEntities;
     private readonly HashSet<Entity> _activeEntities;
+    private readonly Queue<Entity> _availableEntities;
     private readonly int _initialSize;
+    private readonly object _lock = new();
     private readonly int _maxSize;
     private readonly string _poolName;
     private readonly bool _trackStatistics;
-    private readonly object _lock = new();
-
-    private int _totalCreated;
-    private int _totalAcquisitions;
-    private int _totalReleases;
+    private readonly World _world;
     private long _totalAcquireTimeMs;
+    private int _totalAcquisitions;
+
+    private int _totalReleases;
 
     /// <summary>
     ///     Creates a new entity pool with specified configuration.
@@ -46,8 +45,8 @@ public class EntityPool
         bool trackStatistics = true
     )
     {
-        ArgumentNullException.ThrowIfNull(world, nameof(world));
-        ArgumentException.ThrowIfNullOrWhiteSpace(poolName, nameof(poolName));
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentException.ThrowIfNullOrWhiteSpace(poolName);
 
         if (initialSize < 0 || initialSize > maxSize)
             throw new ArgumentException(
@@ -94,13 +93,13 @@ public class EntityPool
     /// <summary>
     ///     Total number of entities created by this pool (never decreases).
     /// </summary>
-    public int TotalCreated => _totalCreated;
+    public int TotalCreated { get; private set; }
 
     /// <summary>
     ///     Reuse rate (0.0 to 1.0). Higher is better (more reuse, fewer allocations).
     /// </summary>
     public float ReuseRate =>
-        _totalAcquisitions > 0 ? 1.0f - ((float)_totalCreated / _totalAcquisitions) : 0f;
+        _totalAcquisitions > 0 ? 1.0f - (float)TotalCreated / _totalAcquisitions : 0f;
 
     /// <summary>
     ///     Average time to acquire entity from pool in milliseconds (for monitoring).
@@ -120,7 +119,7 @@ public class EntityPool
 
         lock (_lock)
         {
-            var toCreate = Math.Min(count, _maxSize - _totalCreated);
+            var toCreate = Math.Min(count, _maxSize - TotalCreated);
             for (var i = 0; i < toCreate; i++)
             {
                 var entity = CreateNewEntity();
@@ -145,21 +144,15 @@ public class EntityPool
 
             // Try to get from pool first
             if (_availableEntities.Count > 0)
-            {
                 entity = _availableEntities.Dequeue();
-            }
             // Create new if below max size
-            else if (_totalCreated < _maxSize)
-            {
+            else if (TotalCreated < _maxSize)
                 entity = CreateNewEntity();
-            }
             // Pool exhausted
             else
-            {
                 throw new InvalidOperationException(
                     $"Entity pool '{_poolName}' exhausted (max size: {_maxSize}, active: {_activeEntities.Count})"
                 );
-            }
 
             // Mark as active
             _activeEntities.Add(entity);
@@ -232,7 +225,7 @@ public class EntityPool
             _activeEntities.Clear();
 
             // Reset counters (but keep statistics for analysis)
-            _totalCreated = 0;
+            TotalCreated = 0;
         }
     }
 
@@ -248,13 +241,13 @@ public class EntityPool
                 PoolName = _poolName,
                 AvailableCount = _availableEntities.Count,
                 ActiveCount = _activeEntities.Count,
-                TotalCreated = _totalCreated,
+                TotalCreated = TotalCreated,
                 TotalAcquisitions = _totalAcquisitions,
                 TotalReleases = _totalReleases,
                 ReuseRate = ReuseRate,
                 AverageAcquireTimeMs = AverageAcquireTimeMs,
                 MaxSize = _maxSize,
-                UsagePercent = _totalCreated > 0 ? (float)_activeEntities.Count / _maxSize : 0f,
+                UsagePercent = TotalCreated > 0 ? (float)_activeEntities.Count / _maxSize : 0f,
             };
         }
     }
@@ -275,7 +268,7 @@ public class EntityPool
             }
         );
 
-        _totalCreated++;
+        TotalCreated++;
         return entity;
     }
 

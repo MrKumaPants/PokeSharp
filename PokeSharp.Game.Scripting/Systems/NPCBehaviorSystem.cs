@@ -5,12 +5,9 @@ using PokeSharp.Engine.Common.Configuration;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Core.Types;
-using PokeSharp.Engine.Systems.Management;
-using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.NPCs;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Scripting.Services;
 using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 
 namespace PokeSharp.Game.Scripting.Systems;
@@ -27,14 +24,14 @@ namespace PokeSharp.Game.Scripting.Systems;
 /// </remarks>
 public class NPCBehaviorSystem : SystemBase, IUpdateSystem
 {
+    private readonly IScriptingApiProvider _apis;
     private readonly PerformanceConfiguration _config;
     private readonly ILogger<NPCBehaviorSystem> _logger;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly IScriptingApiProvider _apis;
     private readonly ConcurrentDictionary<string, ILogger> _scriptLoggerCache = new();
     private TypeRegistry<BehaviorDefinition>? _behaviorRegistry;
-    private int _tickCounter;
     private int _lastBehaviorSummaryCount;
+    private int _tickCounter;
 
     public NPCBehaviorSystem(
         ILogger<NPCBehaviorSystem> logger,
@@ -50,8 +47,8 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
     }
 
     /// <summary>
-    /// Gets the update priority. Lower values execute first.
-    /// NPC behavior executes at priority 75, after spatial hash (25) and before movement (100).
+    ///     Gets the update priority. Lower values execute first.
+    ///     NPC behavior executes at priority 75, after spatial hash (25) and before movement (100).
     /// </summary>
     public int UpdatePriority => SystemPriority.NpcBehavior;
 
@@ -59,52 +56,6 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
     ///     System priority for NPC behaviors - runs after spatial hash, before movement.
     /// </summary>
     public override int Priority => SystemPriority.NpcBehavior;
-
-    /// <summary>
-    ///     Set the behavior registry for loading behavior scripts.
-    /// </summary>
-    public void SetBehaviorRegistry(TypeRegistry<BehaviorDefinition> registry)
-    {
-        _behaviorRegistry = registry;
-        _logger.LogWorkflowStatus("Behavior registry linked", ("behaviors", registry.Count));
-    }
-
-    /// <summary>
-    ///     Gets or creates a logger for a specific NPC behavior.
-    ///     Implements size limit to prevent unbounded memory growth.
-    /// </summary>
-    /// <param name="key">Logger key (behavior type + NPC ID)</param>
-    /// <returns>Cached or newly created logger</returns>
-    private ILogger GetOrCreateLogger(string key)
-    {
-        return _scriptLoggerCache.GetOrAdd(
-            key,
-            k =>
-            {
-                // Check if we've hit the cache limit
-                if (_scriptLoggerCache.Count >= _config.MaxCachedLoggers)
-                {
-                    _logger.LogWarning(
-                        "Script logger cache limit reached ({Limit}). Consider increasing limit or checking for leaks.",
-                        _config.MaxCachedLoggers
-                    );
-                }
-
-                return _loggerFactory.CreateLogger($"Script.{k}");
-            }
-        );
-    }
-
-    /// <summary>
-    ///     Removes a logger from the cache when a behavior is deactivated.
-    /// </summary>
-    /// <param name="behaviorTypeId">Behavior type ID</param>
-    /// <param name="npcId">NPC ID</param>
-    private void RemoveLogger(string behaviorTypeId, string npcId)
-    {
-        var key = $"{behaviorTypeId}.{npcId}";
-        _scriptLoggerCache.TryRemove(key, out _);
-    }
 
     public override void Initialize(World world)
     {
@@ -128,9 +79,7 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
 
         // Debug: Log first tick to confirm system is running
         if (_tickCounter == 0)
-        {
             _logger.LogInformation("NPCBehaviorSystem: First update tick");
-        }
 
         // Use centralized query for NPCs with behavior
         world.Query(
@@ -139,14 +88,12 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
             {
                 // Debug: Log first entity found
                 if (_tickCounter == 0)
-                {
                     _logger.LogInformation(
                         "Found NPC with behavior: npcId={NpcId}, behaviorTypeId={BehaviorTypeId}, isActive={IsActive}",
                         npc.NpcId,
                         behavior.BehaviorTypeId,
                         behavior.IsActive
                     );
-                }
 
                 try
                 {
@@ -261,6 +208,50 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
 
         if (behaviorCount > 0)
             _lastBehaviorSummaryCount = behaviorCount;
+    }
+
+    /// <summary>
+    ///     Set the behavior registry for loading behavior scripts.
+    /// </summary>
+    public void SetBehaviorRegistry(TypeRegistry<BehaviorDefinition> registry)
+    {
+        _behaviorRegistry = registry;
+        _logger.LogWorkflowStatus("Behavior registry linked", ("behaviors", registry.Count));
+    }
+
+    /// <summary>
+    ///     Gets or creates a logger for a specific NPC behavior.
+    ///     Implements size limit to prevent unbounded memory growth.
+    /// </summary>
+    /// <param name="key">Logger key (behavior type + NPC ID)</param>
+    /// <returns>Cached or newly created logger</returns>
+    private ILogger GetOrCreateLogger(string key)
+    {
+        return _scriptLoggerCache.GetOrAdd(
+            key,
+            k =>
+            {
+                // Check if we've hit the cache limit
+                if (_scriptLoggerCache.Count >= _config.MaxCachedLoggers)
+                    _logger.LogWarning(
+                        "Script logger cache limit reached ({Limit}). Consider increasing limit or checking for leaks.",
+                        _config.MaxCachedLoggers
+                    );
+
+                return _loggerFactory.CreateLogger($"Script.{k}");
+            }
+        );
+    }
+
+    /// <summary>
+    ///     Removes a logger from the cache when a behavior is deactivated.
+    /// </summary>
+    /// <param name="behaviorTypeId">Behavior type ID</param>
+    /// <param name="npcId">NPC ID</param>
+    private void RemoveLogger(string behaviorTypeId, string npcId)
+    {
+        var key = $"{behaviorTypeId}.{npcId}";
+        _scriptLoggerCache.TryRemove(key, out _);
     }
 
     /// <summary>

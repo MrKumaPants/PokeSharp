@@ -27,7 +27,11 @@ public abstract class TileBehaviorScriptBase : TypeScriptBase
     /// <param name="fromDirection">Direction entity is moving from</param>
     /// <param name="toDirection">Direction entity wants to move to</param>
     /// <returns>True if movement is blocked, false if allowed</returns>
-    public virtual bool IsBlockedFrom(ScriptContext ctx, Direction fromDirection, Direction toDirection)
+    public virtual bool IsBlockedFrom(
+        ScriptContext ctx,
+        Direction fromDirection,
+        Direction toDirection
+    )
     {
         return false; // Default: allow movement
     }
@@ -97,4 +101,3 @@ public abstract class TileBehaviorScriptBase : TypeScriptBase
     /// <param name="entity">Entity that stepped on tile</param>
     public virtual void OnStep(ScriptContext ctx, Entity entity) { }
 }
-

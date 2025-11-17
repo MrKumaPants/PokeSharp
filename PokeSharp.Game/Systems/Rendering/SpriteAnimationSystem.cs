@@ -1,9 +1,7 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
-using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Systems;
-using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Infrastructure.Services;
@@ -19,14 +17,14 @@ namespace PokeSharp.Game.Systems;
 /// </summary>
 public class SpriteAnimationSystem : SystemBase, IUpdateSystem
 {
-    private readonly SpriteLoader _spriteLoader;
+    // Cache animation lookups by manifest to avoid repeated LINQ queries
+    private readonly Dictionary<string, Dictionary<string, SpriteAnimationInfo>> _animationCache =
+        new();
     private readonly ILogger<SpriteAnimationSystem>? _logger;
 
     // Cache manifests for performance (avoid repeated async loads)
     private readonly Dictionary<string, SpriteManifest> _manifestCache = new();
-
-    // Cache animation lookups by manifest to avoid repeated LINQ queries
-    private readonly Dictionary<string, Dictionary<string, SpriteAnimationInfo>> _animationCache = new();
+    private readonly SpriteLoader _spriteLoader;
 
     public SpriteAnimationSystem(
         SpriteLoader spriteLoader,
@@ -38,8 +36,8 @@ public class SpriteAnimationSystem : SystemBase, IUpdateSystem
     }
 
     /// <summary>
-    /// Gets the priority for execution order. Lower values execute first.
-    /// Sprite animation executes at priority 875, after tile animation (850).
+    ///     Gets the priority for execution order. Lower values execute first.
+    ///     Sprite animation executes at priority 875, after tile animation (850).
     /// </summary>
     public override int Priority => SystemPriority.SpriteAnimation;
 
@@ -87,8 +85,11 @@ public class SpriteAnimationSystem : SystemBase, IUpdateSystem
 
             if (manifest == null)
             {
-                _logger?.LogWarning("Sprite manifest not found for {Category}/{SpriteName}",
-                    sprite.Category, sprite.SpriteName);
+                _logger?.LogWarning(
+                    "Sprite manifest not found for {Category}/{SpriteName}",
+                    sprite.Category,
+                    sprite.SpriteName
+                );
                 return;
             }
 
@@ -160,16 +161,18 @@ public class SpriteAnimationSystem : SystemBase, IUpdateSystem
     ///     Gets an animation from the cache, building the cache if necessary.
     ///     Avoids repeated LINQ queries for animation lookup.
     /// </summary>
-    private SpriteAnimationInfo? GetCachedAnimation(SpriteManifest manifest, string animName, string manifestKey)
+    private SpriteAnimationInfo? GetCachedAnimation(
+        SpriteManifest manifest,
+        string animName,
+        string manifestKey
+    )
     {
         if (!_animationCache.TryGetValue(manifestKey, out var animDict))
         {
             // Build lookup dictionary once per manifest
             animDict = new Dictionary<string, SpriteAnimationInfo>();
             foreach (var anim in manifest.Animations)
-            {
                 animDict[anim.Name] = anim;
-            }
             _animationCache[manifestKey] = animDict;
         }
 

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Core.Templates;
+using PokeSharp.Engine.Core.Templates.Loading;
 using PokeSharp.Engine.Core.Types;
 using PokeSharp.Engine.Systems.Factories;
 using PokeSharp.Game.Initialization;
@@ -21,17 +22,14 @@ public static class TemplateServicesExtensions
         // Component Deserializer Registry - for JSON template loading
         services.AddSingleton(sp =>
         {
-            var logger = sp.GetRequiredService<
-                ILogger<PokeSharp.Engine.Core.Templates.Loading.ComponentDeserializerRegistry>
-            >();
-            var registry =
-                new PokeSharp.Engine.Core.Templates.Loading.ComponentDeserializerRegistry(logger);
-            ComponentDeserializerSetup.RegisterAllDeserializers(registry, sp.GetService<Microsoft.Extensions.Logging.ILogger>());
+            var logger = sp.GetRequiredService<ILogger<ComponentDeserializerRegistry>>();
+            var registry = new ComponentDeserializerRegistry(logger);
+            ComponentDeserializerSetup.RegisterAllDeserializers(registry, sp.GetService<ILogger>());
             return registry;
         });
 
         // JSON Template Loader - for loading templates from JSON files
-        services.AddSingleton<PokeSharp.Engine.Core.Templates.Loading.JsonTemplateLoader>();
+        services.AddSingleton<JsonTemplateLoader>();
 
         // Template Cache - starts empty, will be initialized asynchronously
         // Note: Template loading is now done via TemplateCacheInitializer during async initialization
@@ -60,4 +58,3 @@ public static class TemplateServicesExtensions
         return services;
     }
 }
-

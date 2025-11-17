@@ -58,11 +58,8 @@ public class StartupLoggingTests
         var logger = ConsoleLoggerFactory.Create<StartupLoggingTests>();
 
         // Act & Assert
-        var act = () => logger.LogSystemInitialized(
-            "TestSystem",
-            ("version", "1.0.0"),
-            ("features", 42)
-        );
+        var act = () =>
+            logger.LogSystemInitialized("TestSystem", ("version", "1.0.0"), ("features", 42));
 
         act.Should().NotThrow();
     }
@@ -86,12 +83,8 @@ public class StartupLoggingTests
         var logger = ConsoleLoggerFactory.Create<StartupLoggingTests>();
 
         // Act & Assert
-        var act = () => logger.LogResourceLoaded(
-            "Texture",
-            "player_sprite.png",
-            ("width", 32),
-            ("height", 32)
-        );
+        var act = () =>
+            logger.LogResourceLoaded("Texture", "player_sprite.png", ("width", 32), ("height", 32));
 
         act.Should().NotThrow();
     }
@@ -123,12 +116,13 @@ public class StartupLoggingTests
         var logger = ConsoleLoggerFactory.Create<StartupLoggingTests>();
 
         // Act & Assert
-        var act = () => logger.LogInformation(
-            "System {SystemName} loaded with {Count} items in {TimeMs}ms",
-            "TestSystem",
-            100,
-            42.5
-        );
+        var act = () =>
+            logger.LogInformation(
+                "System {SystemName} loaded with {Count} items in {TimeMs}ms",
+                "TestSystem",
+                100,
+                42.5
+            );
 
         act.Should().NotThrow();
     }

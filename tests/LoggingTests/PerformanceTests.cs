@@ -67,7 +67,7 @@ public class PerformanceTests
 
         gen0Increase.Should().BeLessThan(50); // Gen0 collections should be reasonable
         gen1Increase.Should().BeLessThan(10); // Gen1 should be minimal
-        gen2Increase.Should().BeLessThan(3);  // Gen2 should be very rare
+        gen2Increase.Should().BeLessThan(3); // Gen2 should be very rare
     }
 
     [Fact]
@@ -154,13 +154,17 @@ public class PerformanceTests
         var sw = Stopwatch.StartNew();
 
         // Act - Log from multiple threads in parallel
-        Parallel.For(0, threadCount, threadId =>
-        {
-            for (int i = 0; i < messagesPerThread; i++)
+        Parallel.For(
+            0,
+            threadCount,
+            threadId =>
             {
-                logger.LogInformation("Thread {ThreadId} message {Index}", threadId, i);
+                for (int i = 0; i < messagesPerThread; i++)
+                {
+                    logger.LogInformation("Thread {ThreadId} message {Index}", threadId, i);
+                }
             }
-        });
+        );
 
         sw.Stop();
 
@@ -222,7 +226,13 @@ public class PerformanceTests
             Thread.Sleep(200); // Allow async writes to complete
             if (Directory.Exists(logDirectory))
             {
-                try { Directory.Delete(logDirectory, true); } catch { /* Ignore */ }
+                try
+                {
+                    Directory.Delete(logDirectory, true);
+                }
+                catch
+                { /* Ignore */
+                }
             }
         }
     }

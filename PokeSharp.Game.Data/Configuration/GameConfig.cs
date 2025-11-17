@@ -67,14 +67,19 @@ public class GameConfig
 public class AssetConfig
 {
     public string AssetRoot { get; set; } = "Assets";
-    public bool PreloadAssets { get; set; } = false;
-    public bool CompressTextures { get; set; } = false;
+    public bool PreloadAssets { get; set; }
+    public bool CompressTextures { get; set; }
     public int MaxTextureSize { get; set; } = 4096;
 
-    public static AssetConfig CreateDevelopment() => new() { PreloadAssets = false };
+    public static AssetConfig CreateDevelopment()
+    {
+        return new AssetConfig { PreloadAssets = false };
+    }
 
-    public static AssetConfig CreateProduction() =>
-        new() { PreloadAssets = true, CompressTextures = true };
+    public static AssetConfig CreateProduction()
+    {
+        return new AssetConfig { PreloadAssets = true, CompressTextures = true };
+    }
 }
 
 /// <summary>
@@ -87,7 +92,13 @@ public class PerformanceConfig
     public bool EnableBatchRendering { get; set; } = true;
     public int TargetFrameRate { get; set; } = 60;
 
-    public static PerformanceConfig CreateDevelopment() => new() { EnableEntityCulling = false };
+    public static PerformanceConfig CreateDevelopment()
+    {
+        return new PerformanceConfig { EnableEntityCulling = false };
+    }
 
-    public static PerformanceConfig CreateProduction() => new() { EnableEntityCulling = true };
+    public static PerformanceConfig CreateProduction()
+    {
+        return new PerformanceConfig { EnableEntityCulling = true };
+    }
 }

@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 
@@ -36,10 +35,8 @@ public class TilesetLoader
             tileset.Name = tilesetId;
 
             if (tileset.Image != null && !string.IsNullOrEmpty(tileset.Image.Source))
-            {
                 if (!_assetManager.HasTexture(tilesetId))
                     LoadTilesetTexture(tileset, mapPath, tilesetId);
-            }
 
             loadedTilesets.Add(new LoadedTileset(tileset, tilesetId));
         }
@@ -62,7 +59,6 @@ public class TilesetLoader
         };
 
         foreach (var tileset in tmxDoc.Tilesets)
-        {
             // Check if this is an external tileset reference (has "Source" but no tile data)
             if (!string.IsNullOrEmpty(tileset.Source) && tileset.TileWidth == 0)
             {
@@ -70,7 +66,6 @@ public class TilesetLoader
                 var tilesetPath = Path.Combine(mapBasePath, tileset.Source);
 
                 if (File.Exists(tilesetPath))
-                {
                     try
                     {
                         var tilesetJson = File.ReadAllText(tilesetPath);
@@ -124,9 +119,7 @@ public class TilesetLoader
 
                         // Parse tile animations from "tiles" array
                         if (root.TryGetProperty("tiles", out var tilesArray))
-                        {
                             ParseTilesetAnimations(tilesArray, tileset);
-                        }
 
                         _logger?.LogDebug(
                             "Loaded external tileset: {Name} ({Width}x{Height}) with {AnimCount} animations from {Path}",
@@ -146,13 +139,9 @@ public class TilesetLoader
                         );
                         throw;
                     }
-                }
                 else
-                {
                     throw new FileNotFoundException($"External tileset not found: {tilesetPath}");
-                }
             }
-        }
     }
 
     /// <summary>
@@ -175,7 +164,6 @@ public class TilesetLoader
                 var frameDurations = new List<float>();
 
                 foreach (var frameElement in animArray.EnumerateArray())
-                {
                     if (
                         frameElement.TryGetProperty("tileid", out var frameTileId)
                         && frameElement.TryGetProperty("duration", out var frameDuration)
@@ -185,16 +173,13 @@ public class TilesetLoader
                         // Convert milliseconds to seconds
                         frameDurations.Add(frameDuration.GetInt32() / 1000f);
                     }
-                }
 
                 if (frameTileIds.Count > 0)
-                {
                     tileset.Animations[tileId] = new TmxTileAnimation
                     {
                         FrameTileIds = frameTileIds.ToArray(),
                         FrameDurations = frameDurations.ToArray(),
                     };
-                }
             }
 
             // Parse tile properties (collision, ledge, etc.)
@@ -203,7 +188,6 @@ public class TilesetLoader
                 var properties = new Dictionary<string, object>();
 
                 foreach (var propElement in propsArray.EnumerateArray())
-                {
                     if (
                         propElement.TryGetProperty("name", out var propName)
                         && propElement.TryGetProperty("value", out var propValue)
@@ -226,12 +210,9 @@ public class TilesetLoader
                             properties[key] = value;
                         }
                     }
-                }
 
                 if (properties.Count > 0)
-                {
                     tileset.TileProperties[tileId] = properties;
-                }
             }
         }
     }
@@ -246,7 +227,7 @@ public class TilesetLoader
 
         var mapDirectory = Path.GetDirectoryName(mapPath) ?? string.Empty;
 
-        string tilesetImageAbsolutePath = Path.IsPathRooted(tileset.Image.Source)
+        var tilesetImageAbsolutePath = Path.IsPathRooted(tileset.Image.Source)
             ? tileset.Image.Source
             : Path.GetFullPath(Path.Combine(mapDirectory, tileset.Image.Source));
 
@@ -254,22 +235,27 @@ public class TilesetLoader
         // Otherwise (e.g., in tests with stub), use the path directly
         string pathForLoader;
         if (_assetManager is AssetManager assetManager)
-        {
             pathForLoader = Path.GetRelativePath(assetManager.AssetRoot, tilesetImageAbsolutePath);
-        }
         else
-        {
             pathForLoader = tilesetImageAbsolutePath;
-        }
 
         try
         {
             _assetManager.LoadTexture(tilesetId, pathForLoader);
-            _logger?.LogDebug("Loaded tileset texture: {TilesetId} from {PathForLoader}", tilesetId, pathForLoader);
+            _logger?.LogDebug(
+                "Loaded tileset texture: {TilesetId} from {PathForLoader}",
+                tilesetId,
+                pathForLoader
+            );
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to load tileset texture: {TilesetId} from {PathForLoader}", tilesetId, pathForLoader);
+            _logger?.LogError(
+                ex,
+                "Failed to load tileset texture: {TilesetId} from {PathForLoader}",
+                tilesetId,
+                pathForLoader
+            );
             throw;
         }
     }
@@ -286,7 +272,6 @@ public class TilesetLoader
         // Fallback to tileset name
         return tileset.Name ?? "default-tileset";
     }
-
 }
 
 /// <summary>
@@ -304,4 +289,3 @@ public sealed class LoadedTileset
     public TmxTileset Tileset { get; }
     public string TilesetId { get; }
 }
-

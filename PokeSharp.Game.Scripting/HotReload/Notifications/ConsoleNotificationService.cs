@@ -1,7 +1,5 @@
 namespace PokeSharp.Game.Scripting.HotReload.Notifications;
 
-using PokeSharp.Game.Systems.Services;
-
 /// <summary>
 ///     Console-based notification service (can be replaced with GUI later).
 /// </summary>

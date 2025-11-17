@@ -9,6 +9,13 @@ namespace PokeSharp.Engine.Core.Types;
 public record TileBehaviorDefinition : IScriptedType
 {
     /// <summary>
+    ///     Behavior flags (for fast lookup without script execution).
+    ///     Similar to Pokemon Emerald's sTileBitAttributes.
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public TileBehaviorFlags Flags { get; init; } = TileBehaviorFlags.None;
+
+    /// <summary>
     ///     Unique identifier for this behavior type (e.g., "jump_south", "ice", "tall_grass").
     /// </summary>
     public required string TypeId { get; init; }
@@ -28,13 +35,6 @@ public record TileBehaviorDefinition : IScriptedType
     ///     Relative to the Scripts directory.
     /// </summary>
     public string? BehaviorScript { get; init; }
-
-    /// <summary>
-    ///     Behavior flags (for fast lookup without script execution).
-    ///     Similar to Pokemon Emerald's sTileBitAttributes.
-    /// </summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public TileBehaviorFlags Flags { get; init; } = TileBehaviorFlags.None;
 }
 
 /// <summary>
@@ -73,4 +73,3 @@ public enum TileBehaviorFlags
     /// </summary>
     DisablesRunning = 1 << 4,
 }
-

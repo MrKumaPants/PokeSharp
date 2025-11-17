@@ -3,11 +3,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Systems.BulkOperations;
-using PokeSharp.Game.Components.Common;
-using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Tiles;
-using PokeSharp.Game.Systems;
 using PokeSharp.Game.Data.MapLoading.Tiled.Services;
 using PokeSharp.Game.Data.MapLoading.Tiled.Tmx;
 using PokeSharp.Game.Data.PropertyMapping;
@@ -25,11 +22,14 @@ public class LayerProcessor
     private const uint FLIPPED_VERTICALLY_FLAG = 0x40000000;
     private const uint FLIPPED_DIAGONALLY_FLAG = 0x20000000;
     private const uint TILE_ID_MASK = 0x1FFFFFFF;
-
-    private readonly PropertyMapperRegistry? _propertyMapperRegistry;
     private readonly ILogger<LayerProcessor>? _logger;
 
-    public LayerProcessor(PropertyMapperRegistry? propertyMapperRegistry = null, ILogger<LayerProcessor>? logger = null)
+    private readonly PropertyMapperRegistry? _propertyMapperRegistry;
+
+    public LayerProcessor(
+        PropertyMapperRegistry? propertyMapperRegistry = null,
+        ILogger<LayerProcessor>? logger = null
+    )
     {
         _propertyMapperRegistry = propertyMapperRegistry;
         _logger = logger;
@@ -59,7 +59,7 @@ public class LayerProcessor
 
             // Get layer offset for parallax scrolling (default to 0,0 if not set)
             var layerOffset =
-                (layer.OffsetX != 0 || layer.OffsetY != 0)
+                layer.OffsetX != 0 || layer.OffsetY != 0
                     ? new LayerOffset(layer.OffsetX, layer.OffsetY)
                     : (LayerOffset?)null;
 
@@ -170,9 +170,7 @@ public class LayerProcessor
             // Check if tile has custom elevation property, otherwise use layer elevation
             var tileElevation = elevation;
             if (props != null && props.TryGetValue("elevation", out var elevProp))
-            {
                 tileElevation = Convert.ToByte(elevProp);
-            }
             world.Add(entity, new Elevation(tileElevation));
 
             // Add LayerOffset if needed
@@ -359,13 +357,11 @@ public class LayerProcessor
         {
             var componentsAdded = _propertyMapperRegistry.MapAndAddAll(world, entity, props);
             if (componentsAdded > 0)
-            {
                 _logger?.LogTrace(
                     "Applied {ComponentCount} components via property mappers to entity {EntityId}",
                     componentsAdded,
                     entity.Id
                 );
-            }
         }
         else
         {
@@ -409,10 +405,8 @@ public class LayerProcessor
     private static int FindTilesetIndexForGid(int tileGid, IReadOnlyList<LoadedTileset> tilesets)
     {
         for (var i = tilesets.Count - 1; i >= 0; i--)
-        {
             if (tileGid >= tilesets[i].Tileset.FirstGid)
                 return i;
-        }
 
         return -1;
     }
@@ -431,4 +425,3 @@ public class LayerProcessor
         public int TilesetIndex;
     }
 }
-

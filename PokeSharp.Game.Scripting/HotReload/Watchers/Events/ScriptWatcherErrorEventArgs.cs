@@ -1,7 +1,5 @@
 namespace PokeSharp.Game.Scripting.HotReload;
 
-using PokeSharp.Game.Systems.Services;
-
 public class ScriptWatcherErrorEventArgs : EventArgs
 {
     public Exception Exception { get; init; } = null!;
