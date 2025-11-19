@@ -24,5 +24,9 @@
     <ProjectReference Include="..\..\PokeSharp.Engine.Common\PokeSharp.Engine.Common.csproj" />
     <ProjectReference Include="..\..\PokeSharp.Engine.Core\PokeSharp.Engine.Core.csproj" />
     <ProjectReference Include="..\..\PokeSharp.Engine.Systems\PokeSharp.Engine.Systems.csproj" />
+    <ProjectReference Include="..\..\PokeSharp.Engine.Rendering\PokeSharp.Engine.Rendering.csproj" />
+    <ProjectReference Include="..\..\PokeSharp.Game.Systems\PokeSharp.Game.Systems.csproj" />
+    <ProjectReference Include="..\..\PokeSharp.Game.Components\PokeSharp.Game.Components.csproj" />
+    <ProjectReference Include="..\..\PokeSharp.Game\PokeSharp.Game.csproj" />
   </ItemGroup>
 </Project>

@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.Rendering;
+using PokeSharp.Game.Systems;
+using PokeSharp.Game.Systems.Services;
 using Xunit;
 
 namespace PokeSharp.Engine.Systems.Tests.Movement;
@@ -26,7 +28,7 @@ public class MovementSystemTests : IDisposable
         _world = World.Create();
         _mockCollisionService = new Mock<ICollisionService>();
         _mockLogger = new Mock<ILogger<MovementSystem>>();
-        _system = new MovementSystem(_mockCollisionService.Object, _mockLogger.Object);
+        _system = new MovementSystem(_mockCollisionService.Object, null, _mockLogger.Object);
     }
 
     public void Dispose()
@@ -177,7 +179,7 @@ public class MovementSystemTests : IDisposable
     {
         // Arrange
         _mockCollisionService
-            .Setup(x => x.CanMove(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Setup(x => x.IsPositionWalkable(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<Direction>(), It.IsAny<byte>()))
             .Returns(true);
 
         var entity = _world.Create(
@@ -249,13 +251,13 @@ public class MovementSystemTests : IDisposable
     {
         // Arrange
         _mockCollisionService
-            .Setup(x => x.CanMove(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Setup(x => x.IsPositionWalkable(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<Direction>(), It.IsAny<byte>()))
             .Returns(true);
 
         var entity = _world.Create(
             new Position { X = 0, Y = 0 },
             new GridMovement { IsMoving = false, FacingDirection = Direction.None },
-            new MovementRequest { Direction = Direction.South, IsPending = true }
+            new MovementRequest { Direction = Direction.South, Active = true }
         );
 
         _system.Initialize(_world);
@@ -274,13 +276,13 @@ public class MovementSystemTests : IDisposable
     {
         // Arrange
         _mockCollisionService
-            .Setup(x => x.CanMove(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Setup(x => x.IsPositionWalkable(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<Direction>(), It.IsAny<byte>()))
             .Returns(false); // Blocked
 
         var entity = _world.Create(
             new Position { X = 0, Y = 0 },
             new GridMovement { IsMoving = false, FacingDirection = Direction.None },
-            new MovementRequest { Direction = Direction.South, IsPending = true }
+            new MovementRequest { Direction = Direction.South, Active = true }
         );
 
         _system.Initialize(_world);
@@ -364,7 +366,7 @@ public class MovementSystemIntegrationTests : IDisposable
         _world = World.Create();
         _mockCollisionService = new Mock<ICollisionService>();
         _mockCollisionService
-            .Setup(x => x.CanMove(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Setup(x => x.IsPositionWalkable(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<Direction>(), It.IsAny<byte>()))
             .Returns(true);
         _system = new MovementSystem(_mockCollisionService.Object);
     }
@@ -400,7 +402,7 @@ public class MovementSystemIntegrationTests : IDisposable
         _system.Initialize(_world);
 
         // Act - Simulate player movement
-        _world.Set(player, new MovementRequest { Direction = Direction.South, IsPending = true });
+        _world.Set(player, new MovementRequest { Direction = Direction.South, Active = true });
 
         for (var frame = 0; frame < 60; frame++) // 1 second at 60 FPS
             _system.Update(_world, 0.016f);

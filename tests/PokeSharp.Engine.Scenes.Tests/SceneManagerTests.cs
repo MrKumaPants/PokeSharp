@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Moq;
 using PokeSharp.Engine.Scenes;
 using Xunit;
@@ -10,16 +11,56 @@ namespace PokeSharp.Engine.Scenes.Tests;
 /// <summary>
 ///     Unit tests for SceneManager class.
 /// </summary>
-public class SceneManagerTests
+public class SceneManagerTests : IDisposable
 {
-    private static SceneManager CreateSceneManager()
+    private readonly GraphicsDevice _graphicsDevice;
+
+    public SceneManagerTests()
     {
-        var graphicsDevice = new Mock<Microsoft.Xna.Framework.Graphics.GraphicsDevice>();
+        // Create a headless GraphicsDevice for testing
+        // This approach avoids requiring a Game instance with a window
+        try
+        {
+            var presentationParameters = new PresentationParameters
+            {
+                BackBufferWidth = 800,
+                BackBufferHeight = 600,
+                BackBufferFormat = SurfaceFormat.Color,
+                DepthStencilFormat = DepthFormat.Depth24,
+                DeviceWindowHandle = IntPtr.Zero,
+                IsFullScreen = false,
+            };
+
+            _graphicsDevice = new GraphicsDevice(
+                GraphicsAdapter.DefaultAdapter,
+                GraphicsProfile.HiDef,
+                presentationParameters
+            );
+        }
+        catch (NullReferenceException)
+        {
+            // In headless test environments, GraphicsAdapter may not be available
+            // This is a known limitation of XNA/MonoGame in CI/headless environments
+            // For now, we'll use a mock/null pattern or skip tests that require graphics
+            throw new InvalidOperationException(
+                "GraphicsDevice cannot be created in this environment. " +
+                "GraphicsAdapter is not available (typically in headless CI environments). " +
+                "Consider using mock GraphicsDevice or marking tests as [Fact(Skip = \"Requires graphics adapter\")]"
+            );
+        }
+    }
+
+    public void Dispose()
+    {
+        _graphicsDevice?.Dispose();
+    }
+
+    private SceneManager CreateSceneManager()
+    {
         var services = new Mock<IServiceProvider>();
         var logger = new Mock<ILogger<SceneManager>>();
 
-        // Note: This will fail at runtime without a real GraphicsDevice, but allows unit testing of logic
-        return new SceneManager(graphicsDevice.Object, services.Object, logger.Object);
+        return new SceneManager(_graphicsDevice, services.Object, logger.Object);
     }
 
     private static Mock<IScene> CreateMockScene(string name)

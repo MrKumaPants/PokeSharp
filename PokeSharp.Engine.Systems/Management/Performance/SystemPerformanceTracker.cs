@@ -116,7 +116,9 @@ public class SystemPerformanceTracker
             var lastWarning = _lastSlowWarningFrame.GetOrAdd(systemName, 0);
 
             // Only warn if cooldown period has passed since last warning for this system
-            if (FrameCount - lastWarning >= _config.SlowSystemWarningCooldownFrames)
+            // If lastWarning is 0, it means we've never warned for this system, so allow the first warning
+            var framesSinceLastWarning = lastWarning == 0 ? ulong.MaxValue : FrameCount - lastWarning;
+            if (framesSinceLastWarning >= _config.SlowSystemWarningCooldownFrames)
             {
                 // Update warning frame (TryUpdate ensures we don't overwrite a newer value from another thread)
                 _lastSlowWarningFrame.TryUpdate(systemName, FrameCount, lastWarning);
@@ -207,5 +209,66 @@ public class SystemPerformanceTracker
         // ConcurrentDictionary.Clear() is atomic and thread-safe
         _metrics.Clear();
         _lastSlowWarningFrame.Clear();
+    }
+
+    /// <summary>
+    ///     Generates a formatted performance report for all tracked systems.
+    ///     OPTIMIZED: Uses cached sorted metrics list to avoid allocations.
+    /// </summary>
+    /// <returns>A formatted string report containing system performance metrics.</returns>
+    public string GenerateReport()
+    {
+        if (_metrics.Count == 0)
+            return "No system performance data available.";
+
+        // OPTIMIZATION: Reuse cached list instead of LINQ allocation
+        _cachedSortedMetrics.Clear();
+        _cachedSortedMetrics.AddRange(_metrics);
+        _cachedSortedMetrics.Sort(
+            (a, b) => b.Value.AverageUpdateMs.CompareTo(a.Value.AverageUpdateMs)
+        );
+
+        // Build report using StringBuilder for efficient string construction
+        var report = new System.Text.StringBuilder();
+        report.AppendLine("=== System Performance Report ===");
+        report.AppendLine($"Frame Count: {FrameCount}");
+        report.AppendLine();
+
+        // Calculate totals
+        double totalTime = 0;
+        double maxTime = 0;
+        long totalUpdates = 0;
+
+        foreach (var kvp in _cachedSortedMetrics)
+        {
+            var metrics = kvp.Value;
+            totalTime += metrics.TotalTimeMs;
+            if (metrics.MaxUpdateMs > maxTime)
+                maxTime = metrics.MaxUpdateMs;
+            totalUpdates += metrics.UpdateCount;
+        }
+
+        report.AppendLine("=== Summary ===");
+        report.AppendLine($"Total Time: {totalTime:F2} ms");
+        report.AppendLine($"Average Time: {(totalTime / _cachedSortedMetrics.Count):F2} ms");
+        report.AppendLine($"Max Time: {maxTime:F2} ms");
+        report.AppendLine($"Total Updates: {totalUpdates}");
+        report.AppendLine();
+
+        report.AppendLine("=== System Details ===");
+        foreach (var kvp in _cachedSortedMetrics)
+        {
+            var systemName = kvp.Key;
+            var metrics = kvp.Value;
+            report.AppendLine($"{systemName}:");
+            report.AppendLine($"  Total: {metrics.TotalTimeMs:F2} ms");
+            report.AppendLine($"  Average: {metrics.AverageUpdateMs:F2} ms");
+            report.AppendLine($"  Max: {metrics.MaxUpdateMs:F2} ms");
+            report.AppendLine($"  Updates: {metrics.UpdateCount}");
+            report.AppendLine($"  Last: {metrics.LastUpdateMs:F2} ms");
+            report.AppendLine();
+        }
+
+        return report.ToString();
     }
 }
