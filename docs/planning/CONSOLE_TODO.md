@@ -7,18 +7,19 @@
 
 ## 📊 Overall Status
 
-| Tab | Core Features | Status |
-|-----|---------------|--------|
-| **Console** | Command execution, C# scripting | 🟡 85% Complete |
-| **Watch** | Real-time monitoring | ✅ 100% Complete |
-| **Logs** | Log viewing & filtering | 🟡 70% Complete |
-| **Variables** | Script variable inspection | 🟢 60% Complete |
+| Tab           | Core Features                   | Status           |
+| ------------- | ------------------------------- | ---------------- |
+| **Console**   | Command execution, C# scripting | ✅ 98% Complete  |
+| **Watch**     | Real-time monitoring            | ✅ 100% Complete |
+| **Logs**      | Log viewing & filtering         | 🟡 70% Complete  |
+| **Variables** | Script variable inspection      | 🟢 60% Complete  |
 
 ---
 
 ## 🎮 Console Tab - Missing Features
 
 ### ✅ Already Implemented
+
 - [x] Multi-line text editor with dynamic height
 - [x] Line numbers for multi-line mode
 - [x] Syntax highlighting (C# keywords, types, strings, etc.)
@@ -34,119 +35,174 @@
 - [x] Text selection (visual highlighting)
 - [x] Scrolling in output buffer
 - [x] Hover effects
+- [x] **Clipboard operations (Ctrl+C/X/V) - Input editor only** ✨
+- [x] **Undo/Redo (Ctrl+Z/Y)** ✨
+- [x] **Bracket matching** ✨
+- [x] **Word navigation (Ctrl+arrows, Ctrl+Backspace/Delete)** ✨
+- [x] **Input editor mouse support (click, drag, double-click)** ✨
 
 ---
 
 ### 🔴 HIGH PRIORITY - Essential Editing
 
-#### 1. **Clipboard Operations** ⭐ CRITICAL
+#### 1. **Clipboard Operations** ✅ COMPLETE
+
 ```
-Status: NOT IMPLEMENTED
-Complexity: Medium (2-4 hours)
+Status: ✅ IMPLEMENTED
+Implementation: TextEditor.cs lines 507-602, keyboard handling 1256-1275
 ```
 
-**Missing:**
-- [ ] Copy (Ctrl+C) - Copy selected text
-- [ ] Cut (Ctrl+X) - Cut selected text
-- [ ] Paste (Ctrl+V) - Paste from clipboard
-- [ ] Copy entire line if no selection
+**Implemented:**
 
-**Why Critical:** Users expect this everywhere. Without it, editing is painful.
+- [x] Copy (Ctrl+C) - Copy selected text (or current line if no selection)
+- [x] Cut (Ctrl+X) - Cut selected text
+- [x] Paste (Ctrl+V) - Paste from clipboard with multi-line support
+- [x] Copy entire line if no selection
 
-**Implementation Notes:**
-- Use `TextCopy` library (already in project)
-- Handle multi-line text properly
-- Preserve formatting when pasting
+**Implementation Details:**
+
+- Uses `ClipboardManager` for cross-platform clipboard access
+- Full multi-line text support for paste operations
+- Smart cut behavior (selects current line if no selection)
 
 ---
 
-#### 2. **Undo/Redo** ⭐ CRITICAL
+#### 2. **Undo/Redo** ✅ COMPLETE
+
 ```
-Status: NOT IMPLEMENTED (infrastructure exists)
-Complexity: Medium (3-5 hours)
+Status: ✅ IMPLEMENTED
+Implementation: TextEditor.cs lines 23-24, 604-635, keyboard handling 1242-1254
 ```
 
-**Missing:**
-- [ ] Undo (Ctrl+Z) - Revert last change
-- [ ] Redo (Ctrl+Y or Ctrl+Shift+Z) - Restore undone change
-- [ ] Integrate with `TextEditor`
+**Implemented:**
 
-**Why Critical:** Prevents accidental loss of work, essential for productivity.
+- [x] Undo (Ctrl+Z) - Revert last change
+- [x] Redo (Ctrl+Y or Ctrl+Shift+Z) - Restore undone change
+- [x] Fully integrated with `TextEditor`
 
-**Implementation Notes:**
-- `UndoRedoStack` class already exists in old console
-- Can be adapted or rewritten for new `TextEditor`
-- Track text changes, cursor position, selection
+**Implementation Details:**
+
+- Uses `TextEditorUndoRedo` class with full state management
+- Tracks text changes, cursor position, and selection
+- Automatically saves state before all modifications
 
 ---
 
-#### 3. **Word Navigation** ⭐ HIGH
+#### 3. **Word Navigation** ✅ COMPLETE
+
 ```
-Status: NOT IMPLEMENTED
-Complexity: Low (1-2 hours)
+Status: ✅ IMPLEMENTED
+Implementation: TextEditor.cs lines 637-737, keyboard handling 1315-1343
 ```
 
-**Missing:**
-- [ ] Ctrl+Left/Right - Jump between words
-- [ ] Ctrl+Backspace - Delete word backward
-- [ ] Ctrl+Delete - Delete word forward
-- [ ] Smart word boundaries (stop at punctuation, camelCase)
+**Implemented:**
 
-**Why High:** Much faster editing of long commands.
+- [x] Ctrl+Left/Right - Jump between words
+- [x] Ctrl+Backspace - Delete word backward
+- [x] Ctrl+Delete - Delete word forward
+- [x] Smart word boundaries via `WordNavigationHelper`
 
-**Implementation Notes:**
-- Implement word boundary detection
-- Consider CamelCase and snake_case as word separators
-- Add to `TextEditor`'s input handling
+**Implementation Details:**
+
+- Uses `WordNavigationHelper.FindPreviousWordStart()` and `FindNextWordEnd()`
+- Properly handles word boundaries at punctuation and whitespace
+- Deletion methods include undo support and multi-line handling
+- Keyboard shortcuts fully wired up in HandleKeyboardInput()
 
 ---
 
-#### 4. **Advanced Selection**
+#### 4. **Advanced Selection (Input Editor)**
+
 ```
-Status: PARTIAL (click-drag only)
+Status: PARTIAL (click-drag implemented, keyboard selection not)
 Complexity: Medium (2-3 hours)
 ```
 
+**Implemented:**
+
+- [x] Click and drag selection (IMPLEMENTED)
+- [x] Double-click to select word (IMPLEMENTED in TextEditor)
+- [x] Ctrl+A - Select All (IMPLEMENTED)
+
 **Missing:**
+
 - [ ] Shift+Arrow keys - Extend selection
 - [ ] Shift+Home/End - Select to line start/end
 - [ ] Shift+Ctrl+Arrow - Select by word
-- [ ] Double-click - Select word
-- [x] Click and drag (IMPLEMENTED)
-- [x] Ctrl+A (IMPLEMENTED)
 
 **Why High:** Keyboard selection is much faster for power users.
 
 ---
 
-### 🟡 MEDIUM PRIORITY - Enhanced UX
+#### 5. **Console Output Mouse Support** ⭐ HIGH
 
-#### 5. **Bracket Matching**
 ```
-Status: NOT IMPLEMENTED
-Complexity: Low (1-2 hours)
+Status: NOT IMPLEMENTED (infrastructure exists)
+Complexity: Medium (3-4 hours)
 ```
+
+**Infrastructure Ready:**
+
+- [x] Selection state tracking (\_hasSelection, line ranges)
+- [x] Visual selection highlighting (DrawSelectionBackgrounds)
+- [x] GetLineAtPosition() helper for mouse-to-line conversion
+- [x] GetSelectedText() method
 
 **Missing:**
-- [ ] Highlight matching brackets when cursor is near one
-- [ ] Visual indicator for bracket pairs: `()`, `[]`, `{}`
-- [ ] Flash highlight when bracket is typed
 
-**Why Medium:** Helps with complex nested expressions.
+- [ ] Click to start selection in output buffer
+- [ ] Drag to extend selection
+- [ ] Double-click to select word in output
+- [ ] Triple-click to select entire line
+- [ ] Ctrl+C to copy selected output
+- [ ] Right-click context menu (copy, clear, etc.)
+- [ ] Hover line highlighting
+
+**Why High:** Essential for copying console output, error messages, and debugging info.
 
 **Implementation Notes:**
-- Add to `TextEditor` rendering
-- Use `UITheme` colors for bracket highlighting
+
+- Add mouse event handling in TextBuffer.OnRender()
+- Wire up clipboard copy (Ctrl+C when output is focused)
+- Consider adding context menu component
+- May need to track focused state for TextBuffer
+- Use existing ClipboardManager.SetText()
 
 ---
 
-#### 6. **Output Formatting & Sections**
+### 🟡 MEDIUM PRIORITY - Enhanced UX
+
+#### 6. **Bracket Matching** ✅ COMPLETE
+
+```
+Status: ✅ IMPLEMENTED
+Implementation: TextEditor.cs lines 887-923, BracketMatcher utility, rendering 1117-1120
+```
+
+**Implemented:**
+
+- [x] Highlight matching brackets when cursor is near one
+- [x] Visual indicator for bracket pairs: `()`, `[]`, `{}`
+- [x] Subtle background highlight for matched pairs
+
+**Implementation Details:**
+
+- Uses `BracketMatcher.FindBracketPairNearCursor()` utility
+- Highlights both cursor bracket and matching bracket
+- Uses `UITheme.Dark.BracketMatch` color for consistency
+- Only displays when editor is focused
+
+---
+
+#### 7. **Output Formatting & Sections**
+
 ```
 Status: BASIC IMPLEMENTED
 Complexity: Medium (3-4 hours)
 ```
 
 **Missing:**
+
 - [ ] Group output by command execution
 - [ ] Collapsible sections
 - [ ] Visual separators between commands
@@ -157,13 +213,15 @@ Complexity: Medium (3-4 hours)
 
 ---
 
-#### 7. **Font Size Controls**
+#### 8. **Font Size Controls**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
 ```
 
 **Missing:**
+
 - [ ] Ctrl+Plus - Increase font size
 - [ ] Ctrl+Minus - Decrease font size
 - [ ] Ctrl+0 - Reset to default
@@ -175,13 +233,15 @@ Complexity: Low (1-2 hours)
 
 ### 🟢 LOW PRIORITY - Nice to Have
 
-#### 8. **Smart Code Features**
+#### 9. **Smart Code Features**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: High (5-8 hours)
 ```
 
 **Missing:**
+
 - [ ] Auto-close brackets/quotes
 - [ ] Auto-indent multi-line code
 - [ ] Snippet expansion (e.g., `for` -> `for (int i = 0; i < count; i++)`)
@@ -191,13 +251,15 @@ Complexity: High (5-8 hours)
 
 ---
 
-#### 9. **Output Export**
+#### 10. **Output Export**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
 ```
 
 **Missing:**
+
 - [ ] Export output to file
 - [ ] Copy all output to clipboard
 - [ ] Export with or without colors
@@ -207,13 +269,15 @@ Complexity: Low (1-2 hours)
 
 ---
 
-#### 10. **Configurable Theme**
+#### 11. **Configurable Theme**
+
 ```
 Status: PARTIAL (Dark theme only)
 Complexity: Medium (3-4 hours)
 ```
 
 **Missing:**
+
 - [ ] Light theme preset
 - [ ] High contrast theme preset
 - [ ] Custom theme editor UI
@@ -228,6 +292,7 @@ Complexity: Medium (3-4 hours)
 ## 📺 Watch Tab - Enhancements
 
 ### ✅ Fully Implemented Features
+
 - [x] Real-time expression monitoring
 - [x] Auto-update with configurable interval
 - [x] Watch grouping and collapse/expand
@@ -244,6 +309,7 @@ Complexity: Medium (3-4 hours)
 ### 🔴 HIGH PRIORITY Enhancements
 
 #### 1. **Threaded Watch Evaluation** ⭐ PERFORMANCE CRITICAL
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: High (6-10 hours)
@@ -251,6 +317,7 @@ Priority: HIGH
 ```
 
 **Missing:**
+
 - [ ] Move watch expression evaluation to background thread
 - [ ] Thread-safe result queue/callback mechanism
 - [ ] Main thread synchronization for game state access
@@ -261,12 +328,14 @@ Priority: HIGH
 **Why High:** Expensive watch evaluations currently block the game thread, causing frame drops. With many watches or complex objects, this significantly impacts performance.
 
 **Design Considerations:**
+
 - **Challenge:** MonoGame/game objects may not be thread-safe
 - **Solution 1:** Evaluate on background thread, queue results back to main thread
 - **Solution 2:** Capture snapshot of data on main thread, evaluate snapshot on background thread
 - **Solution 3:** Hybrid - simple watches on background thread, complex/game-state watches on main thread
 
 **Implementation Notes:**
+
 ```csharp
 // Option 1: Background thread with result queue
 class WatchEvaluator
@@ -287,6 +356,7 @@ class AsyncWatchEvaluator
 ```
 
 **Safety Measures:**
+
 - Timeout for evaluations (5-10 seconds max)
 - Cancellation on console close/watch remove
 - Exception isolation (don't crash on evaluation error)
@@ -297,6 +367,7 @@ class AsyncWatchEvaluator
 ### 🟡 MEDIUM Priority Enhancements
 
 #### 2. **Watch Value Visualization**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Medium (4-6 hours)
@@ -304,6 +375,7 @@ Priority: MEDIUM
 ```
 
 **Ideas:**
+
 - [ ] Mini sparkline graphs for numeric values
 - [ ] Value trend indicators (↑ increasing, ↓ decreasing, → stable)
 - [ ] Color gradient based on value magnitude
@@ -314,6 +386,7 @@ Priority: MEDIUM
 ---
 
 #### 2. **Watch Export/Import**
+
 ```
 Status: PARTIAL (presets implemented)
 Complexity: Low (1 hour)
@@ -321,6 +394,7 @@ Priority: LOW
 ```
 
 **Missing:**
+
 - [ ] Export watches to CSV
 - [ ] Export watch history to CSV
 - [ ] Import watches from CSV
@@ -331,6 +405,7 @@ Priority: LOW
 ---
 
 #### 3. **Watch Performance Stats**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
@@ -338,6 +413,7 @@ Priority: LOW
 ```
 
 **Missing:**
+
 - [ ] Show evaluation time per watch
 - [ ] Highlight slow evaluations (> 10ms)
 - [ ] Total time spent on watch updates per frame
@@ -350,6 +426,7 @@ Priority: LOW
 ## 📋 Logs Tab - Missing Features
 
 ### ✅ Currently Implemented
+
 - [x] Log message display with timestamps
 - [x] Log level filtering (Trace, Debug, Info, Warning, Error, Critical)
 - [x] Log category display
@@ -362,6 +439,7 @@ Priority: LOW
 ### 🔴 HIGH PRIORITY
 
 #### 1. **Log Category Filtering**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
@@ -369,6 +447,7 @@ Priority: HIGH
 ```
 
 **Missing:**
+
 - [ ] Filter by category (e.g., "Rendering", "Physics", "AI")
 - [ ] Multi-select categories
 - [ ] Category list dropdown
@@ -377,6 +456,7 @@ Priority: HIGH
 **Why High:** Essential for focusing on specific subsystems.
 
 **Implementation:**
+
 ```csharp
 // Add to LogsPanel
 public void SetCategoryFilter(string[]? categories);
@@ -386,6 +466,7 @@ public IEnumerable<string> GetAvailableCategories();
 ---
 
 #### 2. **Log Timestamps & Time Filtering**
+
 ```
 Status: PARTIAL (timestamps shown)
 Complexity: Medium (2-3 hours)
@@ -393,6 +474,7 @@ Priority: HIGH
 ```
 
 **Missing:**
+
 - [ ] Filter by time range (last 1min, 5min, 1hour, etc.)
 - [ ] Show time since previous log
 - [ ] Time-based log grouping
@@ -405,6 +487,7 @@ Priority: HIGH
 ### 🟡 MEDIUM PRIORITY
 
 #### 3. **Log Export**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
@@ -412,6 +495,7 @@ Priority: MEDIUM
 ```
 
 **Missing:**
+
 - [ ] Export logs to file
 - [ ] Export with filters applied
 - [ ] Auto-export on crash/error
@@ -422,6 +506,7 @@ Priority: MEDIUM
 ---
 
 #### 4. **Log Highlighting & Patterns**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Medium (3-4 hours)
@@ -429,6 +514,7 @@ Priority: MEDIUM
 ```
 
 **Missing:**
+
 - [ ] Highlight specific patterns (e.g., error codes, IDs)
 - [ ] Custom highlight rules
 - [ ] Regex pattern matching
@@ -441,6 +527,7 @@ Priority: MEDIUM
 ### 🟢 LOW PRIORITY
 
 #### 5. **Log Statistics**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
@@ -448,6 +535,7 @@ Priority: LOW
 ```
 
 **Missing:**
+
 - [ ] Log count by level
 - [ ] Log count by category
 - [ ] Logs per second rate
@@ -458,6 +546,7 @@ Priority: LOW
 ---
 
 #### 6. **Log Bookmarks**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
@@ -465,6 +554,7 @@ Priority: LOW
 ```
 
 **Missing:**
+
 - [ ] Bookmark important log entries
 - [ ] Jump to bookmarked entries
 - [ ] Add notes to bookmarks
@@ -477,6 +567,7 @@ Priority: LOW
 ## 🔍 Variables Tab - Missing Features
 
 ### ✅ Currently Implemented
+
 - [x] Display script-defined variables
 - [x] Display built-in globals (Player, Game, World, etc.)
 - [x] Show variable types
@@ -489,6 +580,7 @@ Priority: LOW
 ### 🔴 HIGH PRIORITY
 
 #### 1. **Variable Inspection**
+
 ```
 Status: PARTIAL
 Complexity: Medium (3-5 hours)
@@ -496,6 +588,7 @@ Priority: HIGH
 ```
 
 **Missing:**
+
 - [ ] Expand complex objects (show properties/fields)
 - [ ] Navigate object hierarchy
 - [ ] Expand collections (arrays, lists, dictionaries)
@@ -505,6 +598,7 @@ Priority: HIGH
 **Why High:** Essential for debugging complex objects.
 
 **Implementation:**
+
 ```csharp
 // Add to VariablesPanel
 public void ExpandVariable(string name);
@@ -515,6 +609,7 @@ public void SetExpansionDepth(int maxDepth);
 ---
 
 #### 2. **Variable Editing**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Medium (4-6 hours)
@@ -522,6 +617,7 @@ Priority: HIGH
 ```
 
 **Missing:**
+
 - [ ] Edit variable values inline
 - [ ] Type validation
 - [ ] Undo/Redo for edits
@@ -531,6 +627,7 @@ Priority: HIGH
 **Why High:** Very useful for testing and tweaking values on the fly.
 
 **Implementation:**
+
 ```csharp
 // Add to VariablesPanel
 public bool TrySetVariable(string name, string valueString);
@@ -542,6 +639,7 @@ public bool CanEditVariable(string name);
 ### 🟡 MEDIUM PRIORITY
 
 #### 3. **Variable Search**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
@@ -549,6 +647,7 @@ Priority: MEDIUM
 ```
 
 **Missing:**
+
 - [ ] Search by variable name
 - [ ] Search by value
 - [ ] Search by type
@@ -559,6 +658,7 @@ Priority: MEDIUM
 ---
 
 #### 4. **Variable Favorites/Pinning**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Low (1-2 hours)
@@ -566,6 +666,7 @@ Priority: MEDIUM
 ```
 
 **Missing:**
+
 - [ ] Pin important variables to top
 - [ ] Create favorites list
 - [ ] Persist favorites between sessions
@@ -578,6 +679,7 @@ Priority: MEDIUM
 ### 🟢 LOW PRIORITY
 
 #### 5. **Variable History**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Medium (3-4 hours)
@@ -585,6 +687,7 @@ Priority: LOW
 ```
 
 **Missing:**
+
 - [ ] Track variable value changes over time
 - [ ] Show change history
 - [ ] Visualize value timeline
@@ -595,6 +698,7 @@ Priority: LOW
 ---
 
 #### 6. **Variable Comparison**
+
 ```
 Status: NOT IMPLEMENTED
 Complexity: Medium (2-3 hours)
@@ -602,6 +706,7 @@ Priority: LOW
 ```
 
 **Missing:**
+
 - [ ] Compare two variables side-by-side
 - [ ] Show differences
 - [ ] Compare snapshots over time
@@ -612,30 +717,31 @@ Priority: LOW
 
 ## 🎯 Recommended Implementation Order
 
-### Sprint 1: Console Essentials (3-5 days)
-**Goal:** Match old console core functionality
+### Sprint 1: Console Essentials (2-3 days) ⚡
 
-1. **Clipboard Operations** ⭐ (Day 1)
-   - Most requested, users expect this everywhere
+**Goal:** Complete remaining essential editing features
 
-2. **Undo/Redo** ⭐ (Day 1-2)
-   - Critical for productivity, infrastructure exists
+1. **Console Output Mouse Support** ⭐ (Day 1-2)
 
-3. **Word Navigation** (Day 2)
-   - Natural extension, quick win
+   - Critical for copying output, error messages, debugging info
+   - Infrastructure already exists, just needs mouse event wiring
 
-4. **Advanced Selection** (Day 3)
-   - Completes the editing experience
+2. **Advanced Input Selection** (Day 2-3)
+   - Add keyboard selection (Shift+arrows, etc.)
+   - Completes the text editing experience
 
 ---
 
 ### Sprint 2: Logs Tab Essentials (2-3 days)
+
 **Goal:** Make logs tab production-ready
 
 1. **Log Category Filtering** (Day 1)
+
    - Essential for debugging specific systems
 
 2. **Log Time Filtering** (Day 1-2)
+
    - Useful for time-sensitive issues
 
 3. **Log Export** (Day 2)
@@ -644,12 +750,15 @@ Priority: LOW
 ---
 
 ### Sprint 3: Variables Tab Core (3-4 days)
+
 **Goal:** Make variables tab useful for debugging
 
 1. **Variable Inspection** (Day 1-2)
+
    - Expand objects and collections
 
 2. **Variable Editing** (Day 2-3)
+
    - Edit values on the fly
 
 3. **Variable Search** (Day 3-4)
@@ -658,6 +767,7 @@ Priority: LOW
 ---
 
 ### Sprint 4: Performance & Threading (2-3 days)
+
 **Goal:** Improve watch system performance
 
 1. **Threaded Watch Evaluation** ⭐ (Day 1-3)
@@ -668,15 +778,19 @@ Priority: LOW
 ---
 
 ### Sprint 5: Polish & Enhancements (2-3 days)
+
 **Goal:** Nice-to-haves and UX improvements
 
 1. **Bracket Matching** (Day 1)
+
    - Visual aid for code editing
 
 2. **Font Size Controls** (Day 1)
+
    - Accessibility
 
 3. **Output Sections** (Day 2)
+
    - Better command organization
 
 4. **Log Highlighting** (Day 2-3)
@@ -687,6 +801,7 @@ Priority: LOW
 ## 📝 Implementation Notes
 
 ### General Principles
+
 - ✅ Use existing `UITheme` for all colors
 - ✅ Follow established component patterns
 - ✅ Maintain clean separation of concerns
@@ -695,6 +810,7 @@ Priority: LOW
 - ✅ Add keyboard shortcuts to hint bars
 
 ### Code Organization
+
 - Console editing features → `TextEditor.cs`, `CommandInput.cs`
 - Watch features → `WatchPanel.cs`
 - Logs features → `LogsPanel.cs`
@@ -702,6 +818,7 @@ Priority: LOW
 - Commands → `PokeSharp.Engine.Debug/Commands/BuiltIn/`
 
 ### Performance Considerations
+
 - Use dirty flags for expensive operations
 - Cache rendered text where possible
 - Limit collection expansion depth
@@ -713,6 +830,7 @@ Priority: LOW
 ## 🎉 What's Already Great!
 
 ### Console Tab ✅
+
 - Multi-line editing with line numbers
 - Syntax highlighting
 - Command history with search
@@ -721,8 +839,13 @@ Priority: LOW
 - Documentation viewer
 - Output search
 - Bookmarks, aliases, scripts
+- **Full clipboard support (Copy/Cut/Paste)**
+- **Undo/Redo with full state tracking**
+- **Bracket matching with highlighting**
+- **Complete word navigation and deletion**
 
 ### Watch Tab ✅
+
 - **100% feature-complete!**
 - Real-time monitoring
 - Groups, conditions, history
@@ -730,12 +853,14 @@ Priority: LOW
 - Professional debugging tool
 
 ### Logs Tab ✅
+
 - Basic log viewing
 - Level filtering
 - Text search
 - Auto-scroll toggle
 
 ### Variables Tab ✅
+
 - Variable display
 - Type information
 - Value formatting
@@ -746,12 +871,15 @@ Priority: LOW
 ## 🤔 Questions for Prioritization
 
 1. **What do you use most often?**
+
    - Clipboard? Undo? Word navigation?
 
 2. **What's the most annoying thing missing right now?**
+
    - Let this guide priority
 
 3. **Which tab do you use most?**
+
    - Console for commands?
    - Watch for monitoring?
    - Logs for debugging?
@@ -765,18 +893,32 @@ Priority: LOW
 ## 📊 Summary Statistics
 
 **Total Features:**
-- ✅ Implemented: 45
-- 🔴 High Priority: 13 (includes Threaded Watch Evaluation)
-- 🟡 Medium Priority: 14
+
+- ✅ Implemented: 50 (was 45, +5 newly discovered including input mouse support)
+- 🔴 High Priority: 10 (includes Console Output Mouse Support)
+- 🟡 Medium Priority: 12 (down from 14)
 - 🟢 Low Priority: 11
 
 **Estimated Implementation Time:**
-- High Priority: 26-40 hours (1.5-2 weeks)
-- Medium Priority: 25-35 hours (1.5-2 weeks)
+
+- High Priority: 19-30 hours (1-1.5 weeks)
+- Medium Priority: 22-31 hours (1.5-2 weeks)
 - Low Priority: 15-20 hours (1 week)
-- **Total:** 66-95 hours (3-5 weeks of focused work)
+- **Total:** 56-81 hours (2.5-4 weeks of focused work)
+
+**Recent Updates (Features Found to be Already Implemented):**
+
+- ✅ Clipboard operations (Copy/Cut/Paste) - Already complete for input editor!
+- ✅ Undo/Redo - Already complete!
+- ✅ Bracket matching - Already complete!
+- ✅ Word navigation (Ctrl+arrows, Ctrl+Backspace/Delete) - Already complete!
+- ✅ Input editor mouse support (click, drag, double-click to select word) - Already complete!
+
+**Missing (Infrastructure Exists but Not Wired Up):**
+
+- ❌ Console output mouse selection - has selection state, needs mouse events
+- ❌ Keyboard selection (Shift+arrows) in input editor
 
 ---
 
 **The console system is already very capable! The watch system is 100% complete, and core functionality works great. These TODOs are for reaching 100% parity and adding polish.** 🚀
-

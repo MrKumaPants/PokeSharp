@@ -126,7 +126,15 @@ public class Tween
         CurrentValue = _endValue;
         _isPlaying = false;
         _isComplete = true;
-        OnComplete?.Invoke();
+
+        try
+        {
+            OnComplete?.Invoke();
+        }
+        catch
+        {
+            // Swallow exceptions from user callbacks to prevent crashing the animation system
+        }
     }
 
     /// <summary>
@@ -146,7 +154,15 @@ public class Tween
             CurrentValue = _endValue;
             _isPlaying = false;
             _isComplete = true;
-            OnComplete?.Invoke();
+
+            try
+            {
+                OnComplete?.Invoke();
+            }
+            catch
+            {
+                // Swallow exceptions from user callbacks to prevent crashing the animation system
+            }
         }
         else
         {

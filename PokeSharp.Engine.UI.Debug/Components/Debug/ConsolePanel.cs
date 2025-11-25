@@ -364,9 +364,7 @@ public class ConsolePanel : Panel
     /// </summary>
     public void Show()
     {
-        Console.WriteLine($"[ConsolePanel] Show() called - setting Visible to true (was {Visible})");
         Visible = true;
-        Console.WriteLine($"[ConsolePanel] Show() complete - Visible is now {Visible}");
     }
 
     /// <summary>
@@ -696,9 +694,6 @@ public class ConsolePanel : Panel
 
     protected override void OnRenderContainer(UIContext context)
     {
-        Console.WriteLine($"[ConsolePanel] OnRenderContainer called - Visible={Visible}, Rect=({Rect.X},{Rect.Y},{Rect.Width}x{Rect.Height})");
-        Console.WriteLine($"[ConsolePanel] Current container's ContentRect=({context.CurrentContainer.ContentRect.X},{context.CurrentContainer.ContentRect.Y},{context.CurrentContainer.ContentRect.Width}x{context.CurrentContainer.ContentRect.Height})");
-
         float inputHeight, hintHeight;
 
         if (_overlayMode == ConsoleOverlayMode.Search)
@@ -762,8 +757,6 @@ public class ConsolePanel : Panel
             // Position input editor above hint bar
             _commandEditor.Constraint.Height = inputHeight;
             _commandEditor.Constraint.OffsetY = -hintHeight; // Moves up by hint height
-
-            Console.WriteLine($"[ConsolePanel] Input bar: Height={inputHeight}, OffsetY={_commandEditor.Constraint.OffsetY}, Anchor={_commandEditor.Constraint.Anchor}");
         }
 
         // Update suggestions dropdown offset to stay above the input and hints
@@ -802,8 +795,6 @@ public class ConsolePanel : Panel
         var paddingBottom = Constraint.GetPaddingBottom();
         var contentHeight = Rect.Height - paddingTop - paddingBottom; // Use actual constraint padding, not static Padding property
         var outputHeight = contentHeight - inputHeight - hintHeight - ComponentSpacing; // Leave space for input + hints + gap
-
-        Console.WriteLine($"[ConsolePanel] Layout calculation: Rect.Height={Rect.Height}, paddingTop={paddingTop}, paddingBottom={paddingBottom}, contentHeight={contentHeight}, inputHeight={inputHeight}, hintHeight={hintHeight}, outputHeight={outputHeight}");
 
         // Update output buffer height
         _outputBuffer.Constraint.Height = outputHeight;

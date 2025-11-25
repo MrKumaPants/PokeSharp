@@ -356,14 +356,33 @@ public class UIContext : IDisposable
         UpdatePressedState();
     }
 
+    /// <summary>
+    /// Disposes the UIContext and releases all resources.
+    /// </summary>
     public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Protected implementation of Dispose pattern.
+    /// </summary>
+    /// <param name="disposing">True if disposing managed resources.</param>
+    protected virtual void Dispose(bool disposing)
     {
         if (_disposed)
             return;
 
-        _renderer?.Dispose();
+        if (disposing)
+        {
+            // Dispose managed resources
+            _renderer?.Dispose();
+        }
+
+        // No unmanaged resources to dispose
+
         _disposed = true;
-        GC.SuppressFinalize(this);
     }
 }
 

@@ -73,6 +73,20 @@ public class TextBuffer : UIComponent, ITextDisplay
     public bool HasSelection => _hasSelection;
     public string SelectedText => GetSelectedText();
 
+    /// <summary>
+    /// Gets the current scroll offset (number of lines scrolled from top).
+    /// </summary>
+    public int ScrollOffset => _scrollOffset;
+
+    /// <summary>
+    /// Sets the scroll offset directly. Useful for preserving scroll position during updates.
+    /// </summary>
+    public void SetScrollOffset(int offset)
+    {
+        _scrollOffset = Math.Max(0, offset);
+        _autoScroll = false; // Disable auto-scroll when manually setting position
+    }
+
     public TextBuffer(string id) { Id = id; }
 
     /// <summary>
@@ -503,16 +517,20 @@ public class TextBuffer : UIComponent, ITextDisplay
         // Handle scrollbar interaction - check BEFORE other input to get priority
         if (input != null && hasScrollbar)
         {
+            // Apply padding to scrollbar to match content area
+            var scrollbarY = resolvedRect.Y + LinePadding;
+            var scrollbarHeight = resolvedRect.Height - (LinePadding * 2);
+
             var scrollbarRect = new LayoutRect(
                 resolvedRect.Right - ScrollbarWidth,
-                resolvedRect.Y,
+                scrollbarY,
                 ScrollbarWidth,
-                resolvedRect.Height
+                scrollbarHeight
             );
 
             // Calculate thumb position and size
-            float thumbHeight = Math.Max(20, (float)visibleCount / lines.Count * resolvedRect.Height);
-            float thumbY = resolvedRect.Y + ((float)_scrollOffset / (lines.Count - visibleCount)) * (resolvedRect.Height - thumbHeight);
+            float thumbHeight = Math.Max(20, (float)visibleCount / lines.Count * scrollbarHeight);
+            float thumbY = scrollbarY + ((float)_scrollOffset / (lines.Count - visibleCount)) * (scrollbarHeight - thumbHeight);
 
             var thumbRect = new LayoutRect(
                 resolvedRect.Right - ScrollbarWidth,
@@ -529,7 +547,7 @@ public class TextBuffer : UIComponent, ITextDisplay
                 if (input.IsMouseButtonDown(MouseButton.Left))
                 {
                     int deltaY = input.MousePosition.Y - _scrollbarDragStartY;
-                    float scrollRatio = (float)deltaY / resolvedRect.Height;
+                    float scrollRatio = (float)deltaY / scrollbarHeight;
                     int scrollDelta = (int)(scrollRatio * lines.Count);
 
                     _scrollOffset = Math.Clamp(_scrollbarDragStartOffset + scrollDelta, 0, maxScroll);
@@ -554,7 +572,7 @@ public class TextBuffer : UIComponent, ITextDisplay
                 else
                 {
                     // Click on track - jump to that position immediately
-                    float clickRatio = (float)(input.MousePosition.Y - resolvedRect.Y) / resolvedRect.Height;
+                    float clickRatio = (float)(input.MousePosition.Y - scrollbarY) / scrollbarHeight;
                     int targetScroll = (int)(clickRatio * lines.Count) - (visibleCount / 2);
                     _scrollOffset = Math.Clamp(targetScroll, 0, maxScroll);
                     _autoScroll = false;
@@ -694,18 +712,22 @@ public class TextBuffer : UIComponent, ITextDisplay
 
     private void DrawScrollbar(UIRenderer renderer, LayoutRect rect, int totalLines, int visibleLines, int scrollOffset)
     {
-        // Scrollbar track (positioned at the right edge)
+        // Apply padding to scrollbar to match content area
+        var scrollbarY = rect.Y + LinePadding;
+        var scrollbarHeight = rect.Height - (LinePadding * 2);
+
+        // Scrollbar track (positioned at the right edge, with padding)
         var trackRect = new LayoutRect(
             rect.Right - ScrollbarWidth,
-            rect.Y,
+            scrollbarY,
             ScrollbarWidth,
-            rect.Height
+            scrollbarHeight
         );
         renderer.DrawRectangle(trackRect, ScrollbarTrackColor);
 
         // Scrollbar thumb
-        float thumbHeight = Math.Max(20, (float)visibleLines / totalLines * rect.Height);
-        float thumbY = rect.Y + ((float)scrollOffset / (totalLines - visibleLines)) * (rect.Height - thumbHeight);
+        float thumbHeight = Math.Max(20, (float)visibleLines / totalLines * scrollbarHeight);
+        float thumbY = scrollbarY + ((float)scrollOffset / (totalLines - visibleLines)) * (scrollbarHeight - thumbHeight);
 
         var thumbRect = new LayoutRect(
             rect.Right - ScrollbarWidth,

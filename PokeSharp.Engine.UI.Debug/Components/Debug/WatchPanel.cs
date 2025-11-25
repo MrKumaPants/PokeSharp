@@ -22,6 +22,12 @@ public class WatchPanel : Panel
     private readonly Dictionary<string, bool> _groupCollapsedState = new(); // Track collapsed groups
     private double _lastUpdateTime = 0;
 
+    // Cache for sorted watch lists (invalidated when watches change)
+    private List<WatchEntry>? _cachedAllWatches = null;
+    private List<WatchEntry>? _cachedPinnedWatches = null;
+    private List<WatchEntry>? _cachedUnpinnedWatches = null;
+    private bool _watchListDirty = true;
+
     /// <summary>Maximum number of watches allowed</summary>
     public const int MaxWatches = 50;
 
@@ -168,6 +174,7 @@ public class WatchPanel : Panel
                 _groupCollapsedState[group] = false; // Expanded
             }
 
+            _watchListDirty = true;
             UpdateWatchDisplay();
             return true;
         }
@@ -182,6 +189,7 @@ public class WatchPanel : Panel
             return false;
 
         _watches[name].IsPinned = true;
+        _watchListDirty = true;
         UpdateWatchDisplay();
         return true;
     }
@@ -195,6 +203,7 @@ public class WatchPanel : Panel
             return false;
 
         _watches[name].IsPinned = false;
+        _watchListDirty = true;
         UpdateWatchDisplay();
         return true;
     }
@@ -386,6 +395,7 @@ public class WatchPanel : Panel
         if (_watches.Remove(name))
         {
             _watchKeys.Remove(name);
+            _watchListDirty = true;
             UpdateWatchDisplay();
             return true;
         }
@@ -400,6 +410,7 @@ public class WatchPanel : Panel
         _watches.Clear();
         _watchKeys.Clear();
         _watchBuffer.Clear();
+        _watchListDirty = true;
         UpdateWatchDisplay();
     }
 
@@ -650,10 +661,17 @@ public class WatchPanel : Panel
     {
         int displayIndex = 1;
 
-        // Get all watches sorted by pinned status first
-        var allWatches = _watchKeys.Select(k => _watches[k]).ToList();
-        var pinnedWatches = allWatches.Where(w => w.IsPinned).ToList();
-        var unpinnedWatches = allWatches.Where(w => !w.IsPinned).ToList();
+        // Get all watches sorted by pinned status first (cached to avoid LINQ allocations every frame)
+        if (_watchListDirty || _cachedAllWatches == null)
+        {
+            _cachedAllWatches = _watchKeys.Select(k => _watches[k]).ToList();
+            _cachedPinnedWatches = _cachedAllWatches.Where(w => w.IsPinned).ToList();
+            _cachedUnpinnedWatches = _cachedAllWatches.Where(w => !w.IsPinned).ToList();
+            _watchListDirty = false;
+        }
+
+        var pinnedWatches = _cachedPinnedWatches!;
+        var unpinnedWatches = _cachedUnpinnedWatches!;
 
         // Display pinned watches first (regardless of group)
         if (pinnedWatches.Any())
@@ -843,6 +861,10 @@ public class WatchPanel : Panel
     /// </summary>
     public void UpdateWatchDisplay()
     {
+        // Preserve scroll position and auto-scroll state during update
+        var previousScrollOffset = _watchBuffer.ScrollOffset;
+        var previousAutoScroll = _watchBuffer.AutoScroll;
+
         _watchBuffer.Clear();
 
         // Header
@@ -901,6 +923,10 @@ public class WatchPanel : Panel
 
         _watchBuffer.AppendLine("", Color.White);
         _watchBuffer.AppendLine("COMMANDS: watch add/remove/clear/toggle | Ctrl+1 to return to Console", UITheme.Dark.TextSecondary);
+
+        // Restore scroll position and auto-scroll state after update
+        _watchBuffer.SetScrollOffset(previousScrollOffset);
+        _watchBuffer.AutoScroll = previousAutoScroll;
     }
 
     /// <summary>
