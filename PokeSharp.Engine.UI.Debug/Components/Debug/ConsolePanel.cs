@@ -455,7 +455,7 @@ public class ConsolePanel : Panel
 
     private void HandleEscape()
     {
-        // Priority: Search > Documentation > Suggestions > Console
+        // Priority: Search > Documentation > Suggestions > (scene handles close)
         if (_overlayMode == ConsoleOverlayMode.Search)
         {
             _overlayMode = ConsoleOverlayMode.None;
@@ -473,7 +473,9 @@ public class ConsolePanel : Panel
         }
         else
         {
-            Hide();
+            // No overlay to dismiss - fire close request
+            // The scene will decide if we should actually close (e.g., only if on Console tab)
+            OnCloseRequested?.Invoke();
         }
     }
 
@@ -858,5 +860,47 @@ public class ConsolePanel : Panel
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Export Methods
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Exports all console output to a string.
+    /// </summary>
+    public string ExportOutputToString()
+    {
+        return _outputBuffer.ExportToString();
+    }
+
+    /// <summary>
+    /// Copies all console output to clipboard.
+    /// </summary>
+    public void CopyOutputToClipboard()
+    {
+        _outputBuffer.CopyAllToClipboard();
+    }
+
+    /// <summary>
+    /// Copies current selection (if any) or all output to clipboard.
+    /// </summary>
+    public void CopyToClipboard()
+    {
+        if (_outputBuffer.HasSelection)
+        {
+            _outputBuffer.CopySelectionToClipboard();
+        }
+        else
+        {
+            _outputBuffer.CopyAllToClipboard();
+        }
+    }
+
+    /// <summary>
+    /// Gets output statistics.
+    /// </summary>
+    public (int TotalLines, int FilteredLines) GetOutputStats()
+    {
+        return (_outputBuffer.TotalLineCount, _outputBuffer.FilteredLineCount);
+    }
 }
 

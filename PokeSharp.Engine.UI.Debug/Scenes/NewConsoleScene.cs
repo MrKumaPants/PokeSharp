@@ -33,6 +33,7 @@ public class NewConsoleScene : SceneBase
     public event Action<string, int>? OnRequestParameterHints; // (text, cursorPos)
     public event Action<string>? OnRequestDocumentation; // (completionText)
     public event Action? OnCloseRequested;
+    public event Action? OnReady; // Fired after LoadContent completes and LogsPanel exists
 
     // Configuration
     private float _consoleHeightPercent = 0.5f; // 50% of screen height by default
@@ -173,6 +174,165 @@ public class NewConsoleScene : SceneBase
     public int GetActiveTab()
     {
         return _tabContainer?.ActiveTabIndex ?? 0;
+    }
+
+    /// <summary>
+    /// Exports console output to a string.
+    /// </summary>
+    public string ExportConsoleOutput()
+    {
+        return _consolePanel?.ExportOutputToString() ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Copies console output to clipboard.
+    /// </summary>
+    public void CopyConsoleOutputToClipboard()
+    {
+        _consolePanel?.CopyOutputToClipboard();
+    }
+
+    /// <summary>
+    /// Gets console output statistics.
+    /// </summary>
+    public (int TotalLines, int FilteredLines) GetConsoleOutputStats()
+    {
+        return _consolePanel?.GetOutputStats() ?? (0, 0);
+    }
+
+    /// <summary>
+    /// Exports watches to CSV format.
+    /// </summary>
+    public string ExportWatchesToCsv()
+    {
+        return _watchPanel?.ExportToCsv() ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Copies watches to clipboard.
+    /// </summary>
+    public void CopyWatchesToClipboard(bool asCsv = false)
+    {
+        _watchPanel?.CopyToClipboard(asCsv);
+    }
+
+    /// <summary>
+    /// Gets watch statistics.
+    /// </summary>
+    public (int Total, int Pinned, int WithErrors, int WithAlerts, int Groups) GetWatchStatistics()
+    {
+        return _watchPanel?.GetStatistics() ?? (0, 0, 0, 0, 0);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Variables Tab Methods
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Gets variable statistics.
+    /// </summary>
+    public (int Variables, int Globals, int Pinned, int Expanded) GetVariableStatistics()
+    {
+        return _variablesPanel?.GetStatistics() ?? (0, 0, 0, 0);
+    }
+
+    /// <summary>
+    /// Gets all variable names.
+    /// </summary>
+    public IEnumerable<string> GetVariableNames()
+    {
+        return _variablesPanel?.GetVariableNames() ?? Enumerable.Empty<string>();
+    }
+
+    /// <summary>
+    /// Gets a variable's current value.
+    /// </summary>
+    public object? GetVariableValue(string name)
+    {
+        return _variablesPanel?.GetVariableValue(name);
+    }
+
+    /// <summary>
+    /// Sets the search filter for variables.
+    /// </summary>
+    public void SetVariableSearchFilter(string filter)
+    {
+        _variablesPanel?.SetSearchFilter(filter);
+    }
+
+    /// <summary>
+    /// Clears the variable search filter.
+    /// </summary>
+    public void ClearVariableSearchFilter()
+    {
+        _variablesPanel?.ClearSearchFilter();
+    }
+
+    /// <summary>
+    /// Expands a variable to show its properties.
+    /// </summary>
+    public bool ExpandVariable(string path)
+    {
+        if (_variablesPanel == null)
+            return false;
+        _variablesPanel.ExpandVariable(path);
+        return true;
+    }
+
+    /// <summary>
+    /// Collapses an expanded variable.
+    /// </summary>
+    public void CollapseVariable(string path)
+    {
+        _variablesPanel?.CollapseVariable(path);
+    }
+
+    /// <summary>
+    /// Expands all expandable variables.
+    /// </summary>
+    public void ExpandAllVariables()
+    {
+        _variablesPanel?.ExpandAll();
+    }
+
+    /// <summary>
+    /// Collapses all expanded variables.
+    /// </summary>
+    public void CollapseAllVariables()
+    {
+        _variablesPanel?.CollapseAll();
+    }
+
+    /// <summary>
+    /// Pins a variable to the top.
+    /// </summary>
+    public void PinVariable(string name)
+    {
+        _variablesPanel?.PinVariable(name);
+    }
+
+    /// <summary>
+    /// Unpins a variable.
+    /// </summary>
+    public void UnpinVariable(string name)
+    {
+        _variablesPanel?.UnpinVariable(name);
+    }
+
+    /// <summary>
+    /// Clears all user-defined variables.
+    /// </summary>
+    public void ClearVariables()
+    {
+        _variablesPanel?.ClearVariables();
+    }
+
+    /// <summary>
+    /// Sets a script-defined variable in the Variables panel.
+    /// </summary>
+    public void SetScriptVariable(string name, string typeName, Func<object?> valueGetter)
+    {
+        _variablesPanel?.SetVariable(name, typeName, valueGetter);
     }
 
     /// <summary>
@@ -366,11 +526,19 @@ public class NewConsoleScene : SceneBase
     }
 
     /// <summary>
-    /// Adds a log entry.
+    /// Adds a log entry with current timestamp.
     /// </summary>
     public void AddLog(Microsoft.Extensions.Logging.LogLevel level, string message, string category = "General")
     {
         _logsPanel?.AddLog(level, message, category);
+    }
+
+    /// <summary>
+    /// Adds a log entry with a specific timestamp (used for replaying buffered logs).
+    /// </summary>
+    public void AddLog(Microsoft.Extensions.Logging.LogLevel level, string message, string category, DateTime timestamp)
+    {
+        _logsPanel?.AddLog(level, message, category, timestamp);
     }
 
     /// <summary>
@@ -387,6 +555,89 @@ public class NewConsoleScene : SceneBase
     public int GetLogCount()
     {
         return _logsPanel?.GetTotalLogCount() ?? 0;
+    }
+
+    /// <summary>
+    /// Sets the log category filter.
+    /// </summary>
+    public void SetLogCategoryFilter(IEnumerable<string>? categories)
+    {
+        _logsPanel?.SetCategoryFilter(categories);
+    }
+
+    /// <summary>
+    /// Clears the log category filter.
+    /// </summary>
+    public void ClearLogCategoryFilter()
+    {
+        _logsPanel?.ClearCategoryFilter();
+    }
+
+    /// <summary>
+    /// Gets all available log categories.
+    /// </summary>
+    public IEnumerable<string> GetLogCategories()
+    {
+        return _logsPanel?.GetAvailableCategories() ?? Enumerable.Empty<string>();
+    }
+
+    /// <summary>
+    /// Gets log counts per category.
+    /// </summary>
+    public Dictionary<string, int> GetLogCategoryCounts()
+    {
+        return _logsPanel?.GetCategoryCounts() ?? new Dictionary<string, int>();
+    }
+
+    /// <summary>
+    /// Exports logs to a formatted string.
+    /// </summary>
+    public string ExportLogs(bool includeTimestamp = true, bool includeLevel = true, bool includeCategory = false)
+    {
+        return _logsPanel?.ExportToString(includeTimestamp, includeLevel, includeCategory) ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Exports logs to CSV format.
+    /// </summary>
+    public string ExportLogsToCsv()
+    {
+        return _logsPanel?.ExportToCsv() ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Copies logs to clipboard.
+    /// </summary>
+    public void CopyLogsToClipboard()
+    {
+        _logsPanel?.CopyToClipboard();
+    }
+
+    /// <summary>
+    /// Gets log statistics summary.
+    /// </summary>
+    public (int Total, int Filtered, int Errors, int Warnings, int LastMinute, int Categories) GetLogStatistics()
+    {
+        var stats = _logsPanel?.GetStatistics();
+        if (stats == null)
+            return (0, 0, 0, 0, 0, 0);
+
+        return (
+            stats.TotalCount,
+            stats.FilteredCount,
+            stats.ErrorCount + stats.CriticalCount,
+            stats.WarningCount,
+            stats.LogsLastMinute,
+            stats.CategoryCount
+        );
+    }
+
+    /// <summary>
+    /// Gets log counts by level.
+    /// </summary>
+    public Dictionary<Microsoft.Extensions.Logging.LogLevel, int> GetLogLevelCounts()
+    {
+        return _logsPanel?.GetLevelCounts() ?? new Dictionary<Microsoft.Extensions.Logging.LogLevel, int>();
     }
 
     /// <summary>
@@ -457,7 +708,6 @@ public class NewConsoleScene : SceneBase
         try
         {
             _uiContext = new UIContext(GraphicsDevice);
-            Logger.LogInformation("NewConsoleScene UI context initialized");
         }
         catch (Exception ex)
         {
@@ -506,9 +756,6 @@ public class NewConsoleScene : SceneBase
                 Anchor = Anchor.Fill,
                 Padding = 0
             };
-            Logger.LogInformation("Console panel created");
-
-            Logger.LogInformation("Wiring up console events...");
             // Wire up console events
             _consolePanel.OnCommandSubmitted = (cmd) => OnCommandSubmitted?.Invoke(cmd);
             _consolePanel.OnRequestCompletions = (text) => OnRequestCompletions?.Invoke(text);
@@ -516,27 +763,22 @@ public class NewConsoleScene : SceneBase
             _consolePanel.OnRequestDocumentation = (completionText) => OnRequestDocumentation?.Invoke(completionText);
             _consolePanel.OnCloseRequested = () => OnCloseRequested?.Invoke();
             _consolePanel.OnSizeChanged = (size) => SetHeightPercent(size.GetHeightPercent());
-            Logger.LogInformation("Console events wired up");
 
-            Logger.LogInformation("Creating watch panel...");
+            // Create watch panel
             _watchPanel = WatchPanelBuilder.Create().Build();
             _watchPanel.BackgroundColor = Color.Transparent;
             _watchPanel.BorderColor = Color.Transparent;
             _watchPanel.BorderThickness = 0;
             _watchPanel.Constraint = new LayoutConstraint { Anchor = Anchor.Fill, Padding = 0 };
-            Logger.LogInformation("Watch panel created");
 
-            Logger.LogInformation("Console initialization complete. Use 'watch add' to monitor expressions.");
-
-            Logger.LogInformation("Creating logs panel...");
+            // Create logs panel
             _logsPanel = LogsPanelBuilder.Create().Build();
             _logsPanel.BackgroundColor = Color.Transparent;
             _logsPanel.BorderColor = Color.Transparent;
             _logsPanel.BorderThickness = 0;
             _logsPanel.Constraint = new LayoutConstraint { Anchor = Anchor.Fill, Padding = 0 };
-            Logger.LogInformation("Logs panel created");
 
-            Logger.LogInformation("Creating variables panel...");
+            // Create variables panel
             _variablesPanel = VariablesPanelBuilder.Create().Build();
             _variablesPanel.BackgroundColor = Color.Transparent;
             _variablesPanel.BorderColor = Color.Transparent;
@@ -571,53 +813,19 @@ public class NewConsoleScene : SceneBase
                     Description = "ECS system manager"
                 }
             });
-            Logger.LogInformation("Variables panel created");
 
             // Add tabs to container
-            try
-            {
-                Logger.LogInformation("Adding Console tab...");
-                _tabContainer.AddTab("Console", _consolePanel);
-                Logger.LogInformation("Console tab added successfully");
+            _tabContainer.AddTab("Console", _consolePanel);
+            _tabContainer.AddTab("Watch", _watchPanel);
+            _tabContainer.AddTab("Logs", _logsPanel);
+            _tabContainer.AddTab("Variables", _variablesPanel);
+            _tabContainer.SetActiveTab(0);
 
-                Logger.LogInformation("Adding Watch tab...");
-                _tabContainer.AddTab("Watch", _watchPanel);
-                Logger.LogInformation("Watch tab added successfully");
-
-                Logger.LogInformation("Adding Logs tab...");
-                _tabContainer.AddTab("Logs", _logsPanel);
-                Logger.LogInformation("Logs tab added successfully");
-
-                Logger.LogInformation("Adding Variables tab...");
-                _tabContainer.AddTab("Variables", _variablesPanel);
-                Logger.LogInformation("Variables tab added successfully");
-
-                // Set default tab to Console
-                Logger.LogInformation($"Setting active tab to 0 (Console)");
-                _tabContainer.SetActiveTab(0);
-
-                Logger.LogInformation($"Tab container initialized with {_tabContainer.ActiveTabIndex} as active tab");
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "FAILED TO CREATE TAB SYSTEM - Exception details:");
-                throw; // Re-throw to see full stack trace
-            }
-
-            // Show the console with animation
+            // Show the console
             _consolePanel.Show();
 
-            // Add welcome messages
-            Logger.LogInformation("Adding welcome messages to console...");
-            AppendOutput("=== PokeSharp Debug Console ===", new Color(100, 200, 255));
-            AppendOutput("Type 'help' for available commands", Color.LightGray);
-            AppendOutput("Press Ctrl+~ or type 'exit' to close", Color.Gray);
-            AppendOutput("", Color.White); // Blank line
-
-            // Verify messages were added
-            Logger.LogInformation($"Welcome messages added. TextBuffer has {_consolePanel?.GetOutputLineCount() ?? -1} lines. Console ready.");
-
-            Logger.LogInformation("=== NewConsoleScene.LoadContent() COMPLETE ===");
+            // Fire OnReady event - LogsPanel now exists and can receive buffered logs
+            OnReady?.Invoke();
         }
         catch (Exception ex)
         {
@@ -636,6 +844,18 @@ public class NewConsoleScene : SceneBase
             _inputState.GameTime = gameTime; // Set GameTime for cursor blinking
             _inputState.Update();
 
+            // Handle escape to close - when NOT on Console tab, close directly
+            // (Console tab handles its own escape for dismissing overlays first)
+            if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape))
+            {
+                if (_tabContainer?.ActiveTabIndex != 0)
+                {
+                    // Not on Console tab - close immediately
+                    OnCloseRequested?.Invoke();
+                }
+                // Console tab escape is handled by ConsolePanel
+            }
+
             // Handle tab switching shortcuts (Ctrl+1 through Ctrl+4)
             HandleTabShortcuts();
 
@@ -649,7 +869,7 @@ public class NewConsoleScene : SceneBase
     }
 
     /// <summary>
-    /// Handles keyboard shortcuts for tab switching.
+    /// Handles keyboard shortcuts for tab switching and font size.
     /// </summary>
     private void HandleTabShortcuts()
     {
@@ -660,7 +880,7 @@ public class NewConsoleScene : SceneBase
         if (!_inputState.IsCtrlDown())
             return;
 
-        // Check for number keys 1-4 (just pressed, not repeat)
+        // Tab switching: Ctrl+1-4
         if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.D1))
         {
             _tabContainer.SetActiveTab(0); // Console
@@ -680,6 +900,24 @@ public class NewConsoleScene : SceneBase
         {
             _tabContainer.SetActiveTab(3); // Variables
             Logger.LogDebug("Switched to Variables tab (Ctrl+4)");
+        }
+        // Font size controls: Ctrl+Plus, Ctrl+Minus, Ctrl+0
+        else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.OemPlus) ||
+                 _inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Add))
+        {
+            _uiContext?.Renderer.IncreaseFontSize();
+            Logger.LogDebug($"Font size increased to {_uiContext?.Renderer.FontSize}");
+        }
+        else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.OemMinus) ||
+                 _inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Subtract))
+        {
+            _uiContext?.Renderer.DecreaseFontSize();
+            Logger.LogDebug($"Font size decreased to {_uiContext?.Renderer.FontSize}");
+        }
+        else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.D0))
+        {
+            _uiContext?.Renderer.ResetFontSize();
+            Logger.LogDebug("Font size reset to default");
         }
     }
 
@@ -743,8 +981,8 @@ public class NewConsoleScene : SceneBase
     {
         if (disposing)
         {
+            _watchPanel?.Dispose();
             _uiContext?.Dispose();
-            Logger.LogInformation("NewConsoleScene disposed");
         }
 
         base.Dispose(disposing);

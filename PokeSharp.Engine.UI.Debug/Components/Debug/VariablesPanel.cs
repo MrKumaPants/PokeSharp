@@ -5,13 +5,16 @@ using PokeSharp.Engine.UI.Debug.Components.Layout;
 using PokeSharp.Engine.UI.Debug.Core;
 using PokeSharp.Engine.UI.Debug.Layout;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace PokeSharp.Engine.UI.Debug.Components.Debug;
 
 /// <summary>
-/// Panel for viewing script variables and their values.
+/// Panel for viewing, inspecting, and editing script variables.
+/// Supports object expansion, inline editing, search, and pinning.
 /// </summary>
 public class VariablesPanel : Panel
 {
@@ -19,11 +22,26 @@ public class VariablesPanel : Panel
     private readonly Dictionary<string, VariableInfo> _variables = new();
     private readonly List<GlobalInfo> _globals = new();
 
+    // Inspection state - tracks which paths are expanded
+    private readonly HashSet<string> _expandedPaths = new();
+    private readonly HashSet<string> _pinnedVariables = new();
+    private string _searchFilter = "";
+    private int _selectedLine = -1;
+    private const int MaxExpansionDepth = 5;
+    private const int MaxCollectionItems = 20;
+
+    // Edit state
+    private string? _editingPath = null;
+    private string _editValue = "";
+    private Action<string, object?>? _onVariableEdited;
+
     public class VariableInfo
     {
         public string Name { get; set; } = string.Empty;
         public string TypeName { get; set; } = string.Empty;
         public Func<object?> ValueGetter { get; set; } = () => null;
+        public Action<object?>? ValueSetter { get; set; } = null; // For editing
+        public bool IsReadOnly => ValueSetter == null;
     }
 
     public class GlobalInfo
@@ -31,7 +49,26 @@ public class VariablesPanel : Panel
         public string Name { get; set; } = string.Empty;
         public string TypeName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public object? Instance { get; set; } = null; // For inspection
     }
+
+    // Represents a displayable row in the variables view
+    private class DisplayRow
+    {
+        public string Path { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string TypeName { get; set; } = "";
+        public string ValueStr { get; set; } = "";
+        public int Depth { get; set; } = 0;
+        public bool IsExpandable { get; set; } = false;
+        public bool IsExpanded { get; set; } = false;
+        public bool IsPinned { get; set; } = false;
+        public bool IsEditable { get; set; } = false;
+        public object? Value { get; set; } = null;
+        public Color ValueColor { get; set; } = Color.White;
+    }
+
+    private List<DisplayRow> _displayRows = new();
 
     /// <summary>
     /// Creates a VariablesPanel with the specified components.
@@ -51,15 +88,24 @@ public class VariablesPanel : Panel
     }
 
     /// <summary>
+    /// Sets the callback for when a variable is edited.
+    /// </summary>
+    public void SetEditCallback(Action<string, object?> callback)
+    {
+        _onVariableEdited = callback;
+    }
+
+    /// <summary>
     /// Adds or updates a script variable.
     /// </summary>
-    public void SetVariable(string name, string typeName, Func<object?> valueGetter)
+    public void SetVariable(string name, string typeName, Func<object?> valueGetter, Action<object?>? valueSetter = null)
     {
         _variables[name] = new VariableInfo
         {
             Name = name,
             TypeName = typeName,
-            ValueGetter = valueGetter
+            ValueGetter = valueGetter,
+            ValueSetter = valueSetter
         };
 
         UpdateVariableDisplay();
@@ -72,6 +118,7 @@ public class VariablesPanel : Panel
     {
         if (_variables.Remove(name))
         {
+            _pinnedVariables.Remove(name);
             UpdateVariableDisplay();
         }
     }
@@ -82,6 +129,8 @@ public class VariablesPanel : Panel
     public void ClearVariables()
     {
         _variables.Clear();
+        _pinnedVariables.Clear();
+        _expandedPaths.Clear();
         UpdateVariableDisplay();
     }
 
@@ -95,86 +144,501 @@ public class VariablesPanel : Panel
         UpdateVariableDisplay();
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Search & Filter
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Sets the search filter.
+    /// </summary>
+    public void SetSearchFilter(string filter)
+    {
+        _searchFilter = filter ?? "";
+        UpdateVariableDisplay();
+    }
+
+    /// <summary>
+    /// Clears the search filter.
+    /// </summary>
+    public void ClearSearchFilter()
+    {
+        _searchFilter = "";
+        UpdateVariableDisplay();
+    }
+
+    /// <summary>
+    /// Gets the current search filter.
+    /// </summary>
+    public string GetSearchFilter() => _searchFilter;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Pinning
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Pins a variable to the top of the list.
+    /// </summary>
+    public void PinVariable(string name)
+    {
+        if (_variables.ContainsKey(name) || _globals.Any(g => g.Name == name))
+        {
+            _pinnedVariables.Add(name);
+            UpdateVariableDisplay();
+        }
+    }
+
+    /// <summary>
+    /// Unpins a variable.
+    /// </summary>
+    public void UnpinVariable(string name)
+    {
+        if (_pinnedVariables.Remove(name))
+        {
+            UpdateVariableDisplay();
+        }
+    }
+
+    /// <summary>
+    /// Toggles the pinned state of a variable.
+    /// </summary>
+    public bool TogglePin(string name)
+    {
+        if (_pinnedVariables.Contains(name))
+        {
+            _pinnedVariables.Remove(name);
+            UpdateVariableDisplay();
+            return false;
+        }
+        else
+        {
+            PinVariable(name);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Gets the list of pinned variables.
+    /// </summary>
+    public IEnumerable<string> GetPinnedVariables() => _pinnedVariables;
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Expansion/Inspection
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Expands a variable to show its members.
+    /// </summary>
+    public void ExpandVariable(string path)
+    {
+        _expandedPaths.Add(path);
+        UpdateVariableDisplay();
+    }
+
+    /// <summary>
+    /// Collapses a variable.
+    /// </summary>
+    public void CollapseVariable(string path)
+    {
+        // Remove this path and all children
+        _expandedPaths.RemoveWhere(p => p == path || p.StartsWith(path + ".") || p.StartsWith(path + "["));
+        UpdateVariableDisplay();
+    }
+
+    /// <summary>
+    /// Toggles expansion of a variable.
+    /// </summary>
+    public bool ToggleExpansion(string path)
+    {
+        if (_expandedPaths.Contains(path))
+        {
+            CollapseVariable(path);
+            return false;
+        }
+        else
+        {
+            ExpandVariable(path);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Expands all variables.
+    /// </summary>
+    public void ExpandAll()
+    {
+        foreach (var row in _displayRows.Where(r => r.IsExpandable))
+        {
+            _expandedPaths.Add(row.Path);
+        }
+        UpdateVariableDisplay();
+    }
+
+    /// <summary>
+    /// Collapses all variables.
+    /// </summary>
+    public void CollapseAll()
+    {
+        _expandedPaths.Clear();
+        UpdateVariableDisplay();
+    }
+
     /// <summary>
     /// Forces an immediate update of the variable display.
     /// </summary>
     public void UpdateVariableDisplay()
     {
         _variablesBuffer.Clear();
+        _displayRows.Clear();
+
+        // Build display rows
+        BuildDisplayRows();
+
+        // Apply search filter
+        var filteredRows = _displayRows;
+        if (!string.IsNullOrEmpty(_searchFilter))
+        {
+            filteredRows = _displayRows.Where(r =>
+                r.Name.Contains(_searchFilter, StringComparison.OrdinalIgnoreCase) ||
+                r.TypeName.Contains(_searchFilter, StringComparison.OrdinalIgnoreCase) ||
+                r.ValueStr.Contains(_searchFilter, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+
+        // Count stats
+        var pinnedCount = _pinnedVariables.Count;
+        var expandedCount = _expandedPaths.Count;
 
         // Display header
-        _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Success);
-        _variablesBuffer.AppendLine($"  SCRIPT VARIABLES ({_variables.Count} defined)", UITheme.Dark.Success);
-        _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Success);
+        _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
+        var headerInfo = $"  SCRIPT VARIABLES ({_variables.Count} defined)";
+        if (pinnedCount > 0) headerInfo += $" | {pinnedCount} pinned";
+        if (expandedCount > 0) headerInfo += $" | {expandedCount} expanded";
+        _variablesBuffer.AppendLine(headerInfo, UITheme.Dark.Info);
+
+        if (!string.IsNullOrEmpty(_searchFilter))
+        {
+            _variablesBuffer.AppendLine($"  Search: \"{_searchFilter}\" ({filteredRows.Count} matches)", UITheme.Dark.TextSecondary);
+        }
+        _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
         _variablesBuffer.AppendLine("", Color.White);
 
-        // Display user-defined variables
-        if (_variables.Count == 0)
+        // Display pinned variables first
+        var pinnedRows = filteredRows.Where(r => r.Depth == 0 && r.IsPinned).ToList();
+        if (pinnedRows.Count > 0)
         {
-            _variablesBuffer.AppendLine("No variables defined in current script state.", UITheme.Dark.TextDim);
-            _variablesBuffer.AppendLine("", Color.White);
-            _variablesBuffer.AppendLine("TIP: Create variables in C# scripts:", UITheme.Dark.TextSecondary);
-            _variablesBuffer.AppendLine("     var myVar = 42;", UITheme.Dark.Info);
-            _variablesBuffer.AppendLine("     var playerPos = Player.GetPlayerPosition();", UITheme.Dark.Info);
-        }
-        else
-        {
-            foreach (var kvp in _variables.OrderBy(v => v.Key))
+            _variablesBuffer.AppendLine("  📌 PINNED", UITheme.Dark.Warning);
+            foreach (var row in pinnedRows)
             {
-                var variable = kvp.Value;
-                try
-                {
-                    var value = variable.ValueGetter();
-                    var valueStr = FormatValue(value);
-                    var typeStr = variable.TypeName.PadRight(20);
+                RenderRow(row);
+            }
+            _variablesBuffer.AppendLine("", Color.White);
+        }
 
-                    // Format: "name        type                 value"
-                    _variablesBuffer.AppendLine($"  {variable.Name,-20} {typeStr} {valueStr}", UITheme.Dark.TextPrimary);
-                }
-                catch (Exception ex)
-                {
-                    _variablesBuffer.AppendLine($"  {variable.Name,-20} {variable.TypeName,-20} [Error: {ex.Message}]", UITheme.Dark.Error);
-                }
+        // Display user-defined variables
+        var userRows = filteredRows.Where(r =>
+            _variables.ContainsKey(GetRootName(r.Path)) && !r.IsPinned
+        ).ToList();
+
+        if (userRows.Count == 0 && pinnedRows.Count == 0 && _variables.Count == 0)
+        {
+            _variablesBuffer.AppendLine("  No variables defined.", UITheme.Dark.TextDim);
+            _variablesBuffer.AppendLine("  Use 'var x = value;' to create variables.", UITheme.Dark.TextDim);
+        }
+        else if (userRows.Count > 0)
+        {
+            foreach (var row in userRows)
+            {
+                RenderRow(row);
             }
         }
 
         // Display globals section
-        if (_globals.Count > 0)
+        var globalRows = filteredRows.Where(r =>
+            _globals.Any(g => g.Name == GetRootName(r.Path))
+        ).ToList();
+
+        if (globalRows.Count > 0)
         {
-            _variablesBuffer.AppendLine("", Color.White);
             _variablesBuffer.AppendLine("", Color.White);
             _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
             _variablesBuffer.AppendLine("  BUILT-IN GLOBALS", UITheme.Dark.Info);
             _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
             _variablesBuffer.AppendLine("", Color.White);
-            _variablesBuffer.AppendLine("These objects are always available in scripts:", UITheme.Dark.TextSecondary);
-            _variablesBuffer.AppendLine("", Color.White);
 
-            foreach (var global in _globals.OrderBy(g => g.Name))
+            foreach (var row in globalRows)
             {
-                var typeStr = global.TypeName.PadRight(30);
-                _variablesBuffer.AppendLine($"  {global.Name,-15} {typeStr}", UITheme.Dark.Info);
-                if (!string.IsNullOrEmpty(global.Description))
-                {
-                    _variablesBuffer.AppendLine($"    → {global.Description}", UITheme.Dark.TextSecondary);
-                }
+                RenderRow(row);
             }
         }
 
-        // Footer
+        // Footer with keyboard hints
         _variablesBuffer.AppendLine("", Color.White);
         _variablesBuffer.AppendLine("─────────────────────────────────────────────────────────────────", UITheme.Dark.BorderPrimary);
-        _variablesBuffer.AppendLine($"User Variables: {_variables.Count} | Globals: {_globals.Count}", UITheme.Dark.TextSecondary);
-        _variablesBuffer.AppendLine("TIP: Use 'script reset' to clear all user variables", UITheme.Dark.TextSecondary);
+        _variablesBuffer.AppendLine($"Variables: {_variables.Count} | Globals: {_globals.Count} | Use 'var' command to manage", UITheme.Dark.TextSecondary);
+    }
+
+    /// <summary>
+    /// Builds the display rows from variables and globals.
+    /// </summary>
+    private void BuildDisplayRows()
+    {
+        // Add user variables
+        foreach (var kvp in _variables.OrderBy(v => !_pinnedVariables.Contains(v.Key)).ThenBy(v => v.Key))
+        {
+            var variable = kvp.Value;
+            try
+            {
+                var value = variable.ValueGetter();
+                AddDisplayRow(variable.Name, variable.Name, variable.TypeName, value, 0,
+                    !variable.IsReadOnly, _pinnedVariables.Contains(variable.Name));
+            }
+            catch (Exception ex)
+            {
+                _displayRows.Add(new DisplayRow
+                {
+                    Path = variable.Name,
+                    Name = variable.Name,
+                    TypeName = variable.TypeName,
+                    ValueStr = $"[Error: {ex.Message}]",
+                    ValueColor = UITheme.Dark.Error,
+                    Depth = 0,
+                    IsPinned = _pinnedVariables.Contains(variable.Name)
+                });
+            }
+        }
+
+        // Add globals with their instances for inspection
+        foreach (var global in _globals.OrderBy(g => !_pinnedVariables.Contains(g.Name)).ThenBy(g => g.Name))
+        {
+            AddDisplayRow(global.Name, global.Name, global.TypeName, global.Instance, 0,
+                false, _pinnedVariables.Contains(global.Name));
+        }
+    }
+
+    /// <summary>
+    /// Adds a display row and its children if expanded.
+    /// </summary>
+    private void AddDisplayRow(string path, string name, string typeName, object? value, int depth, bool isEditable, bool isPinned)
+    {
+        var isExpandable = IsExpandableValue(value);
+        var isExpanded = _expandedPaths.Contains(path);
+
+        var row = new DisplayRow
+        {
+            Path = path,
+            Name = name,
+            TypeName = GetDisplayTypeName(typeName, value),
+            ValueStr = FormatValue(value, isExpanded),
+            Value = value,
+            Depth = depth,
+            IsExpandable = isExpandable,
+            IsExpanded = isExpanded,
+            IsPinned = isPinned && depth == 0,
+            IsEditable = isEditable && IsEditableType(value),
+            ValueColor = GetValueColor(value)
+        };
+
+        _displayRows.Add(row);
+
+        // Add children if expanded
+        if (isExpanded && value != null && depth < MaxExpansionDepth)
+        {
+            AddChildRows(path, value, depth + 1);
+        }
+    }
+
+    /// <summary>
+    /// Adds child rows for an expanded object.
+    /// </summary>
+    private void AddChildRows(string parentPath, object value, int depth)
+    {
+        var type = value.GetType();
+
+        // Handle collections
+        if (value is IDictionary dict)
+        {
+            int index = 0;
+            foreach (DictionaryEntry entry in dict)
+            {
+                if (index >= MaxCollectionItems)
+                {
+                    _displayRows.Add(new DisplayRow
+                    {
+                        Path = $"{parentPath}[...]",
+                        Name = $"... ({dict.Count - MaxCollectionItems} more)",
+                        TypeName = "",
+                        ValueStr = "",
+                        Depth = depth,
+                        ValueColor = UITheme.Dark.TextDim
+                    });
+                    break;
+                }
+
+                var keyStr = FormatValue(entry.Key, false);
+                var childPath = $"{parentPath}[{keyStr}]";
+                AddDisplayRow(childPath, $"[{keyStr}]", entry.Value?.GetType()?.Name ?? "null", entry.Value, depth, false, false);
+                index++;
+            }
+        }
+        else if (value is IList list)
+        {
+            for (int i = 0; i < Math.Min(list.Count, MaxCollectionItems); i++)
+            {
+                var childPath = $"{parentPath}[{i}]";
+                var item = list[i];
+                AddDisplayRow(childPath, $"[{i}]", item?.GetType()?.Name ?? "null", item, depth, false, false);
+            }
+
+            if (list.Count > MaxCollectionItems)
+            {
+                _displayRows.Add(new DisplayRow
+                {
+                    Path = $"{parentPath}[...]",
+                    Name = $"... ({list.Count - MaxCollectionItems} more)",
+                    TypeName = "",
+                    ValueStr = "",
+                    Depth = depth,
+                    ValueColor = UITheme.Dark.TextDim
+                });
+            }
+        }
+        else if (value is IEnumerable enumerable && !(value is string))
+        {
+            int index = 0;
+            foreach (var item in enumerable)
+            {
+                if (index >= MaxCollectionItems)
+                {
+                    _displayRows.Add(new DisplayRow
+                    {
+                        Path = $"{parentPath}[...]",
+                        Name = $"... (more items)",
+                        TypeName = "",
+                        ValueStr = "",
+                        Depth = depth,
+                        ValueColor = UITheme.Dark.TextDim
+                    });
+                    break;
+                }
+
+                var childPath = $"{parentPath}[{index}]";
+                AddDisplayRow(childPath, $"[{index}]", item?.GetType()?.Name ?? "null", item, depth, false, false);
+                index++;
+            }
+        }
+        else
+        {
+            // Add properties
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
+                .OrderBy(p => p.Name)
+                .Take(50); // Limit to prevent huge lists
+
+            foreach (var prop in properties)
+            {
+                try
+                {
+                    var propValue = prop.GetValue(value);
+                    var childPath = $"{parentPath}.{prop.Name}";
+                    AddDisplayRow(childPath, prop.Name, prop.PropertyType.Name, propValue, depth, prop.CanWrite, false);
+                }
+                catch
+                {
+                    var childPath = $"{parentPath}.{prop.Name}";
+                    _displayRows.Add(new DisplayRow
+                    {
+                        Path = childPath,
+                        Name = prop.Name,
+                        TypeName = prop.PropertyType.Name,
+                        ValueStr = "[Error reading]",
+                        Depth = depth,
+                        ValueColor = UITheme.Dark.Error
+                    });
+                }
+            }
+
+            // Add public fields
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
+                .OrderBy(f => f.Name)
+                .Take(50);
+
+            foreach (var field in fields)
+            {
+                try
+                {
+                    var fieldValue = field.GetValue(value);
+                    var childPath = $"{parentPath}.{field.Name}";
+                    AddDisplayRow(childPath, field.Name, field.FieldType.Name, fieldValue, depth, !field.IsInitOnly, false);
+                }
+                catch
+                {
+                    var childPath = $"{parentPath}.{field.Name}";
+                    _displayRows.Add(new DisplayRow
+                    {
+                        Path = childPath,
+                        Name = field.Name,
+                        TypeName = field.FieldType.Name,
+                        ValueStr = "[Error reading]",
+                        Depth = depth,
+                        ValueColor = UITheme.Dark.Error
+                    });
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Renders a single display row to the buffer.
+    /// </summary>
+    private void RenderRow(DisplayRow row)
+    {
+        var indent = new string(' ', 2 + row.Depth * 2);
+
+        // Expansion indicator
+        string expandIndicator;
+        if (row.IsExpandable)
+        {
+            expandIndicator = row.IsExpanded ? "▼ " : "▶ ";
+        }
+        else
+        {
+            expandIndicator = "  ";
+        }
+
+        // Build the line
+        var nameWidth = Math.Max(1, 25 - row.Depth * 2);
+        var name = row.Name.Length > nameWidth ? row.Name.Substring(0, nameWidth - 1) + "…" : row.Name.PadRight(nameWidth);
+        var typeStr = row.TypeName.Length > 15 ? row.TypeName.Substring(0, 14) + "…" : row.TypeName.PadRight(15);
+
+        // Build the full line - use value color for the whole line for simplicity
+        var line = $"{indent}{expandIndicator}{name} {typeStr} {row.ValueStr}";
+        _variablesBuffer.AppendLine(line, row.ValueColor);
+    }
+
+    /// <summary>
+    /// Gets the root variable name from a path.
+    /// </summary>
+    private static string GetRootName(string path)
+    {
+        var dotIndex = path.IndexOf('.');
+        var bracketIndex = path.IndexOf('[');
+
+        if (dotIndex < 0 && bracketIndex < 0)
+            return path;
+
+        if (dotIndex < 0) return path.Substring(0, bracketIndex);
+        if (bracketIndex < 0) return path.Substring(0, dotIndex);
+
+        return path.Substring(0, Math.Min(dotIndex, bracketIndex));
     }
 
     /// <summary>
     /// Formats a value for display.
     /// </summary>
-    private string FormatValue(object? value)
+    private string FormatValue(object? value, bool isExpanded = false)
     {
         if (value == null)
-            return "<null>";
+            return "null";
 
         var type = value.GetType();
 
@@ -188,8 +652,12 @@ public class VariablesPanel : Panel
             if (value is double d)
                 return d.ToString("F2");
             if (value is string s)
+            {
+                if (s.Length > 50)
+                    return $"\"{s.Substring(0, 47)}...\"";
                 return $"\"{s}\"";
-            return value.ToString() ?? "<null>";
+            }
+            return value.ToString() ?? "null";
         }
 
         // Handle Vector2
@@ -202,19 +670,170 @@ public class VariablesPanel : Panel
 
         // Handle Color
         if (value is Color color)
-            return $"({color.R}, {color.G}, {color.B}, {color.A})";
+            return $"RGBA({color.R}, {color.G}, {color.B}, {color.A})";
+
+        // Handle Point
+        if (value is Point pt)
+            return $"({pt.X}, {pt.Y})";
+
+        // Handle Rectangle
+        if (value is Rectangle rect)
+            return $"({rect.X}, {rect.Y}, {rect.Width}x{rect.Height})";
 
         // Handle collections
-        if (value is System.Collections.ICollection collection)
-            return $"[{collection.Count} items]";
+        if (value is IDictionary dict)
+            return isExpanded ? $"Dictionary ({dict.Count} items)" : $"{{ {dict.Count} items }}";
+
+        if (value is ICollection collection)
+            return isExpanded ? $"Collection ({collection.Count} items)" : $"[{collection.Count} items]";
+
+        if (value is IEnumerable && !(value is string))
+            return isExpanded ? "Enumerable" : "[...]";
 
         // Handle DateTime
         if (value is DateTime dt)
-            return dt.ToString("HH:mm:ss");
+            return dt.ToString("yyyy-MM-dd HH:mm:ss");
 
-        // Default: type name
-        return $"<{type.Name} instance>";
+        // Handle TimeSpan
+        if (value is TimeSpan ts)
+            return ts.ToString(@"hh\:mm\:ss\.fff");
+
+        // Handle Guid
+        if (value is Guid guid)
+            return guid.ToString("D");
+
+        // Handle enums
+        if (type.IsEnum)
+            return value.ToString() ?? type.Name;
+
+        // Complex object
+        if (isExpanded)
+            return $"{type.Name}";
+        else
+            return $"{{ {type.Name} }}";
     }
+
+    /// <summary>
+    /// Gets a display-friendly type name.
+    /// </summary>
+    private static string GetDisplayTypeName(string typeName, object? value)
+    {
+        if (value == null)
+            return typeName;
+
+        var type = value.GetType();
+
+        // Handle generic types
+        if (type.IsGenericType)
+        {
+            var baseName = type.Name;
+            var tickIndex = baseName.IndexOf('`');
+            if (tickIndex > 0)
+                baseName = baseName.Substring(0, tickIndex);
+
+            var args = type.GetGenericArguments();
+            var argNames = string.Join(", ", args.Select(a => a.Name));
+            return $"{baseName}<{argNames}>";
+        }
+
+        // Handle arrays
+        if (type.IsArray)
+        {
+            var elementType = type.GetElementType();
+            return $"{elementType?.Name ?? "?"}[]";
+        }
+
+        return type.Name;
+    }
+
+    /// <summary>
+    /// Determines if a value can be expanded to show children.
+    /// </summary>
+    private static bool IsExpandableValue(object? value)
+    {
+        if (value == null)
+            return false;
+
+        var type = value.GetType();
+
+        // Primitives and strings are not expandable
+        if (type.IsPrimitive || type == typeof(string))
+            return false;
+
+        // Known simple types
+        if (type == typeof(DateTime) || type == typeof(TimeSpan) || type == typeof(Guid))
+            return false;
+
+        if (type == typeof(Vector2) || type == typeof(Microsoft.Xna.Framework.Vector3))
+            return false;
+
+        if (type == typeof(Color) || type == typeof(Point) || type == typeof(Rectangle))
+            return false;
+
+        // Enums are not expandable
+        if (type.IsEnum)
+            return false;
+
+        // Collections are expandable
+        if (value is IEnumerable)
+            return true;
+
+        // Objects with properties/fields are expandable
+        var hasProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Any(p => p.CanRead && p.GetIndexParameters().Length == 0);
+        var hasFields = type.GetFields(BindingFlags.Public | BindingFlags.Instance).Any();
+
+        return hasProperties || hasFields;
+    }
+
+    /// <summary>
+    /// Determines if a value type can be edited inline.
+    /// </summary>
+    private static bool IsEditableType(object? value)
+    {
+        if (value == null)
+            return false;
+
+        var type = value.GetType();
+
+        // Only allow editing of simple types
+        return type.IsPrimitive ||
+               type == typeof(string) ||
+               type == typeof(DateTime) ||
+               type.IsEnum;
+    }
+
+    /// <summary>
+    /// Gets the display color for a value based on its type.
+    /// </summary>
+    private static Color GetValueColor(object? value)
+    {
+        if (value == null)
+            return UITheme.Dark.TextDim;
+
+        var type = value.GetType();
+
+        if (value is bool)
+            return UITheme.Dark.Info; // Blue for booleans
+
+        if (type.IsPrimitive)
+            return UITheme.Dark.Success; // Green for numbers
+
+        if (value is string)
+            return new Color(206, 145, 120); // Orange for strings
+
+        if (type.IsEnum)
+            return UITheme.Dark.Warning; // Yellow for enums
+
+        if (value is ICollection)
+            return UITheme.Dark.TextSecondary;
+
+        return UITheme.Dark.TextPrimary;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Public API
+    // ═══════════════════════════════════════════════════════════════════════════
 
     /// <summary>
     /// Gets the count of user-defined variables.
@@ -225,5 +844,36 @@ public class VariablesPanel : Panel
     /// Gets the count of global variables.
     /// </summary>
     public int GetGlobalCount() => _globals.Count;
+
+    /// <summary>
+    /// Gets all variable names.
+    /// </summary>
+    public IEnumerable<string> GetVariableNames() => _variables.Keys;
+
+    /// <summary>
+    /// Gets a variable's current value.
+    /// </summary>
+    public object? GetVariableValue(string name)
+    {
+        if (_variables.TryGetValue(name, out var info))
+        {
+            try { return info.ValueGetter(); }
+            catch { return null; }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Checks if a variable exists.
+    /// </summary>
+    public bool HasVariable(string name) => _variables.ContainsKey(name);
+
+    /// <summary>
+    /// Gets statistics about the variables panel.
+    /// </summary>
+    public (int Variables, int Globals, int Pinned, int Expanded) GetStatistics()
+    {
+        return (_variables.Count, _globals.Count, _pinnedVariables.Count, _expandedPaths.Count);
+    }
 }
 

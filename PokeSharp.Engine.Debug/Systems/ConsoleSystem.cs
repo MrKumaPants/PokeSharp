@@ -57,6 +57,11 @@ public class ConsoleSystem : IUpdateSystem
     private bool _loggingEnabled = false;
     private Microsoft.Extensions.Logging.LogLevel _minimumLogLevel = Microsoft.Extensions.Logging.LogLevel.Information;
 
+    // Persistent log buffer - stores logs even when console is closed
+    private readonly List<(Microsoft.Extensions.Logging.LogLevel Level, string Message, string Category, DateTime Timestamp)> _persistentLogBuffer = new();
+    private readonly object _logBufferLock = new();
+    private const int MaxPersistentLogs = 5000;
+
     // Auto-completion debouncing
     private CancellationTokenSource? _completionCts;
     private const int CompletionDebounceMs = 50;
@@ -133,21 +138,42 @@ public class ConsoleSystem : IUpdateSystem
             {
                 _loggerProvider.SetConsoleWriter((message, color) =>
                 {
-                    // Write logs to console if it's open and logging is enabled
+                    // Write logs to console output if it's open and logging is enabled
                     if (_consoleScene != null && _loggingEnabled)
                     {
                         _consoleScene.AppendOutput(message, color, "Log");
                     }
                 });
 
-                // Set up log level filter based on console logging state
+                // Set up log entry handler for the Logs panel
+                _loggerProvider.SetLogEntryHandler((level, message, category) =>
+                {
+                    // Only buffer logs if logging is enabled
+                    if (!_loggingEnabled)
+                        return;
+
+                    // Store in persistent buffer (even when console is closed)
+                    lock (_logBufferLock)
+                    {
+                        _persistentLogBuffer.Add((level, message, category, DateTime.Now));
+
+                        // Trim if buffer is too large
+                        while (_persistentLogBuffer.Count > MaxPersistentLogs)
+                        {
+                            _persistentLogBuffer.RemoveAt(0);
+                        }
+                    }
+
+                    // Also add to console scene if it's open
+                    _consoleScene?.AddLog(level, message, category);
+                });
+
+                // Set up log level filter - always capture logs for the persistent buffer
+                // The console output writer handles its own visibility check
                 _loggerProvider.SetLogLevelFilter(logLevel =>
                 {
-                    // Check console logging state
-                    if (_consoleScene != null && _loggingEnabled)
-                        return logLevel >= _minimumLogLevel;
-
-                    return false;
+                    // Always capture logs at or above the minimum level for the persistent buffer
+                    return logLevel >= _minimumLogLevel;
                 });
             }
 
@@ -206,6 +232,7 @@ public class ConsoleSystem : IUpdateSystem
                 _consoleScene.OnRequestParameterHints -= HandleConsoleParameterHints;
                 _consoleScene.OnRequestDocumentation -= HandleConsoleDocumentation;
                 _consoleScene.OnCloseRequested -= OnConsoleClosed;
+                _consoleScene.OnReady -= HandleConsoleReady;
                 _consoleScene = null;
 
                 // Cancel any pending completion requests
@@ -238,6 +265,7 @@ public class ConsoleSystem : IUpdateSystem
                 _consoleScene.OnRequestParameterHints += HandleConsoleParameterHints;
                 _consoleScene.OnRequestDocumentation += HandleConsoleDocumentation;
                 _consoleScene.OnCloseRequested += OnConsoleClosed;
+                _consoleScene.OnReady += HandleConsoleReady;
 
                 // Wire up Print() output to the console
                 _globals.OutputAction = (text) => _consoleScene?.AppendOutput(text, Theme.TextPrimary);
@@ -245,18 +273,11 @@ public class ConsoleSystem : IUpdateSystem
                 // Set console height to 50% (medium size)
                 _consoleScene.SetHeightPercent(0.5f);
 
-                // Push scene
+                // Push scene - LoadContent() will fire OnReady when complete
                 _sceneManager.PushScene(_consoleScene);
                 _isConsoleOpen = true;
 
-                // Welcome message
-                _consoleScene.AppendOutput("=== PokeSharp Debug Console ===", Theme.Success);
-                _consoleScene.AppendOutput("Type 'help' for available commands", Theme.Info);
-                _consoleScene.AppendOutput("Press ` to close", Theme.TextSecondary);
-                _consoleScene.AppendOutput("", Theme.TextPrimary);
-
-                // Execute startup script if it exists
-                ExecuteStartupScript();
+                // Note: Buffered logs, welcome messages, and startup script are handled in HandleConsoleReady
 
                 _logger.LogInformation("Console opened successfully. Press ` to close.");
             }
@@ -278,6 +299,28 @@ public class ConsoleSystem : IUpdateSystem
         {
             ToggleConsole();
         }
+    }
+
+    /// <summary>
+    /// Handles the console scene being ready (after LoadContent completes).
+    /// This is when LogsPanel exists and can receive buffered logs.
+    /// </summary>
+    private void HandleConsoleReady()
+    {
+        // Replay buffered logs if logging is enabled
+        if (_loggingEnabled)
+        {
+            ReplayBufferedLogs();
+        }
+
+        // Welcome message
+        _consoleScene?.AppendOutput("=== PokeSharp Debug Console ===", new Color(100, 200, 255));
+        _consoleScene?.AppendOutput("Type 'help' for available commands", Color.LightGray);
+        _consoleScene?.AppendOutput("Press ` or type 'exit' to close", Color.Gray);
+        _consoleScene?.AppendOutput("", Color.White);
+
+        // Execute startup script if it exists
+        ExecuteStartupScript();
     }
 
     /// <summary>
@@ -567,6 +610,9 @@ public class ConsoleSystem : IUpdateSystem
                             _consoleScene?.AppendOutput(result.Output, Theme.Success);
                         }
                         // If no output, that's fine (statement executed successfully but returned nothing)
+
+                        // Sync script variables to the Variables panel
+                        SyncScriptVariables();
                     }
                     else
                     {
@@ -610,6 +656,44 @@ public class ConsoleSystem : IUpdateSystem
         {
             _logger.LogError(ex, "Error executing startup script");
             _consoleScene?.AppendOutput($"Startup script error: {ex.Message}", Theme.Error);
+        }
+    }
+
+    /// <summary>
+    /// Replays buffered logs to the Logs panel when the console is reopened.
+    /// </summary>
+    private void ReplayBufferedLogs()
+    {
+        if (_consoleScene == null)
+            return;
+
+        List<(Microsoft.Extensions.Logging.LogLevel Level, string Message, string Category, DateTime Timestamp)> logsToReplay;
+
+        lock (_logBufferLock)
+        {
+            // Make a copy to avoid holding the lock while adding to the scene
+            logsToReplay = new List<(Microsoft.Extensions.Logging.LogLevel, string, string, DateTime)>(_persistentLogBuffer);
+        }
+
+        // Replay all buffered logs to the Logs panel with original timestamps
+        foreach (var (level, message, category, timestamp) in logsToReplay)
+        {
+            _consoleScene.AddLog(level, message, category, timestamp);
+        }
+    }
+
+    /// <summary>
+    /// Syncs script-defined variables to the Variables panel.
+    /// </summary>
+    private void SyncScriptVariables()
+    {
+        if (_consoleScene == null)
+            return;
+
+        // Get all variables from the script evaluator
+        foreach (var (name, typeName, valueGetter) in _evaluator.GetVariables())
+        {
+            _consoleScene.SetScriptVariable(name, typeName, valueGetter);
         }
     }
 }

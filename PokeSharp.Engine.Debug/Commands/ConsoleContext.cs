@@ -439,6 +439,51 @@ public class ConsoleContext : IConsoleContext
         return _consoleScene.GetLogCount();
     }
 
+    public void SetLogCategoryFilter(IEnumerable<string>? categories)
+    {
+        _consoleScene.SetLogCategoryFilter(categories);
+    }
+
+    public void ClearLogCategoryFilter()
+    {
+        _consoleScene.ClearLogCategoryFilter();
+    }
+
+    public IEnumerable<string> GetLogCategories()
+    {
+        return _consoleScene.GetLogCategories();
+    }
+
+    public Dictionary<string, int> GetLogCategoryCounts()
+    {
+        return _consoleScene.GetLogCategoryCounts();
+    }
+
+    public string ExportLogs(bool includeTimestamp = true, bool includeLevel = true, bool includeCategory = false)
+    {
+        return _consoleScene.ExportLogs(includeTimestamp, includeLevel, includeCategory);
+    }
+
+    public string ExportLogsToCsv()
+    {
+        return _consoleScene.ExportLogsToCsv();
+    }
+
+    public void CopyLogsToClipboard()
+    {
+        _consoleScene.CopyLogsToClipboard();
+    }
+
+    public (int Total, int Filtered, int Errors, int Warnings, int LastMinute, int Categories) GetLogStatistics()
+    {
+        return _consoleScene.GetLogStatistics();
+    }
+
+    public Dictionary<Microsoft.Extensions.Logging.LogLevel, int> GetLogLevelCounts()
+    {
+        return _consoleScene.GetLogLevelCounts();
+    }
+
     public bool SaveWatchPreset(string name, string description)
     {
         try
@@ -608,6 +653,100 @@ public class ConsoleContext : IConsoleContext
     public int GetActiveTab()
     {
         return _consoleScene.GetActiveTab();
+    }
+
+    public string ExportConsoleOutput()
+    {
+        return _consoleScene.ExportConsoleOutput();
+    }
+
+    public void CopyConsoleOutputToClipboard()
+    {
+        _consoleScene.CopyConsoleOutputToClipboard();
+    }
+
+    public (int TotalLines, int FilteredLines) GetConsoleOutputStats()
+    {
+        return _consoleScene.GetConsoleOutputStats();
+    }
+
+    public string ExportWatchesToCsv()
+    {
+        return _consoleScene.ExportWatchesToCsv();
+    }
+
+    public void CopyWatchesToClipboard(bool asCsv = false)
+    {
+        _consoleScene.CopyWatchesToClipboard(asCsv);
+    }
+
+    public (int Total, int Pinned, int WithErrors, int WithAlerts, int Groups) GetWatchStatistics()
+    {
+        return _consoleScene.GetWatchStatistics();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Variables Tab
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    public (int Variables, int Globals, int Pinned, int Expanded) GetVariableStatistics()
+    {
+        return _consoleScene.GetVariableStatistics();
+    }
+
+    public IEnumerable<string> GetVariableNames()
+    {
+        return _consoleScene.GetVariableNames();
+    }
+
+    public object? GetVariableValue(string name)
+    {
+        return _consoleScene.GetVariableValue(name);
+    }
+
+    public void SetVariableSearchFilter(string filter)
+    {
+        _consoleScene.SetVariableSearchFilter(filter);
+    }
+
+    public void ClearVariableSearchFilter()
+    {
+        _consoleScene.ClearVariableSearchFilter();
+    }
+
+    public bool ExpandVariable(string path)
+    {
+        return _consoleScene.ExpandVariable(path);
+    }
+
+    public void CollapseVariable(string path)
+    {
+        _consoleScene.CollapseVariable(path);
+    }
+
+    public void ExpandAllVariables()
+    {
+        _consoleScene.ExpandAllVariables();
+    }
+
+    public void CollapseAllVariables()
+    {
+        _consoleScene.CollapseAllVariables();
+    }
+
+    public void PinVariable(string name)
+    {
+        _consoleScene.PinVariable(name);
+    }
+
+    public void UnpinVariable(string name)
+    {
+        _consoleScene.UnpinVariable(name);
+    }
+
+    public void ClearVariables()
+    {
+        _consoleScene.ClearVariables();
     }
 }
 

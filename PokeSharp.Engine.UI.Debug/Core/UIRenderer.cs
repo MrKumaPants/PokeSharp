@@ -16,6 +16,12 @@ public class UIRenderer : IDisposable
     private readonly Texture2D _pixel;
     private FontSystem? _fontSystem;
     private SpriteFontBase? _font;
+    private int _fontSize = 16;
+
+    // Font size limits
+    public const int MinFontSize = 10;
+    public const int MaxFontSize = 32;
+    public const int DefaultFontSize = 16;
     private bool _disposed;
     private bool _isInBatch; // Track if SpriteBatch.Begin() has been called
 
@@ -46,11 +52,53 @@ public class UIRenderer : IDisposable
     public void SetFontSystem(FontSystem fontSystem, int fontSize = 16)
     {
         _fontSystem = fontSystem ?? throw new ArgumentNullException(nameof(fontSystem));
-        _font = fontSystem.GetFont(fontSize);
+        _fontSize = Math.Clamp(fontSize, MinFontSize, MaxFontSize);
+        _font = fontSystem.GetFont(_fontSize);
         if (_font == null)
         {
-            throw new InvalidOperationException($"GetFont returned NULL for fontSize={fontSize}");
+            throw new InvalidOperationException($"GetFont returned NULL for fontSize={_fontSize}");
         }
+    }
+
+    /// <summary>
+    /// Gets the current font size.
+    /// </summary>
+    public int FontSize => _fontSize;
+
+    /// <summary>
+    /// Sets the font size. Requires font system to be initialized.
+    /// </summary>
+    public void SetFontSize(int fontSize)
+    {
+        if (_fontSystem == null)
+            throw new InvalidOperationException("Font system not initialized. Call SetFontSystem first.");
+
+        _fontSize = Math.Clamp(fontSize, MinFontSize, MaxFontSize);
+        _font = _fontSystem.GetFont(_fontSize);
+    }
+
+    /// <summary>
+    /// Increases font size by the specified amount.
+    /// </summary>
+    public void IncreaseFontSize(int amount = 2)
+    {
+        SetFontSize(_fontSize + amount);
+    }
+
+    /// <summary>
+    /// Decreases font size by the specified amount.
+    /// </summary>
+    public void DecreaseFontSize(int amount = 2)
+    {
+        SetFontSize(_fontSize - amount);
+    }
+
+    /// <summary>
+    /// Resets font size to default.
+    /// </summary>
+    public void ResetFontSize()
+    {
+        SetFontSize(DefaultFontSize);
     }
 
     /// <summary>

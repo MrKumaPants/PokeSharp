@@ -13,14 +13,17 @@ namespace PokeSharp.Engine.UI.Debug.Components.Debug;
 /// <summary>
 /// Panel for watching and displaying variable values in real-time.
 /// Completely redesigned for better debugging UX.
+/// Uses background thread evaluation to prevent blocking the game loop.
 /// </summary>
-public class WatchPanel : Panel
+public class WatchPanel : Panel, IDisposable
 {
     private readonly TextBuffer _watchBuffer;
     private readonly Dictionary<string, WatchEntry> _watches = new();
     private readonly List<string> _watchKeys = new(); // Maintain insertion order
     private readonly Dictionary<string, bool> _groupCollapsedState = new(); // Track collapsed groups
+    private readonly WatchEvaluator _evaluator = new();
     private double _lastUpdateTime = 0;
+    private bool _disposed = false;
 
     // Cache for sorted watch lists (invalidated when watches change)
     private List<WatchEntry>? _cachedAllWatches = null;
@@ -405,6 +408,7 @@ public class WatchPanel : Panel
         _watchKeys.Clear();
         _watchBuffer.Clear();
         _watchListDirty = true;
+        _evaluator.ClearPending(); // Clear any pending evaluations
         UpdateWatchDisplay();
     }
 
@@ -443,38 +447,51 @@ public class WatchPanel : Panel
     }
 
     /// <summary>
-    /// Updates all watch values, evaluates conditions, and tracks history.
+    /// Updates all watch values using background thread evaluation.
+    /// Collects results from previous evaluations and queues new ones.
     /// </summary>
     private void UpdateWatchValues()
     {
+        // First, collect any results from previous evaluations
+        CollectEvaluationResults();
+
+        // Then queue new evaluations for all watches
         foreach (var key in _watchKeys)
         {
             var entry = _watches[key];
+            _evaluator.QueueEvaluation(key, entry.ValueGetter, entry.ConditionEvaluator);
+        }
+    }
 
-            // Evaluate condition if present
-            if (entry.ConditionEvaluator != null)
-            {
-                try
-                {
-                    entry.ConditionMet = entry.ConditionEvaluator();
-                }
-                catch
-                {
-                    entry.ConditionMet = false; // Condition evaluation failed
-                }
-            }
+    /// <summary>
+    /// Collects results from background evaluations and updates watch entries.
+    /// </summary>
+    private void CollectEvaluationResults()
+    {
+        foreach (var result in _evaluator.CollectResults())
+        {
+            if (!_watches.TryGetValue(result.WatchName, out var entry))
+                continue; // Watch was removed
 
-            // Only evaluate value if condition is met (or no condition)
-            if (entry.ConditionMet)
+            // Update condition state
+            entry.ConditionMet = result.ConditionMet;
+
+            // Only update value if condition is met
+            if (result.ConditionMet)
             {
-                try
+                if (result.HasError)
+                {
+                    entry.HasError = true;
+                    entry.ErrorMessage = result.ErrorMessage;
+                }
+                else
                 {
                     // Store previous value for change detection
                     entry.PreviousValue = entry.LastValue;
 
-                    // Get new value
-                    entry.LastValue = entry.ValueGetter();
-                    entry.LastUpdated = DateTime.Now;
+                    // Update with new value
+                    entry.LastValue = result.Value;
+                    entry.LastUpdated = result.EvaluatedAt;
                     entry.UpdateCount++;
                     entry.HasError = false;
                     entry.ErrorMessage = null;
@@ -482,7 +499,7 @@ public class WatchPanel : Panel
                     // Track history if value changed
                     if (entry.PreviousValue != null && !Equals(entry.LastValue, entry.PreviousValue))
                     {
-                        entry.History.Add((DateTime.Now, entry.LastValue));
+                        entry.History.Add((result.EvaluatedAt, entry.LastValue));
 
                         // Trim history if needed
                         if (entry.History.Count > entry.MaxHistorySize)
@@ -496,11 +513,6 @@ public class WatchPanel : Panel
 
                     // Update comparison if configured
                     UpdateComparison(entry);
-                }
-                catch (Exception ex)
-                {
-                    entry.HasError = true;
-                    entry.ErrorMessage = ex.Message;
                 }
             }
         }
@@ -880,19 +892,7 @@ public class WatchPanel : Panel
 
         if (_watchKeys.Count == 0)
         {
-            // Empty state
             _watchBuffer.AppendLine("  No watches defined.", UITheme.Dark.TextDim);
-            _watchBuffer.AppendLine("", Color.White);
-            _watchBuffer.AppendLine("  GETTING STARTED:", UITheme.Dark.BorderFocus);
-            _watchBuffer.AppendLine("  ─────────────────────────────────────────────────────────────", UITheme.Dark.BorderPrimary);
-            _watchBuffer.AppendLine("", Color.White);
-            _watchBuffer.AppendLine("  Add watches to monitor values in real-time:", UITheme.Dark.TextSecondary);
-            _watchBuffer.AppendLine("", Color.White);
-            _watchBuffer.AppendLine("    watch add money Player.GetMoney()", UITheme.Dark.Info);
-            _watchBuffer.AppendLine("    watch add pos Player.GetPlayerPosition()", UITheme.Dark.Info);
-            _watchBuffer.AppendLine("    watch add hp Player.GetHP()", UITheme.Dark.Info);
-            _watchBuffer.AppendLine("", Color.White);
-            _watchBuffer.AppendLine("  TIP: Switch back to Console tab (Ctrl+1) to add watches", UITheme.Dark.Success);
             return;
         }
 
@@ -914,9 +914,6 @@ public class WatchPanel : Panel
         {
             _watchBuffer.AppendLine($"Total: {_watchKeys.Count} watch(es) | All OK", UITheme.Dark.Success);
         }
-
-        _watchBuffer.AppendLine("", Color.White);
-        _watchBuffer.AppendLine("COMMANDS: watch add/remove/clear/toggle | Ctrl+1 to return to Console", UITheme.Dark.TextSecondary);
 
         // Restore scroll position and auto-scroll state after update
         _watchBuffer.SetScrollOffset(previousScrollOffset);
@@ -1000,5 +997,107 @@ public class WatchPanel : Panel
                 UpdateWatchDisplay();
             }
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Export Methods
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Exports all watches to CSV format.
+    /// </summary>
+    public string ExportToCsv()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Name,Expression,Value,Group,IsPinned,HasError,LastUpdated");
+
+        foreach (var key in _watchKeys)
+        {
+            if (!_watches.TryGetValue(key, out var watch))
+                continue;
+
+            var valueStr = watch.HasError
+                ? $"ERROR: {watch.ErrorMessage}"
+                : FormatValue(watch.LastValue)?.Replace("\"", "\"\"") ?? "";
+
+            var group = watch.Group?.Replace("\"", "\"\"") ?? "";
+            var lastUpdated = watch.LastUpdated.ToString("yyyy-MM-dd HH:mm:ss.fff");
+
+            sb.AppendLine($"\"{watch.Name}\",\"{watch.Expression}\",\"{valueStr}\",\"{group}\",{watch.IsPinned},{watch.HasError},\"{lastUpdated}\"");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Exports all watches to a formatted string.
+    /// </summary>
+    public string ExportToString()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"# Watch Export - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+        sb.AppendLine($"# Total: {_watches.Count} watches");
+        sb.AppendLine();
+
+        // Group by group name
+        var groups = _watches.Values
+            .GroupBy(w => w.Group ?? "(ungrouped)")
+            .OrderBy(g => g.Key);
+
+        foreach (var group in groups)
+        {
+            if (!string.IsNullOrEmpty(group.Key) && group.Key != "(ungrouped)")
+            {
+                sb.AppendLine($"[{group.Key}]");
+            }
+
+            foreach (var watch in group.OrderBy(w => w.IsPinned ? 0 : 1).ThenBy(w => w.Name))
+            {
+                var pin = watch.IsPinned ? "★ " : "  ";
+                var value = watch.HasError
+                    ? $"ERROR: {watch.ErrorMessage}"
+                    : FormatValue(watch.LastValue) ?? "null";
+
+                sb.AppendLine($"{pin}{watch.Name,-20} = {value}");
+            }
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Copies watches to clipboard.
+    /// </summary>
+    public void CopyToClipboard(bool asCsv = false)
+    {
+        var text = asCsv ? ExportToCsv() : ExportToString();
+        PokeSharp.Engine.UI.Debug.Utilities.ClipboardManager.SetText(text);
+    }
+
+    /// <summary>
+    /// Gets watch statistics.
+    /// </summary>
+    public (int Total, int Pinned, int WithErrors, int WithAlerts, int Groups) GetStatistics()
+    {
+        return (
+            _watches.Count,
+            _watches.Values.Count(w => w.IsPinned),
+            _watches.Values.Count(w => w.HasError),
+            _watches.Values.Count(w => w.AlertTriggered),
+            _watches.Values.Select(w => w.Group).Where(g => g != null).Distinct().Count()
+        );
+    }
+
+    /// <summary>
+    /// Disposes the watch panel and stops the background evaluator.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _evaluator.Dispose();
     }
 }

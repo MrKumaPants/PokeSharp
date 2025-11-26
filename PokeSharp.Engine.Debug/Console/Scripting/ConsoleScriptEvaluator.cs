@@ -94,6 +94,40 @@ public class ConsoleScriptEvaluator
     }
 
     /// <summary>
+    /// Gets all user-defined variables from the script state.
+    /// </summary>
+    public IEnumerable<(string Name, string TypeName, Func<object?> ValueGetter)> GetVariables()
+    {
+        if (_scriptState == null)
+            yield break;
+
+        foreach (var variable in _scriptState.Variables)
+        {
+            var varName = variable.Name;
+            var varType = variable.Type;
+
+            // Create a closure to get the current value
+            yield return (
+                varName,
+                varType.Name,
+                () => GetVariableValue(varName)
+            );
+        }
+    }
+
+    /// <summary>
+    /// Gets the current value of a variable by name.
+    /// </summary>
+    public object? GetVariableValue(string name)
+    {
+        if (_scriptState == null)
+            return null;
+
+        var variable = _scriptState.Variables.FirstOrDefault(v => v.Name == name);
+        return variable?.Value;
+    }
+
+    /// <summary>
     ///     Formats the result of a script evaluation.
     /// </summary>
     private static string FormatResult(object? result)

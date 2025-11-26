@@ -298,6 +298,51 @@ public interface IConsoleContext
     int GetLogCount();
 
     /// <summary>
+    /// Sets the log category filter. Pass null or empty to show all categories.
+    /// </summary>
+    void SetLogCategoryFilter(IEnumerable<string>? categories);
+
+    /// <summary>
+    /// Clears the log category filter (shows all categories).
+    /// </summary>
+    void ClearLogCategoryFilter();
+
+    /// <summary>
+    /// Gets all available log categories.
+    /// </summary>
+    IEnumerable<string> GetLogCategories();
+
+    /// <summary>
+    /// Gets log counts per category.
+    /// </summary>
+    Dictionary<string, int> GetLogCategoryCounts();
+
+    /// <summary>
+    /// Exports logs to a formatted string.
+    /// </summary>
+    string ExportLogs(bool includeTimestamp = true, bool includeLevel = true, bool includeCategory = false);
+
+    /// <summary>
+    /// Exports logs to CSV format.
+    /// </summary>
+    string ExportLogsToCsv();
+
+    /// <summary>
+    /// Copies logs to clipboard.
+    /// </summary>
+    void CopyLogsToClipboard();
+
+    /// <summary>
+    /// Gets log statistics.
+    /// </summary>
+    (int Total, int Filtered, int Errors, int Warnings, int LastMinute, int Categories) GetLogStatistics();
+
+    /// <summary>
+    /// Gets log counts by level.
+    /// </summary>
+    Dictionary<Microsoft.Extensions.Logging.LogLevel, int> GetLogLevelCounts();
+
+    /// <summary>
     /// Saves current watch configuration as a preset.
     /// </summary>
     bool SaveWatchPreset(string name, string description);
@@ -336,5 +381,99 @@ public interface IConsoleContext
     /// Gets the current active tab index.
     /// </summary>
     int GetActiveTab();
+
+    /// <summary>
+    /// Exports console output to a string.
+    /// </summary>
+    string ExportConsoleOutput();
+
+    /// <summary>
+    /// Copies console output to clipboard.
+    /// </summary>
+    void CopyConsoleOutputToClipboard();
+
+    /// <summary>
+    /// Gets console output statistics.
+    /// </summary>
+    (int TotalLines, int FilteredLines) GetConsoleOutputStats();
+
+    /// <summary>
+    /// Exports watches to CSV format.
+    /// </summary>
+    string ExportWatchesToCsv();
+
+    /// <summary>
+    /// Copies watches to clipboard.
+    /// </summary>
+    void CopyWatchesToClipboard(bool asCsv = false);
+
+    /// <summary>
+    /// Gets watch statistics.
+    /// </summary>
+    (int Total, int Pinned, int WithErrors, int WithAlerts, int Groups) GetWatchStatistics();
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Variables Tab
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Gets variable statistics.
+    /// </summary>
+    (int Variables, int Globals, int Pinned, int Expanded) GetVariableStatistics();
+
+    /// <summary>
+    /// Gets all variable names.
+    /// </summary>
+    IEnumerable<string> GetVariableNames();
+
+    /// <summary>
+    /// Gets a variable's current value.
+    /// </summary>
+    object? GetVariableValue(string name);
+
+    /// <summary>
+    /// Sets the search filter for variables.
+    /// </summary>
+    void SetVariableSearchFilter(string filter);
+
+    /// <summary>
+    /// Clears the variable search filter.
+    /// </summary>
+    void ClearVariableSearchFilter();
+
+    /// <summary>
+    /// Expands a variable to show its properties.
+    /// </summary>
+    bool ExpandVariable(string path);
+
+    /// <summary>
+    /// Collapses an expanded variable.
+    /// </summary>
+    void CollapseVariable(string path);
+
+    /// <summary>
+    /// Expands all expandable variables.
+    /// </summary>
+    void ExpandAllVariables();
+
+    /// <summary>
+    /// Collapses all expanded variables.
+    /// </summary>
+    void CollapseAllVariables();
+
+    /// <summary>
+    /// Pins a variable to the top.
+    /// </summary>
+    void PinVariable(string name);
+
+    /// <summary>
+    /// Unpins a variable.
+    /// </summary>
+    void UnpinVariable(string name);
+
+    /// <summary>
+    /// Clears all user-defined variables.
+    /// </summary>
+    void ClearVariables();
 }
 

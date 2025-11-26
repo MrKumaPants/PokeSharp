@@ -1,8 +1,10 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using PokeSharp.Engine.UI.Debug.Components.Base;
 using PokeSharp.Engine.UI.Debug.Core;
 using PokeSharp.Engine.UI.Debug.Input;
 using PokeSharp.Engine.UI.Debug.Layout;
+using PokeSharp.Engine.UI.Debug.Utilities;
 using System.Text;
 
 namespace PokeSharp.Engine.UI.Debug.Components.Controls;
@@ -34,10 +36,12 @@ public class TextBuffer : UIComponent, ITextDisplay
     private int _currentSearchMatchIndex = -1; // Current match being viewed
     private Color _searchHighlightColor = UITheme.Dark.ReverseSearchMatchHighlight; // Yellow highlight
 
-    // Selection
+    // Selection (character-level for word selection support)
     private bool _hasSelection = false;
     private int _selectionStartLine = 0;
+    private int _selectionStartColumn = 0;
     private int _selectionEndLine = 0;
+    private int _selectionEndColumn = 0;
 
     // Scrollbar tracking
     private bool _isDraggingScrollbar = false;
@@ -45,12 +49,27 @@ public class TextBuffer : UIComponent, ITextDisplay
     private int _scrollbarDragStartOffset = 0;
     private Point _lastMousePosition = Point.Zero;
 
+    // Text selection tracking
+    private bool _isSelectingText = false;
+    private int _selectionAnchorLine = -1;
+    private int _selectionAnchorColumn = -1;
+
+    // Click tracking for double/triple click
+    private DateTime _lastClickTime = DateTime.MinValue;
+    private int _lastClickLine = -1;
+    private int _clickCount = 0;
+    private const double DoubleClickThreshold = 0.4; // seconds
+
+    // Hover tracking
+    private int _hoveredLine = -1;
+
     // Visual properties
     public Color BackgroundColor { get; set; } = UITheme.Dark.BackgroundPrimary;
     public Color ScrollbarTrackColor { get; set; } = UITheme.Dark.ScrollbarTrack;
     public Color ScrollbarThumbColor { get; set; } = UITheme.Dark.ScrollbarThumb;
     public Color ScrollbarThumbHoverColor { get; set; } = UITheme.Dark.ScrollbarThumbHover;
     public Color SelectionColor { get; set; } = UITheme.Dark.InputSelection;
+    public Color HoverColor { get; set; } = new Color(60, 60, 80, 100); // Subtle hover highlight
     public int ScrollbarWidth { get; set; } = 10;
     public int ScrollbarPadding { get; set; } = 4; // Gap between content and scrollbar
     public int LineHeight { get; set; } = 20;
@@ -321,6 +340,7 @@ public class TextBuffer : UIComponent, ITextDisplay
 
     /// <summary>
     /// Gets the selected text as a string.
+    /// Supports character-level selection within lines.
     /// </summary>
     private string GetSelectedText()
     {
@@ -332,11 +352,99 @@ public class TextBuffer : UIComponent, ITextDisplay
 
         for (int i = _selectionStartLine; i <= _selectionEndLine && i < lines.Count; i++)
         {
-            sb.AppendLine(lines[i].Text);
+            var lineText = lines[i].Text;
+
+            if (i == _selectionStartLine && i == _selectionEndLine)
+            {
+                // Single line selection - extract substring
+                int start = Math.Clamp(_selectionStartColumn, 0, lineText.Length);
+                int end = Math.Clamp(_selectionEndColumn, start, lineText.Length);
+                sb.Append(lineText.Substring(start, end - start));
+            }
+            else if (i == _selectionStartLine)
+            {
+                // First line of multi-line selection
+                int start = Math.Clamp(_selectionStartColumn, 0, lineText.Length);
+                sb.AppendLine(lineText.Substring(start));
+            }
+            else if (i == _selectionEndLine)
+            {
+                // Last line of multi-line selection
+                int end = Math.Clamp(_selectionEndColumn, 0, lineText.Length);
+                sb.Append(lineText.Substring(0, end));
+            }
+            else
+            {
+                // Middle lines - include entire line
+                sb.AppendLine(lineText);
+            }
         }
 
         return sb.ToString();
     }
+
+    /// <summary>
+    /// Copies the current selection to the clipboard.
+    /// </summary>
+    public void CopySelectionToClipboard()
+    {
+        if (!_hasSelection)
+            return;
+
+        var text = GetSelectedText();
+        if (!string.IsNullOrEmpty(text))
+        {
+            ClipboardManager.SetText(text);
+        }
+    }
+
+    /// <summary>
+    /// Selects all text in the buffer.
+    /// </summary>
+    public void SelectAll()
+    {
+        var lines = GetFilteredLines();
+        if (lines.Count == 0)
+            return;
+
+        _hasSelection = true;
+        _selectionStartLine = 0;
+        _selectionStartColumn = 0;
+        _selectionEndLine = lines.Count - 1;
+        _selectionEndColumn = lines[^1].Text.Length;
+        _selectionAnchorLine = 0;
+        _selectionAnchorColumn = 0;
+    }
+
+    /// <summary>
+    /// Exports all text to a string.
+    /// </summary>
+    public string ExportToString()
+    {
+        var sb = new System.Text.StringBuilder();
+        var lines = GetFilteredLines();
+
+        foreach (var line in lines)
+        {
+            sb.AppendLine(line.Text);
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Copies all text to clipboard.
+    /// </summary>
+    public void CopyAllToClipboard()
+    {
+        var text = ExportToString();
+        ClipboardManager.SetText(text);
+    }
+
+    /// <summary>
+    /// Gets the total line count (unfiltered).
+    /// </summary>
+    public int TotalLineCount => _lines.Count;
 
     /// <summary>
     /// Gets the filtered lines based on current filters.
@@ -503,93 +611,52 @@ public class TextBuffer : UIComponent, ITextDisplay
             }
 
             // Handle keyboard scrolling with key repeat
-            if (input.IsKeyPressedWithRepeat(Microsoft.Xna.Framework.Input.Keys.PageUp))
+            if (input.IsKeyPressedWithRepeat(Keys.PageUp))
             {
                 ScrollUp(visibleCount);
             }
-            else if (input.IsKeyPressedWithRepeat(Microsoft.Xna.Framework.Input.Keys.PageDown))
+            else if (input.IsKeyPressedWithRepeat(Keys.PageDown))
             {
                 ScrollDown(visibleCount);
             }
-            else if (input.IsKeyPressedWithRepeat(Microsoft.Xna.Framework.Input.Keys.Home))
+            else if (input.IsKeyPressedWithRepeat(Keys.Home))
             {
                 ScrollToTop();
             }
-            else if (input.IsKeyPressedWithRepeat(Microsoft.Xna.Framework.Input.Keys.End))
+            else if (input.IsKeyPressedWithRepeat(Keys.End))
             {
                 ScrollToBottom();
+            }
+
+            // Handle Ctrl+C to copy selected text
+            if (input.IsCtrlDown() && input.IsKeyPressed(Keys.C))
+            {
+                CopySelectionToClipboard();
+            }
+
+            // Handle Ctrl+A to select all
+            if (input.IsCtrlDown() && input.IsKeyPressed(Keys.A))
+            {
+                SelectAll();
+            }
+
+            // Handle Escape to clear selection
+            if (input.IsKeyPressed(Keys.Escape))
+            {
+                ClearSelection();
             }
         }
 
         // Handle scrollbar interaction - check BEFORE other input to get priority
-        if (input != null && hasScrollbar)
+        if (context != null && input != null && hasScrollbar)
         {
-            // Apply padding to scrollbar to match content area
-            var scrollbarY = resolvedRect.Y + LinePadding;
-            var scrollbarHeight = resolvedRect.Height - (LinePadding * 2);
+            HandleScrollbarInput(context, input, resolvedRect, lines.Count, visibleCount, maxScroll);
+        }
 
-            var scrollbarRect = new LayoutRect(
-                resolvedRect.Right - ScrollbarWidth,
-                scrollbarY,
-                ScrollbarWidth,
-                scrollbarHeight
-            );
-
-            // Calculate thumb position and size
-            float thumbHeight = Math.Max(20, (float)visibleCount / lines.Count * scrollbarHeight);
-            float thumbY = scrollbarY + ((float)_scrollOffset / (lines.Count - visibleCount)) * (scrollbarHeight - thumbHeight);
-
-            var thumbRect = new LayoutRect(
-                resolvedRect.Right - ScrollbarWidth,
-                thumbY,
-                ScrollbarWidth,
-                thumbHeight
-            );
-
-            bool isOverScrollbar = scrollbarRect.Contains(input.MousePosition);
-
-            // Handle dragging (continuous while holding)
-            if (_isDraggingScrollbar)
-            {
-                if (input.IsMouseButtonDown(MouseButton.Left))
-                {
-                    int deltaY = input.MousePosition.Y - _scrollbarDragStartY;
-                    float scrollRatio = (float)deltaY / scrollbarHeight;
-                    int scrollDelta = (int)(scrollRatio * lines.Count);
-
-                    _scrollOffset = Math.Clamp(_scrollbarDragStartOffset + scrollDelta, 0, maxScroll);
-                    _autoScroll = false;
-                }
-                else
-                {
-                    _isDraggingScrollbar = false;
-                }
-            }
-            // Handle new click on scrollbar
-            else if (isOverScrollbar && input.IsMouseButtonPressed(MouseButton.Left))
-            {
-                // Check if clicking on thumb (drag) or track (jump)
-                if (thumbRect.Contains(input.MousePosition))
-                {
-                    // Start dragging the thumb
-                    _isDraggingScrollbar = true;
-                    _scrollbarDragStartY = input.MousePosition.Y;
-                    _scrollbarDragStartOffset = _scrollOffset;
-                }
-                else
-                {
-                    // Click on track - jump to that position immediately
-                    float clickRatio = (float)(input.MousePosition.Y - scrollbarY) / scrollbarHeight;
-                    int targetScroll = (int)(clickRatio * lines.Count) - (visibleCount / 2);
-                    _scrollOffset = Math.Clamp(targetScroll, 0, maxScroll);
-                    _autoScroll = false;
-
-                    // Also start dragging from this new position in case they want to continue dragging
-                    _isDraggingScrollbar = true;
-                    _scrollbarDragStartY = input.MousePosition.Y;
-                    _scrollbarDragStartOffset = _scrollOffset;
-                }
-            }
+        // Handle text selection via mouse (only if not dragging scrollbar)
+        if (context != null && input != null && !_isDraggingScrollbar)
+        {
+            HandleTextSelection(context, input, contentRect, lines.Count);
         }
 
         // Push clipping rectangle to prevent text from rendering under scrollbar
@@ -602,16 +669,64 @@ public class TextBuffer : UIComponent, ITextDisplay
         {
             var line = lines[i];
 
-            // Draw selection background
-            if (_hasSelection && i >= _selectionStartLine && i <= _selectionEndLine)
+            // Check if this line has any selection
+            bool isSelected = _hasSelection && i >= _selectionStartLine && i <= _selectionEndLine;
+
+            // Draw hover highlight (only if no selection on this line)
+            if (!isSelected && i == _hoveredLine)
             {
-                var selectionRect = new LayoutRect(
+                var hoverRect = new LayoutRect(
                     resolvedRect.X,
                     y,
                     contentWidth,
                     LineHeight
                 );
-                renderer.DrawRectangle(selectionRect, SelectionColor);
+                renderer.DrawRectangle(hoverRect, HoverColor);
+            }
+
+            // Draw selection background (character-level precision)
+            if (isSelected)
+            {
+                float selStartX = resolvedRect.X + LinePadding;
+                float selWidth = contentWidth - LinePadding;
+
+                // Calculate selection bounds for this line
+                if (i == _selectionStartLine && i == _selectionEndLine)
+                {
+                    // Single line selection - highlight only the selected portion
+                    var textBefore = line.Text.Substring(0, Math.Min(_selectionStartColumn, line.Text.Length));
+                    var selectedText = line.Text.Substring(
+                        Math.Min(_selectionStartColumn, line.Text.Length),
+                        Math.Min(_selectionEndColumn - _selectionStartColumn, line.Text.Length - Math.Min(_selectionStartColumn, line.Text.Length)));
+
+                    selStartX = resolvedRect.X + LinePadding + renderer.MeasureText(textBefore).X;
+                    selWidth = renderer.MeasureText(selectedText).X;
+                }
+                else if (i == _selectionStartLine)
+                {
+                    // First line of multi-line selection
+                    var textBefore = line.Text.Substring(0, Math.Min(_selectionStartColumn, line.Text.Length));
+                    selStartX = resolvedRect.X + LinePadding + renderer.MeasureText(textBefore).X;
+                    selWidth = contentWidth - LinePadding - renderer.MeasureText(textBefore).X;
+                }
+                else if (i == _selectionEndLine)
+                {
+                    // Last line of multi-line selection
+                    var selectedText = line.Text.Substring(0, Math.Min(_selectionEndColumn, line.Text.Length));
+                    selWidth = renderer.MeasureText(selectedText).X;
+                }
+                // Middle lines use full width (selStartX and selWidth already set correctly)
+
+                if (selWidth > 0)
+                {
+                    var selectionRect = new LayoutRect(
+                        selStartX,
+                        y,
+                        selWidth,
+                        LineHeight
+                    );
+                    renderer.DrawRectangle(selectionRect, SelectionColor);
+                }
             }
 
             // Draw search match highlights (only highlight the matching words, not entire line)
@@ -717,6 +832,234 @@ public class TextBuffer : UIComponent, ITextDisplay
 
     protected override bool IsInteractive() => true;
 
+    /// <summary>
+    /// Handles text selection via mouse click and drag.
+    /// Supports single click, double-click (select word), and triple-click (select all).
+    /// </summary>
+    private void HandleTextSelection(UIContext context, InputState input, LayoutRect contentRect, int totalLines)
+    {
+        bool isOverContent = contentRect.Contains(input.MousePosition);
+
+        // Update hover state
+        if (isOverContent)
+        {
+            _hoveredLine = GetLineAtPosition(input.MousePosition, contentRect);
+        }
+        else
+        {
+            _hoveredLine = -1;
+        }
+
+        // Mouse button pressed - start selection
+        if (input.IsMouseButtonPressed(MouseButton.Left))
+        {
+            if (isOverContent && !input.IsMouseButtonConsumed(MouseButton.Left))
+            {
+                int clickedLine = GetLineAtPosition(input.MousePosition, contentRect);
+                int clickedColumn = GetColumnAtPosition(input.MousePosition, contentRect, clickedLine);
+
+                if (clickedLine >= 0)
+                {
+                    // Track click timing for double/triple click detection
+                    var now = DateTime.Now;
+                    var timeSinceLastClick = (now - _lastClickTime).TotalSeconds;
+
+                    if (timeSinceLastClick < DoubleClickThreshold && clickedLine == _lastClickLine)
+                    {
+                        _clickCount++;
+                    }
+                    else
+                    {
+                        _clickCount = 1;
+                    }
+                    _lastClickTime = now;
+                    _lastClickLine = clickedLine;
+
+                    // Handle click based on count
+                    if (_clickCount >= 3)
+                    {
+                        // Triple click: select all lines
+                        SelectAll();
+                        _clickCount = 0; // Reset after triple click
+                    }
+                    else if (_clickCount == 2)
+                    {
+                        // Double click: select word at cursor position
+                        var (wordStart, wordEnd) = GetWordBoundsAtColumn(clickedLine, clickedColumn);
+                        _hasSelection = true;
+                        _selectionStartLine = clickedLine;
+                        _selectionStartColumn = wordStart;
+                        _selectionEndLine = clickedLine;
+                        _selectionEndColumn = wordEnd;
+                        _selectionAnchorLine = clickedLine;
+                        _selectionAnchorColumn = wordStart;
+                    }
+                    else
+                    {
+                        // Single click
+                        // Capture input for drag selection
+                        context.CaptureInput(Id);
+                        _isSelectingText = true;
+
+                        if (input.IsShiftDown() && _hasSelection)
+                        {
+                            // Shift+Click: extend existing selection
+                            _selectionEndLine = clickedLine;
+                            _selectionEndColumn = clickedColumn;
+                        }
+                        else
+                        {
+                            // Normal click: start new selection at character position
+                            _selectionAnchorLine = clickedLine;
+                            _selectionAnchorColumn = clickedColumn;
+                            _selectionStartLine = clickedLine;
+                            _selectionStartColumn = clickedColumn;
+                            _selectionEndLine = clickedLine;
+                            _selectionEndColumn = clickedColumn;
+                            _hasSelection = true;
+                        }
+                    }
+
+                    // Consume the mouse button
+                    input.ConsumeMouseButton(MouseButton.Left);
+                }
+            }
+            else if (!isOverContent)
+            {
+                // Clicked outside content - clear selection
+                ClearSelection();
+                _clickCount = 0;
+            }
+        }
+
+        // Mouse drag - extend selection with character-level precision
+        if (_isSelectingText && input.IsMouseButtonDown(MouseButton.Left))
+        {
+            int dragLine = GetLineAtPosition(input.MousePosition, contentRect);
+            if (dragLine >= 0)
+            {
+                int dragColumn = GetColumnAtPosition(input.MousePosition, contentRect, dragLine);
+
+                // Update selection from anchor to current drag position
+                if (dragLine < _selectionAnchorLine ||
+                    (dragLine == _selectionAnchorLine && dragColumn < _selectionAnchorColumn))
+                {
+                    _selectionStartLine = dragLine;
+                    _selectionStartColumn = dragColumn;
+                    _selectionEndLine = _selectionAnchorLine;
+                    _selectionEndColumn = _selectionAnchorColumn;
+                }
+                else
+                {
+                    _selectionStartLine = _selectionAnchorLine;
+                    _selectionStartColumn = _selectionAnchorColumn;
+                    _selectionEndLine = dragLine;
+                    _selectionEndColumn = dragColumn;
+                }
+            }
+        }
+
+        // Mouse button released - end selection
+        if (input.IsMouseButtonReleased(MouseButton.Left))
+        {
+            if (_isSelectingText)
+            {
+                _isSelectingText = false;
+                context.ReleaseCapture();
+
+                // If start and end are exactly the same, clear selection (single click without drag)
+                if (_selectionStartLine == _selectionEndLine &&
+                    _selectionStartColumn == _selectionEndColumn &&
+                    _clickCount == 1)
+                {
+                    ClearSelection();
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles all scrollbar mouse interactions with proper input capture.
+    /// </summary>
+    private void HandleScrollbarInput(UIContext context, InputState input, LayoutRect resolvedRect, int totalLines, int visibleCount, int maxScroll)
+    {
+        // Apply padding to scrollbar to match content area
+        var scrollbarY = resolvedRect.Y + LinePadding;
+        var scrollbarHeight = resolvedRect.Height - (LinePadding * 2);
+
+        var scrollbarRect = new LayoutRect(
+            resolvedRect.Right - ScrollbarWidth,
+            scrollbarY,
+            ScrollbarWidth,
+            scrollbarHeight
+        );
+
+        // Calculate thumb position and size
+        float thumbHeight = Math.Max(20, (float)visibleCount / totalLines * scrollbarHeight);
+        float thumbY = scrollbarY + ((float)_scrollOffset / Math.Max(1, totalLines - visibleCount)) * (scrollbarHeight - thumbHeight);
+
+        var thumbRect = new LayoutRect(
+            resolvedRect.Right - ScrollbarWidth,
+            thumbY,
+            ScrollbarWidth,
+            thumbHeight
+        );
+
+        bool isOverScrollbar = scrollbarRect.Contains(input.MousePosition);
+
+        // Handle dragging (continues even outside bounds due to input capture)
+        if (_isDraggingScrollbar)
+        {
+            if (input.IsMouseButtonDown(MouseButton.Left))
+            {
+                int deltaY = input.MousePosition.Y - _scrollbarDragStartY;
+                float scrollRatio = (float)deltaY / scrollbarHeight;
+                int scrollDelta = (int)(scrollRatio * totalLines);
+
+                _scrollOffset = Math.Clamp(_scrollbarDragStartOffset + scrollDelta, 0, maxScroll);
+                _autoScroll = false;
+            }
+
+            // Handle mouse release (end drag)
+            if (input.IsMouseButtonReleased(MouseButton.Left))
+            {
+                _isDraggingScrollbar = false;
+                context.ReleaseCapture();
+            }
+        }
+        // Handle new click on scrollbar
+        else if (isOverScrollbar && input.IsMouseButtonPressed(MouseButton.Left))
+        {
+            // Capture input so drag continues even if mouse leaves scrollbar
+            context.CaptureInput(Id);
+
+            // Check if clicking on thumb (drag) or track (jump)
+            if (thumbRect.Contains(input.MousePosition))
+            {
+                // Start dragging the thumb
+                _isDraggingScrollbar = true;
+                _scrollbarDragStartY = input.MousePosition.Y;
+                _scrollbarDragStartOffset = _scrollOffset;
+            }
+            else
+            {
+                // Click on track - jump to that position immediately
+                float clickRatio = (float)(input.MousePosition.Y - scrollbarY) / scrollbarHeight;
+                int targetScroll = (int)(clickRatio * totalLines) - (visibleCount / 2);
+                _scrollOffset = Math.Clamp(targetScroll, 0, maxScroll);
+                _autoScroll = false;
+
+                // Also start dragging from this new position in case they want to continue dragging
+                _isDraggingScrollbar = true;
+                _scrollbarDragStartY = input.MousePosition.Y;
+                _scrollbarDragStartOffset = _scrollOffset;
+            }
+
+            // Consume the mouse button to prevent other components from processing
+            input.ConsumeMouseButton(MouseButton.Left);
+        }
+    }
+
     private void DrawScrollbar(UIRenderer renderer, LayoutRect rect, int totalLines, int visibleLines, int scrollOffset)
     {
         // Apply padding to scrollbar to match content area
@@ -763,6 +1106,94 @@ public class TextBuffer : UIComponent, ITextDisplay
 
         var lines = GetFilteredLines();
         return actualLine >= 0 && actualLine < lines.Count ? actualLine : -1;
+    }
+
+    /// <summary>
+    /// Gets the column (character index) at a mouse X position within a line.
+    /// </summary>
+    private int GetColumnAtPosition(Point mousePos, LayoutRect rect, int lineIndex)
+    {
+        var lines = GetFilteredLines();
+        if (lineIndex < 0 || lineIndex >= lines.Count)
+            return 0;
+
+        var lineText = lines[lineIndex].Text;
+        if (string.IsNullOrEmpty(lineText))
+            return 0;
+
+        var renderer = Renderer;
+        if (renderer == null)
+            return 0;
+
+        float relativeX = mousePos.X - rect.X - LinePadding;
+        if (relativeX <= 0)
+            return 0;
+
+        // Binary search to find the column
+        int left = 0;
+        int right = lineText.Length;
+
+        while (left < right)
+        {
+            int mid = (left + right) / 2;
+            var textWidth = renderer.MeasureText(lineText.Substring(0, mid)).X;
+
+            if (textWidth < relativeX)
+                left = mid + 1;
+            else
+                right = mid;
+        }
+
+        // Check if we should snap to the previous or next character
+        if (left > 0 && left <= lineText.Length)
+        {
+            var prevWidth = renderer.MeasureText(lineText.Substring(0, left - 1)).X;
+            var currWidth = renderer.MeasureText(lineText.Substring(0, left)).X;
+
+            if (relativeX - prevWidth < currWidth - relativeX)
+                return left - 1;
+        }
+
+        return Math.Min(left, lineText.Length);
+    }
+
+    /// <summary>
+    /// Finds word boundaries around a position in a line.
+    /// </summary>
+    private (int start, int end) GetWordBoundsAtColumn(int lineIndex, int column)
+    {
+        var lines = GetFilteredLines();
+        if (lineIndex < 0 || lineIndex >= lines.Count)
+            return (0, 0);
+
+        var text = lines[lineIndex].Text;
+        if (string.IsNullOrEmpty(text))
+            return (0, 0);
+
+        column = Math.Clamp(column, 0, text.Length);
+
+        // Find start of word (scan backwards)
+        int start = column;
+        while (start > 0 && IsWordChar(text[start - 1]))
+            start--;
+
+        // Find end of word (scan forwards)
+        int end = column;
+        while (end < text.Length && IsWordChar(text[end]))
+            end++;
+
+        // If we're on whitespace/punctuation, select just that character
+        if (start == end && column < text.Length)
+        {
+            return (column, column + 1);
+        }
+
+        return (start, end);
+    }
+
+    private static bool IsWordChar(char c)
+    {
+        return char.IsLetterOrDigit(c) || c == '_';
     }
 }
 

@@ -332,18 +332,17 @@ public class CommandInput : UIComponent, ITextInput
         OnTextChanged?.Invoke(_text);
     }
 
+    // Mouse drag state for selection
+    private bool _isMouseDragging = false;
+    private bool _isSelectingWithMouse = false;
+
     protected override void OnRender(UIContext context)
     {
-        // Handle mouse click for cursor positioning
         var input = context.Input;
-        if (input.IsMouseButtonPressed(MouseButton.Left))
-        {
-            var mousePos = input.MousePosition;
-            if (Rect.Contains(mousePos))
-            {
-                HandleMouseClick(mousePos, context.Renderer);
-            }
-        }
+        var mousePos = input.MousePosition;
+
+        // Handle mouse input for focus, cursor positioning, and selection
+        HandleMouseInput(context, input, mousePos);
 
         // Handle keyboard input if focused
         if (IsFocused())
@@ -442,38 +441,179 @@ public class CommandInput : UIComponent, ITextInput
     /// Handles mouse click to position cursor at the clicked character.
     /// Uses binary search for efficiency with long text.
     /// </summary>
-    private void HandleMouseClick(Point mousePos, UIRenderer renderer)
+    /// <param name="mousePos">Mouse position</param>
+    /// <param name="renderer">UI renderer for text measurement</param>
+    /// <param name="extendSelection">If true (Shift held), extends selection instead of clearing</param>
+    private void HandleMouseClick(Point mousePos, UIRenderer renderer, bool extendSelection = false)
     {
+        int newPosition;
+
         if (string.IsNullOrEmpty(_text))
         {
-            _cursorPosition = 0;
-            ClearSelection();
-            return;
+            newPosition = 0;
+        }
+        else
+        {
+            // Calculate text start position (after padding and prompt)
+            var promptWidth = renderer.MeasureText(Prompt).X;
+            float textStartX = Rect.X + Padding + promptWidth;
+            float relativeX = mousePos.X - textStartX;
+
+            // Click before text start
+            if (relativeX <= 0)
+            {
+                newPosition = 0;
+            }
+            // Click after text end
+            else
+            {
+                float totalWidth = renderer.MeasureText(_text).X;
+                if (relativeX >= totalWidth)
+                {
+                    newPosition = _text.Length;
+                }
+                else
+                {
+                    // Binary search to find character position
+                    newPosition = FindCharacterPosition(relativeX, renderer);
+                }
+            }
         }
 
-        // Calculate text start position (after padding and prompt)
+        // Handle selection
+        if (extendSelection)
+        {
+            // Shift+Click: extend selection from current position (or start new selection)
+            if (!_hasSelection)
+            {
+                _hasSelection = true;
+                _selectionStart = _cursorPosition;
+            }
+            _selectionEnd = newPosition;
+        }
+        else
+        {
+            // Normal click: clear selection and set selection anchor for potential drag
+            ClearSelection();
+            _selectionStart = newPosition;
+            _selectionEnd = newPosition;
+        }
+
+        _cursorPosition = newPosition;
+    }
+
+    protected override bool IsInteractive() => true;
+
+    /// <summary>
+    /// Handles all mouse input for focus, cursor positioning, and selection.
+    /// </summary>
+    private void HandleMouseInput(UIContext context, InputState input, Point mousePos)
+    {
+        bool isOverComponent = Rect.Contains(mousePos);
+
+        // Mouse button pressed - set focus and position cursor
+        if (input.IsMouseButtonPressed(MouseButton.Left))
+        {
+            if (isOverComponent)
+            {
+                // Set focus immediately on press (not release)
+                context.SetFocus(Id);
+
+                // Capture input for potential drag selection
+                context.CaptureInput(Id);
+                _isMouseDragging = true;
+
+                // Position cursor (Shift+Click extends selection)
+                HandleMouseClick(mousePos, context.Renderer, input.IsShiftDown());
+
+                // Consume the mouse button to prevent other components from processing
+                input.ConsumeMouseButton(MouseButton.Left);
+            }
+            else
+            {
+                // Clicked outside - clear focus
+                if (IsFocused())
+                {
+                    context.ClearFocus();
+                }
+            }
+        }
+
+        // Mouse dragging - extend selection
+        if (_isMouseDragging && input.IsMouseButtonDown(MouseButton.Left))
+        {
+            // Continue selection even if mouse moves outside bounds (input is captured)
+            HandleMouseDrag(mousePos, context.Renderer);
+        }
+
+        // Mouse button released - end drag
+        if (input.IsMouseButtonReleased(MouseButton.Left))
+        {
+            if (_isMouseDragging)
+            {
+                _isMouseDragging = false;
+                _isSelectingWithMouse = false;
+                context.ReleaseCapture();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles mouse drag to extend selection.
+    /// </summary>
+    private void HandleMouseDrag(Point mousePos, UIRenderer renderer)
+    {
+        if (string.IsNullOrEmpty(_text))
+            return;
+
+        // Calculate new cursor position from mouse
         var promptWidth = renderer.MeasureText(Prompt).X;
         float textStartX = Rect.X + Padding + promptWidth;
         float relativeX = mousePos.X - textStartX;
 
-        // Click before text start
+        int newPosition;
         if (relativeX <= 0)
         {
-            _cursorPosition = 0;
-            ClearSelection();
-            return;
+            newPosition = 0;
         }
-
-        // Click after text end
-        float totalWidth = renderer.MeasureText(_text).X;
-        if (relativeX >= totalWidth)
+        else
         {
-            _cursorPosition = _text.Length;
-            ClearSelection();
-            return;
+            float totalWidth = renderer.MeasureText(_text).X;
+            if (relativeX >= totalWidth)
+            {
+                newPosition = _text.Length;
+            }
+            else
+            {
+                // Binary search for position
+                newPosition = FindCharacterPosition(relativeX, renderer);
+            }
         }
 
-        // Binary search to find character position
+        // If this is the first drag movement, start selection
+        if (!_isSelectingWithMouse && newPosition != _cursorPosition)
+        {
+            _isSelectingWithMouse = true;
+            if (!_hasSelection)
+            {
+                _hasSelection = true;
+                _selectionStart = _cursorPosition;
+            }
+        }
+
+        // Update cursor and selection end
+        if (_isSelectingWithMouse)
+        {
+            _cursorPosition = newPosition;
+            _selectionEnd = newPosition;
+        }
+    }
+
+    /// <summary>
+    /// Binary search to find character position from X coordinate.
+    /// </summary>
+    private int FindCharacterPosition(float relativeX, UIRenderer renderer)
+    {
         int left = 0;
         int right = _text.Length;
 
@@ -493,7 +633,7 @@ public class CommandInput : UIComponent, ITextInput
             }
         }
 
-        // Check if we should round to previous or next character
+        // Check if we should round to previous character
         if (left > 0)
         {
             string substringAtLeft = _text.Substring(0, left);
@@ -508,36 +648,7 @@ public class CommandInput : UIComponent, ITextInput
             }
         }
 
-        _cursorPosition = left;
-        ClearSelection();
-    }
-
-    protected override bool IsInteractive() => true;
-
-    protected override void OnInput(InputEvent inputEvent)
-    {
-        var input = Context?.Input;
-        if (input == null)
-            return;
-
-        // Handle focus on mouse RELEASE (standard click behavior)
-        if (input.IsMouseButtonReleased(MouseButton.Left))
-        {
-            if (IsHovered())
-            {
-                Context?.SetFocus(Id);
-            }
-            else
-            {
-                Context?.ClearFocus();
-            }
-        }
-
-        if (!IsFocused())
-            return;
-
-        // Handle keyboard input
-        HandleKeyboardInput(input);
+        return left;
     }
 
     private void HandleKeyboardInput(InputState input)

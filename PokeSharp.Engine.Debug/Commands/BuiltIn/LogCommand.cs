@@ -9,30 +9,50 @@ public class LogCommand : IConsoleCommand
 {
     public string Name => "log";
     public string Description => "Manage and view system logs";
-    public string Usage => "log [show | clear | filter <level> | search <text>]\n  show: Switch to Logs tab\n  clear: Clear all logs\n  filter <level>: Filter by log level (Trace|Debug|Info|Warning|Error|Critical)\n  search <text>: Search logs by text";
+    public string Usage => @"log [subcommand]
+  (no args)         Show log count and stats summary
+  clear             Clear all logs
+  level <level>     Filter by log level (Trace|Debug|Info|Warning|Error|Critical)
+  category <name>   Filter by category (or 'all' to show all)
+  categories        List all available categories with counts
+  search <text>     Search logs by text (no args to clear)
+  stats             Show log statistics
+  export [csv]      Copy logs to clipboard (use 'csv' for CSV format)
+
+Use 'tab logs' to switch to the Logs tab.";
 
     public Task ExecuteAsync(IConsoleContext context, string[] args)
     {
         var theme = context.Theme;
 
-        if (args.Length == 0 || args[0].Equals("show", StringComparison.OrdinalIgnoreCase))
+        if (args.Length == 0)
         {
-            // Show log count and switch to logs tab
+            // Show log count and stats summary
             var logCount = context.GetLogCount();
-            context.WriteLine($"Showing logs panel ({logCount} log(s))", theme.Success);
-            context.SwitchToTab(2); // Switch to Logs tab (index 2)
+            var (total, filtered, errors, warnings, lastMinute, categories) = context.GetLogStatistics();
+
+            context.WriteLine($"Logs: {logCount} total", theme.Info);
+            if (errors > 0)
+                context.WriteLine($"  Errors: {errors}", theme.Error);
+            if (warnings > 0)
+                context.WriteLine($"  Warnings: {warnings}", theme.Warning);
+            if (categories > 0)
+                context.WriteLine($"  Categories: {categories}", theme.TextSecondary);
+            context.WriteLine("", theme.TextPrimary);
+            context.WriteLine("Use 'tab logs' to view the Logs panel", theme.TextDim);
         }
         else if (args[0].Equals("clear", StringComparison.OrdinalIgnoreCase))
         {
             context.ClearLogs();
             context.WriteLine("All logs cleared", theme.Success);
         }
-        else if (args[0].Equals("filter", StringComparison.OrdinalIgnoreCase))
+        else if (args[0].Equals("level", StringComparison.OrdinalIgnoreCase) ||
+                 args[0].Equals("filter", StringComparison.OrdinalIgnoreCase)) // Keep 'filter' as alias
         {
             // Set filter level
             if (args.Length < 2)
             {
-                context.WriteLine("Usage: log filter <level>", theme.Warning);
+                context.WriteLine("Usage: log level <level>", theme.Warning);
                 context.WriteLine("Levels: Trace, Debug, Information, Warning, Error, Critical", theme.TextSecondary);
                 return Task.CompletedTask;
             }
@@ -41,7 +61,7 @@ public class LogCommand : IConsoleCommand
             if (Enum.TryParse<LogLevel>(levelStr, ignoreCase: true, out var level))
             {
                 context.SetLogFilter(level);
-                context.WriteLine($"Log filter set to: {level}", theme.Success);
+                context.WriteLine($"Log level filter set to: {level}", theme.Success);
                 context.WriteLine("Switch to Logs tab (Ctrl+3) to view filtered logs", theme.TextSecondary);
             }
             else
@@ -49,6 +69,47 @@ public class LogCommand : IConsoleCommand
                 context.WriteLine($"Invalid log level: '{levelStr}'", theme.Error);
                 context.WriteLine("Valid levels: Trace, Debug, Information, Warning, Error, Critical", theme.TextSecondary);
             }
+        }
+        else if (args[0].Equals("category", StringComparison.OrdinalIgnoreCase))
+        {
+            // Set category filter
+            if (args.Length < 2)
+            {
+                context.WriteLine("Usage: log category <name> [name2 ...]", theme.Warning);
+                context.WriteLine("       log category all  (show all categories)", theme.TextSecondary);
+                return Task.CompletedTask;
+            }
+
+            if (args[1].Equals("all", StringComparison.OrdinalIgnoreCase))
+            {
+                context.ClearLogCategoryFilter();
+                context.WriteLine("Category filter cleared (showing all)", theme.Success);
+            }
+            else
+            {
+                var categories = args.Skip(1).ToArray();
+                context.SetLogCategoryFilter(categories);
+                context.WriteLine($"Filtering by categories: {string.Join(", ", categories)}", theme.Success);
+                context.WriteLine("Switch to Logs tab (Ctrl+3) to view filtered logs", theme.TextSecondary);
+            }
+        }
+        else if (args[0].Equals("categories", StringComparison.OrdinalIgnoreCase))
+        {
+            // List available categories
+            var counts = context.GetLogCategoryCounts();
+            if (counts.Count == 0)
+            {
+                context.WriteLine("No categories found (no logs yet)", theme.TextSecondary);
+                return Task.CompletedTask;
+            }
+
+            context.WriteLine("Available log categories:", theme.Info);
+            foreach (var (category, count) in counts.OrderByDescending(kvp => kvp.Value))
+            {
+                context.WriteLine($"  {category,-20} ({count} logs)", theme.TextPrimary);
+            }
+            context.WriteLine("", theme.TextPrimary);
+            context.WriteLine("Use 'log category <name>' to filter", theme.TextSecondary);
         }
         else if (args[0].Equals("search", StringComparison.OrdinalIgnoreCase))
         {
@@ -65,6 +126,56 @@ public class LogCommand : IConsoleCommand
                 context.SetLogSearch(searchText);
                 context.WriteLine($"Log search filter set to: '{searchText}'", theme.Success);
                 context.WriteLine("Switch to Logs tab (Ctrl+3) to view filtered logs", theme.TextSecondary);
+            }
+        }
+        else if (args[0].Equals("stats", StringComparison.OrdinalIgnoreCase))
+        {
+            // Show log statistics
+            var (total, filtered, errors, warnings, lastMinute, categories) = context.GetLogStatistics();
+            var levelCounts = context.GetLogLevelCounts();
+
+            context.WriteLine("═══════════════════════════════════════", theme.Info);
+            context.WriteLine("          LOG STATISTICS", theme.Info);
+            context.WriteLine("═══════════════════════════════════════", theme.Info);
+            context.WriteLine($"  Total Logs:       {total,6}", theme.TextPrimary);
+            context.WriteLine($"  Filtered View:    {filtered,6}", theme.TextPrimary);
+            context.WriteLine($"  Categories:       {categories,6}", theme.TextPrimary);
+            context.WriteLine($"  Last Minute:      {lastMinute,6}", theme.TextSecondary);
+            context.WriteLine("───────────────────────────────────────", theme.TextDim);
+            context.WriteLine("  By Level:", theme.TextSecondary);
+
+            if (levelCounts.TryGetValue(LogLevel.Critical, out var critical) && critical > 0)
+                context.WriteLine($"    Critical:       {critical,6}", theme.Error);
+            if (levelCounts.TryGetValue(LogLevel.Error, out var errorCount) && errorCount > 0)
+                context.WriteLine($"    Error:          {errorCount,6}", theme.Error);
+            if (levelCounts.TryGetValue(LogLevel.Warning, out var warningCount) && warningCount > 0)
+                context.WriteLine($"    Warning:        {warningCount,6}", theme.Warning);
+            if (levelCounts.TryGetValue(LogLevel.Information, out var info) && info > 0)
+                context.WriteLine($"    Information:    {info,6}", theme.TextPrimary);
+            if (levelCounts.TryGetValue(LogLevel.Debug, out var debug) && debug > 0)
+                context.WriteLine($"    Debug:          {debug,6}", theme.Info);
+            if (levelCounts.TryGetValue(LogLevel.Trace, out var trace) && trace > 0)
+                context.WriteLine($"    Trace:          {trace,6}", theme.TextDim);
+
+            context.WriteLine("═══════════════════════════════════════", theme.Info);
+        }
+        else if (args[0].Equals("export", StringComparison.OrdinalIgnoreCase))
+        {
+            // Export logs to clipboard
+            var useCsv = args.Length > 1 && args[1].Equals("csv", StringComparison.OrdinalIgnoreCase);
+
+            if (useCsv)
+            {
+                var csv = context.ExportLogsToCsv();
+                var lineCount = csv.Split('\n').Length - 1; // Minus header
+                PokeSharp.Engine.UI.Debug.Utilities.ClipboardManager.SetText(csv);
+                context.WriteLine($"Exported {lineCount} logs to clipboard (CSV format)", theme.Success);
+            }
+            else
+            {
+                context.CopyLogsToClipboard();
+                var (total, filtered, _, _, _, _) = context.GetLogStatistics();
+                context.WriteLine($"Exported {filtered} logs to clipboard (text format)", theme.Success);
             }
         }
         else

@@ -12,12 +12,18 @@ public class ConsoleLogger : ILogger
 {
     private readonly string _categoryName;
     private readonly Action<string, Color> _writeToConsole;
+    private readonly Action<LogLevel, string, string> _addLogEntry;
     private readonly Func<LogLevel, bool> _isEnabled;
 
-    public ConsoleLogger(string categoryName, Action<string, Color> writeToConsole, Func<LogLevel, bool> isEnabled)
+    public ConsoleLogger(
+        string categoryName,
+        Action<string, Color> writeToConsole,
+        Action<LogLevel, string, string> addLogEntry,
+        Func<LogLevel, bool> isEnabled)
     {
         _categoryName = categoryName;
         _writeToConsole = writeToConsole;
+        _addLogEntry = addLogEntry;
         _isEnabled = isEnabled;
     }
 
@@ -43,11 +49,16 @@ public class ConsoleLogger : ILogger
         // Strip Serilog/Spectre.Console markup tags (e.g., [cyan], [red], etc.)
         message = StripMarkupTags(message);
 
-        // Format log message
-        var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
-        var level = GetLogLevelString(logLevel);
+        // Get short category name for display
         var category = GetShortCategoryName(_categoryName);
 
+        // Add to Logs panel (structured data)
+        var logMessage = exception != null ? $"{message}\n{exception}" : message;
+        _addLogEntry(logLevel, logMessage, category);
+
+        // Also write formatted message to console output
+        var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
+        var level = GetLogLevelString(logLevel);
         var formattedMessage = $"[{timestamp}] [{level}] \"{category}\": {message}";
 
         if (exception != null)

@@ -35,6 +35,9 @@ public class TextEditor : UIComponent, ITextInput
     // Mouse state for drag selection
     private bool _isMouseDown = false;
     private float _lastClickTime = 0;
+    private int _clickCount = 0; // Track consecutive clicks for double/triple click
+    private bool _doubleClickedWord = false; // Prevents drag from overwriting word selection
+    private Point _dragStartPosition = Point.Zero; // Track where drag started
 
     // Command history
     private readonly List<string> _history = new();
@@ -56,6 +59,81 @@ public class TextEditor : UIComponent, ITextInput
     public float BorderThickness { get; set; } = 1;
     public float Padding { get; set; } = UITheme.Dark.PaddingMedium;
     public bool ShowLineNumbers { get; set; } = false;
+
+    // Smart code features
+    public bool AutoCloseBrackets { get; set; } = true;
+    public bool AutoIndent { get; set; } = true;
+    public bool SnippetsEnabled { get; set; } = true;
+    public string IndentString { get; set; } = "    "; // 4 spaces
+
+    // Auto-close pairs: opening -> closing
+    private static readonly Dictionary<char, char> AutoClosePairs = new()
+    {
+        { '(', ')' },
+        { '[', ']' },
+        { '{', '}' },
+        { '"', '"' },
+        { '\'', '\'' }
+    };
+
+    // Code snippets with VS Code-style tabstops
+    // Syntax: $1, $2, etc. for tabstops; ${1:default} for placeholder with default; $0 for final position
+    private static readonly Dictionary<string, string> Snippets = new()
+    {
+        { "for", "for (int ${1:i} = 0; $1 < ${2:count}; $1++)\n{\n    $0\n}" },
+        { "foreach", "foreach (var ${1:item} in ${2:collection})\n{\n    $0\n}" },
+        { "if", "if (${1:condition})\n{\n    $0\n}" },
+        { "else", "else\n{\n    $0\n}" },
+        { "elseif", "else if (${1:condition})\n{\n    $0\n}" },
+        { "while", "while (${1:condition})\n{\n    $0\n}" },
+        { "do", "do\n{\n    $0\n} while (${1:condition});" },
+        { "switch", "switch (${1:expression})\n{\n    case ${2:value}:\n        $0\n        break;\n    default:\n        break;\n}" },
+        { "try", "try\n{\n    $0\n}\ncatch (${1:Exception} ${2:ex})\n{\n    \n}" },
+        { "trycf", "try\n{\n    $0\n}\ncatch (${1:Exception} ${2:ex})\n{\n    \n}\nfinally\n{\n    \n}" },
+        { "cw", "Console.WriteLine(${1:\"$0\"});" },
+        { "print", "Print(${1:$0});" },
+        { "var", "var ${1:name} = ${2:value};$0" },
+        { "prop", "public ${1:Type} ${2:Name} { get; set; }$0" },
+        { "propf", "public ${1:Type} ${2:Name} { get; private set; }$0" },
+        { "ctor", "public ${1:ClassName}(${2:parameters})\n{\n    $0\n}" },
+        { "class", "public class ${1:ClassName}\n{\n    $0\n}" },
+        { "interface", "public interface ${1:IName}\n{\n    $0\n}" },
+        { "method", "public ${1:void} ${2:MethodName}(${3:parameters})\n{\n    $0\n}" },
+        { "async", "public async Task${1:<T>} ${2:MethodName}Async(${3:parameters})\n{\n    $0\n}" },
+        { "lambda", "(${1:x}) => ${2:expression}$0" },
+        { "linq", "${1:collection}.Where(${2:x} => ${3:condition})$0" },
+    };
+
+    // Active snippet session
+    private SnippetSession? _activeSnippet = null;
+
+    /// <summary>
+    /// Represents an active snippet with tabstops.
+    /// </summary>
+    private class SnippetSession
+    {
+        public List<TabStop> TabStops { get; } = new();
+        public int CurrentTabStopIndex { get; set; } = 0;
+        public int StartLine { get; set; }
+        public int StartColumn { get; set; }
+
+        public TabStop? CurrentTabStop =>
+            CurrentTabStopIndex >= 0 && CurrentTabStopIndex < TabStops.Count
+                ? TabStops[CurrentTabStopIndex]
+                : null;
+
+        public bool HasMoreTabStops => CurrentTabStopIndex < TabStops.Count - 1;
+
+        public class TabStop
+        {
+            public int Index { get; set; } // The tabstop number ($1, $2, etc.)
+            public int Line { get; set; }
+            public int StartColumn { get; set; }
+            public int EndColumn { get; set; }
+            public string DefaultValue { get; set; } = "";
+            public bool IsFinalPosition { get; set; } // True for $0
+        }
+    }
 
     // Prompt string (e.g., "> ")
     public string Prompt { get; set; } = "> ";
@@ -294,18 +372,51 @@ public class TextEditor : UIComponent, ITextInput
         // Save state for undo
         SaveUndoState();
 
+        var deletedLength = 0;
         if (_hasSelection)
         {
+            deletedLength = GetSelectedText().Length;
             DeleteSelection();
         }
 
         var currentLine = _lines[_cursorLine];
+        var insertPos = _cursorColumn;
         currentLine = currentLine.Insert(_cursorColumn, text);
         _lines[_cursorLine] = currentLine;
         _cursorColumn += text.Length;
 
+        // Adjust tabstop positions if in snippet mode
+        AdjustTabStopPositions(_cursorLine, insertPos, text.Length - deletedLength);
+
         _historyIndex = -1;
         OnTextChanged?.Invoke(Text);
+    }
+
+    /// <summary>
+    /// Adjusts tabstop positions when text is inserted or deleted.
+    /// </summary>
+    private void AdjustTabStopPositions(int line, int position, int delta)
+    {
+        if (_activeSnippet == null || delta == 0)
+            return;
+
+        foreach (var ts in _activeSnippet.TabStops)
+        {
+            if (ts.Line != line)
+                continue;
+
+            // Adjust tabstops that come after the edit position
+            if (ts.StartColumn > position)
+            {
+                ts.StartColumn += delta;
+                ts.EndColumn += delta;
+            }
+            // If edit is within the tabstop, just adjust the end
+            else if (ts.StartColumn <= position && ts.EndColumn >= position)
+            {
+                ts.EndColumn += delta;
+            }
+        }
     }
 
     private void InsertNewLine()
@@ -322,17 +433,457 @@ public class TextEditor : UIComponent, ITextInput
         var textAfterCursor = currentLine.Substring(_cursorColumn);
         var textBeforeCursor = currentLine.Substring(0, _cursorColumn);
 
+        // Calculate indentation for the new line
+        var indent = "";
+        if (AutoIndent)
+        {
+            // Get the leading whitespace from the current line
+            indent = GetLeadingWhitespace(textBeforeCursor);
+
+            // Add extra indent if line ends with an opening brace
+            var trimmedBefore = textBeforeCursor.TrimEnd();
+            if (trimmedBefore.Length > 0 && trimmedBefore[^1] == '{')
+            {
+                indent += IndentString;
+            }
+
+            // Handle case where cursor is between { and }
+            var trimmedAfter = textAfterCursor.TrimStart();
+            if (trimmedAfter.StartsWith("}") && trimmedBefore.TrimEnd().EndsWith("{"))
+            {
+                // Insert two new lines: one for content, one for closing brace
+                _lines[_cursorLine] = textBeforeCursor;
+                _lines.Insert(_cursorLine + 1, indent); // New line for content
+                _lines.Insert(_cursorLine + 2, GetLeadingWhitespace(textBeforeCursor) + textAfterCursor.TrimStart()); // Closing brace
+
+                _cursorLine++;
+                _cursorColumn = indent.Length;
+
+                _historyIndex = -1;
+                OnTextChanged?.Invoke(Text);
+                return;
+            }
+        }
+
         _lines[_cursorLine] = textBeforeCursor;
-        _lines.Insert(_cursorLine + 1, textAfterCursor);
+        _lines.Insert(_cursorLine + 1, indent + textAfterCursor);
 
         _cursorLine++;
-        _cursorColumn = 0;
+        _cursorColumn = indent.Length;
 
         // Don't call EnsureCursorVisible() here - let the natural layout handle it
         // The editor grows dynamically to show all lines up to MaxVisibleLines
         _historyIndex = -1;
         OnTextChanged?.Invoke(Text);
     }
+
+    /// <summary>
+    /// Formats the code in the editor.
+    /// Fixes indentation based on brace nesting.
+    /// </summary>
+    private void FormatCode()
+    {
+        if (_lines.Count == 0)
+            return;
+
+        SaveUndoState();
+
+        var formattedLines = new List<string>();
+        var indentLevel = 0;
+
+        foreach (var line in _lines)
+        {
+            var trimmed = line.Trim();
+
+            // Decrease indent for lines starting with closing braces
+            if (trimmed.StartsWith("}") || trimmed.StartsWith(")") || trimmed.StartsWith("]"))
+            {
+                indentLevel = Math.Max(0, indentLevel - 1);
+            }
+
+            // Add the line with proper indentation (skip empty lines' indentation)
+            if (string.IsNullOrWhiteSpace(trimmed))
+            {
+                formattedLines.Add("");
+            }
+            else
+            {
+                var indent = string.Concat(Enumerable.Repeat(IndentString, indentLevel));
+                formattedLines.Add(indent + trimmed);
+            }
+
+            // Increase indent for lines ending with opening braces
+            if (trimmed.EndsWith("{") || trimmed.EndsWith("(") || trimmed.EndsWith("["))
+            {
+                indentLevel++;
+            }
+            // Also handle cases like "} else {" or "} catch {"
+            else if (trimmed.Contains("{") && !trimmed.Contains("}"))
+            {
+                indentLevel++;
+            }
+            // Handle "{ }" on same line - don't change indent
+            else if (trimmed.Contains("{") && trimmed.Contains("}"))
+            {
+                // No change
+            }
+            // Decrease for closing braces at end (already handled at start for next line)
+            else if (trimmed.EndsWith("}") || trimmed.EndsWith(")") || trimmed.EndsWith("]"))
+            {
+                // Handle "} else {" - we already incremented, so decrement
+                if (!trimmed.Contains("{"))
+                {
+                    // Already decremented at start of loop for this line
+                }
+            }
+        }
+
+        _lines = formattedLines;
+
+        // Keep cursor in valid position
+        _cursorLine = Math.Min(_cursorLine, _lines.Count - 1);
+        _cursorColumn = Math.Min(_cursorColumn, _lines[_cursorLine].Length);
+
+        OnTextChanged?.Invoke(Text);
+    }
+
+    /// <summary>
+    /// Gets the leading whitespace from a string.
+    /// </summary>
+    private static string GetLeadingWhitespace(string line)
+    {
+        var count = 0;
+        foreach (var ch in line)
+        {
+            if (ch == ' ' || ch == '\t')
+                count++;
+            else
+                break;
+        }
+        return line.Substring(0, count);
+    }
+
+    /// <summary>
+    /// Attempts to expand a snippet at the cursor position.
+    /// Returns true if a snippet was expanded.
+    /// </summary>
+    private bool TryExpandSnippet()
+    {
+        if (!SnippetsEnabled)
+            return false;
+
+        // If we're in an active snippet, Tab moves to next tabstop
+        if (_activeSnippet != null)
+        {
+            return MoveToNextTabStop();
+        }
+
+        // Get the word before the cursor
+        var currentLine = _lines[_cursorLine];
+        var wordStart = _cursorColumn;
+
+        // Find the start of the word (go backwards until we hit whitespace or start)
+        while (wordStart > 0 && char.IsLetterOrDigit(currentLine[wordStart - 1]))
+        {
+            wordStart--;
+        }
+
+        if (wordStart == _cursorColumn)
+            return false; // No word before cursor
+
+        var word = currentLine.Substring(wordStart, _cursorColumn - wordStart);
+
+        // Check if this word is a snippet trigger
+        if (!Snippets.TryGetValue(word, out var snippetTemplate))
+            return false;
+
+        // Save state for undo
+        SaveUndoState();
+
+        // Get the indentation of the current line
+        var indent = GetLeadingWhitespace(currentLine);
+
+        // Parse and expand the snippet
+        var (expandedText, tabStops) = ParseSnippet(snippetTemplate, indent, wordStart);
+
+        // Delete the trigger word and insert expanded text
+        var beforeWord = currentLine.Substring(0, wordStart);
+        var afterWord = currentLine.Substring(_cursorColumn);
+
+        // Split expanded text into lines
+        var expansionLines = expandedText.Split('\n');
+
+        // Update the document
+        if (expansionLines.Length == 1)
+        {
+            _lines[_cursorLine] = beforeWord + expandedText + afterWord;
+        }
+        else
+        {
+            _lines[_cursorLine] = beforeWord + expansionLines[0];
+
+            for (int i = 1; i < expansionLines.Length - 1; i++)
+            {
+                _lines.Insert(_cursorLine + i, expansionLines[i]);
+            }
+
+            _lines.Insert(_cursorLine + expansionLines.Length - 1, expansionLines[^1] + afterWord);
+        }
+
+        // Set up the snippet session
+        if (tabStops.Count > 0)
+        {
+            _activeSnippet = new SnippetSession
+            {
+                StartLine = _cursorLine,
+                StartColumn = wordStart
+            };
+
+            // Adjust tabstop positions based on beforeWord offset
+            foreach (var ts in tabStops.OrderBy(t => t.IsFinalPosition).ThenBy(t => t.Index))
+            {
+                if (ts.Line == 0)
+                {
+                    ts.StartColumn += beforeWord.Length;
+                    ts.EndColumn += beforeWord.Length;
+                }
+                ts.Line += _cursorLine;
+                _activeSnippet.TabStops.Add(ts);
+            }
+
+            // Move to first tabstop
+            _activeSnippet.CurrentTabStopIndex = 0;
+            SelectCurrentTabStop();
+        }
+        else
+        {
+            // No tabstops, just place cursor at end
+            if (expansionLines.Length == 1)
+            {
+                _cursorColumn = beforeWord.Length + expandedText.Length;
+            }
+            else
+            {
+                _cursorLine += expansionLines.Length - 1;
+                _cursorColumn = expansionLines[^1].Length;
+            }
+        }
+
+        _historyIndex = -1;
+        OnTextChanged?.Invoke(Text);
+        return true;
+    }
+
+    /// <summary>
+    /// Parses a snippet template and extracts tabstops.
+    /// </summary>
+    private (string ExpandedText, List<SnippetSession.TabStop> TabStops) ParseSnippet(string template, string indent, int startColumn)
+    {
+        var tabStops = new List<SnippetSession.TabStop>();
+        var result = new System.Text.StringBuilder();
+        var currentLine = 0;
+        var currentColumn = 0;
+
+        int i = 0;
+        while (i < template.Length)
+        {
+            if (template[i] == '$')
+            {
+                if (i + 1 < template.Length)
+                {
+                    // Check for ${n:default} or $n
+                    if (template[i + 1] == '{')
+                    {
+                        // Find closing brace
+                        var closeIndex = template.IndexOf('}', i + 2);
+                        if (closeIndex > i + 2)
+                        {
+                            var content = template.Substring(i + 2, closeIndex - i - 2);
+                            var colonIndex = content.IndexOf(':');
+
+                            int tabIndex;
+                            string defaultValue;
+
+                            if (colonIndex > 0)
+                            {
+                                tabIndex = int.Parse(content.Substring(0, colonIndex));
+                                defaultValue = content.Substring(colonIndex + 1);
+                            }
+                            else
+                            {
+                                tabIndex = int.Parse(content);
+                                defaultValue = "";
+                            }
+
+                            var ts = new SnippetSession.TabStop
+                            {
+                                Index = tabIndex,
+                                Line = currentLine,
+                                StartColumn = currentColumn,
+                                EndColumn = currentColumn + defaultValue.Length,
+                                DefaultValue = defaultValue,
+                                IsFinalPosition = tabIndex == 0
+                            };
+                            tabStops.Add(ts);
+
+                            result.Append(defaultValue);
+                            currentColumn += defaultValue.Length;
+                            i = closeIndex + 1;
+                            continue;
+                        }
+                    }
+                    else if (char.IsDigit(template[i + 1]))
+                    {
+                        // Simple $n reference
+                        var numStart = i + 1;
+                        var numEnd = numStart;
+                        while (numEnd < template.Length && char.IsDigit(template[numEnd]))
+                            numEnd++;
+
+                        var tabIndex = int.Parse(template.Substring(numStart, numEnd - numStart));
+
+                        // For simple $n references (not first occurrence), find the default value from existing tabstops
+                        var existingTs = tabStops.FirstOrDefault(t => t.Index == tabIndex);
+                        var defaultValue = existingTs?.DefaultValue ?? "";
+
+                        var ts = new SnippetSession.TabStop
+                        {
+                            Index = tabIndex,
+                            Line = currentLine,
+                            StartColumn = currentColumn,
+                            EndColumn = currentColumn + defaultValue.Length,
+                            DefaultValue = defaultValue,
+                            IsFinalPosition = tabIndex == 0
+                        };
+                        tabStops.Add(ts);
+
+                        result.Append(defaultValue);
+                        currentColumn += defaultValue.Length;
+                        i = numEnd;
+                        continue;
+                    }
+                }
+            }
+            else if (template[i] == '\n')
+            {
+                result.Append('\n');
+                result.Append(indent);
+                currentLine++;
+                currentColumn = indent.Length;
+                i++;
+                continue;
+            }
+
+            result.Append(template[i]);
+            currentColumn++;
+            i++;
+        }
+
+        return (result.ToString(), tabStops);
+    }
+
+    /// <summary>
+    /// Moves to the next tabstop in the active snippet.
+    /// </summary>
+    private bool MoveToNextTabStop()
+    {
+        if (_activeSnippet == null)
+            return false;
+
+        // Find next tabstop (not the final position unless it's the only one left)
+        var currentIdx = _activeSnippet.CurrentTabStopIndex;
+        var nextIdx = currentIdx + 1;
+
+        // Skip to find next non-final tabstop, or wrap to final
+        while (nextIdx < _activeSnippet.TabStops.Count &&
+               _activeSnippet.TabStops[nextIdx].IsFinalPosition &&
+               _activeSnippet.TabStops.Any(t => !t.IsFinalPosition && _activeSnippet.TabStops.IndexOf(t) > currentIdx))
+        {
+            nextIdx++;
+        }
+
+        if (nextIdx >= _activeSnippet.TabStops.Count)
+        {
+            // Look for $0 (final position)
+            var finalTs = _activeSnippet.TabStops.FirstOrDefault(t => t.IsFinalPosition);
+            if (finalTs != null)
+            {
+                _cursorLine = finalTs.Line;
+                _cursorColumn = finalTs.StartColumn;
+                ClearSelection();
+            }
+            ExitSnippetMode();
+            return true;
+        }
+
+        _activeSnippet.CurrentTabStopIndex = nextIdx;
+        SelectCurrentTabStop();
+        return true;
+    }
+
+    /// <summary>
+    /// Selects the current tabstop text.
+    /// </summary>
+    private void SelectCurrentTabStop()
+    {
+        var ts = _activeSnippet?.CurrentTabStop;
+        if (ts == null)
+            return;
+
+        // Validate line is in bounds
+        if (ts.Line < 0 || ts.Line >= _lines.Count)
+        {
+            ExitSnippetMode();
+            return;
+        }
+
+        var lineLength = _lines[ts.Line].Length;
+
+        _cursorLine = ts.Line;
+        _cursorColumn = Math.Min(ts.EndColumn, lineLength);
+
+        var startCol = Math.Min(ts.StartColumn, lineLength);
+        var endCol = Math.Min(ts.EndColumn, lineLength);
+
+        if (startCol < endCol)
+        {
+            _selectionStartLine = ts.Line;
+            _selectionStartColumn = startCol;
+            _selectionEndLine = ts.Line;
+            _selectionEndColumn = endCol;
+            _hasSelection = true;
+        }
+        else
+        {
+            ClearSelection();
+        }
+    }
+
+    /// <summary>
+    /// Moves to the previous tabstop in the active snippet.
+    /// </summary>
+    private void MoveToPreviousTabStop()
+    {
+        if (_activeSnippet == null || _activeSnippet.CurrentTabStopIndex <= 0)
+            return;
+
+        _activeSnippet.CurrentTabStopIndex--;
+        SelectCurrentTabStop();
+    }
+
+    /// <summary>
+    /// Exits snippet mode.
+    /// </summary>
+    private void ExitSnippetMode()
+    {
+        _activeSnippet = null;
+        ClearSelection();
+    }
+
+    /// <summary>
+    /// Returns true if currently in snippet mode.
+    /// </summary>
+    public bool IsInSnippetMode => _activeSnippet != null;
 
     private void DeleteBackward()
     {
@@ -341,21 +892,45 @@ public class TextEditor : UIComponent, ITextInput
 
         if (_hasSelection)
         {
+            var selLength = GetSelectedText().Length;
+            var selStart = Math.Min(_selectionStartColumn, _selectionEndColumn);
             DeleteSelection();
+            AdjustTabStopPositions(_cursorLine, selStart, -selLength);
             return;
         }
 
         if (_cursorColumn > 0)
         {
-            // Delete character in current line
             var currentLine = _lines[_cursorLine];
-            currentLine = currentLine.Remove(_cursorColumn - 1, 1);
-            _lines[_cursorLine] = currentLine;
-            _cursorColumn--;
+            var charToDelete = currentLine[_cursorColumn - 1];
+            var deletePos = _cursorColumn - 1;
+
+            // Check if we're between a matching pair and should delete both
+            if (AutoCloseBrackets &&
+                _cursorColumn < currentLine.Length &&
+                AutoClosePairs.TryGetValue(charToDelete, out var expectedClosing) &&
+                currentLine[_cursorColumn] == expectedClosing)
+            {
+                // Delete both opening and closing characters
+                currentLine = currentLine.Remove(_cursorColumn, 1); // Remove closing
+                currentLine = currentLine.Remove(_cursorColumn - 1, 1); // Remove opening
+                _lines[_cursorLine] = currentLine;
+                _cursorColumn--;
+                AdjustTabStopPositions(_cursorLine, deletePos, -2);
+            }
+            else
+            {
+                // Delete single character
+                currentLine = currentLine.Remove(_cursorColumn - 1, 1);
+                _lines[_cursorLine] = currentLine;
+                _cursorColumn--;
+                AdjustTabStopPositions(_cursorLine, deletePos, -1);
+            }
         }
         else if (_cursorLine > 0)
         {
-            // Merge with previous line
+            // Merge with previous line - exit snippet mode as this complicates things
+            ExitSnippetMode();
             var previousLine = _lines[_cursorLine - 1];
             var currentLine = _lines[_cursorLine];
             _cursorColumn = previousLine.Length;
@@ -375,7 +950,10 @@ public class TextEditor : UIComponent, ITextInput
 
         if (_hasSelection)
         {
+            var selLength = GetSelectedText().Length;
+            var selStart = Math.Min(_selectionStartColumn, _selectionEndColumn);
             DeleteSelection();
+            AdjustTabStopPositions(_cursorLine, selStart, -selLength);
             return;
         }
 
@@ -385,10 +963,12 @@ public class TextEditor : UIComponent, ITextInput
             // Delete character in current line
             currentLine = currentLine.Remove(_cursorColumn, 1);
             _lines[_cursorLine] = currentLine;
+            AdjustTabStopPositions(_cursorLine, _cursorColumn, -1);
         }
         else if (_cursorLine < _lines.Count - 1)
         {
-            // Merge with next line
+            // Merge with next line - exit snippet mode as this complicates things
+            ExitSnippetMode();
             var nextLine = _lines[_cursorLine + 1];
             _lines[_cursorLine] = currentLine + nextLine;
             _lines.RemoveAt(_cursorLine + 1);
@@ -766,19 +1346,51 @@ public class TextEditor : UIComponent, ITextInput
 
     private void HandleMouseDrag(Point mousePos, UIRenderer renderer)
     {
-        // Update cursor position
-        var (dragLine, dragColumn) = GetCursorPositionAtMouse(mousePos, renderer);
+        // Require minimum drag distance before starting drag selection
+        // This prevents accidental drag on click and preserves double-click word selection
+        var dragDistance = Math.Abs(mousePos.X - _dragStartPosition.X) + Math.Abs(mousePos.Y - _dragStartPosition.Y);
+        const int MinDragDistance = 5;
 
-        // If no selection yet, start one
-        if (!_hasSelection)
+        if (dragDistance < MinDragDistance)
         {
-            BeginSelection();
+            return; // Haven't moved enough to start a drag
         }
 
-        // Update cursor and selection
+        // If we were in double-click word selection mode, we need to decide:
+        // - If dragging beyond the word, extend the selection
+        // - Otherwise keep the word selection
+        if (_doubleClickedWord)
+        {
+            // Once we start dragging after a double-click, we're extending from the word
+            // Keep the selection start as is (word start) and update the end
+            _doubleClickedWord = false;
+        }
+
+        // Get cursor position from mouse (can be outside bounds due to input capture)
+        var (dragLine, dragColumn) = GetCursorPositionAtMouse(mousePos, renderer);
+
+        // Clamp to valid range when outside bounds
+        dragLine = Math.Clamp(dragLine, 0, _lines.Count - 1);
+        dragColumn = Math.Clamp(dragColumn, 0, _lines[dragLine].Length);
+
+        // If no selection yet, start one from current cursor position
+        if (!_hasSelection)
+        {
+            _hasSelection = true;
+            _selectionStartLine = _cursorLine;
+            _selectionStartColumn = _cursorColumn;
+        }
+
+        // Update cursor to drag position
         _cursorLine = dragLine;
         _cursorColumn = dragColumn;
-        UpdateSelection();
+
+        // Update selection end
+        _selectionEndLine = dragLine;
+        _selectionEndColumn = dragColumn;
+
+        // Ensure cursor is visible (auto-scroll if dragging near edge)
+        EnsureCursorVisible();
     }
 
     private void SelectWordAtCursor()
@@ -1012,46 +1624,17 @@ public class TextEditor : UIComponent, ITextInput
         EnsureCursorVisible();
     }
 
+    // Track last click position for double-click detection (must be near same spot)
+    private Point _lastClickPosition = Point.Zero;
+
     protected override void OnRender(UIContext context)
     {
         // Handle mouse input
         var input = context.Input;
         var mousePos = input.MousePosition;
 
-        // Mouse button down - start selection or position cursor
-        if (input.IsMouseButtonPressed(MouseButton.Left))
-        {
-            if (Rect.Contains(mousePos))
-            {
-                // Check for double-click
-                var currentTime = (float)context.Input.GameTime.TotalGameTime.TotalSeconds;
-                var isDoubleClick = (currentTime - _lastClickTime) < Theme.DoubleClickThreshold;
-                _lastClickTime = currentTime;
-
-                if (isDoubleClick)
-                {
-                    HandleDoubleClick(mousePos, context.Renderer);
-                }
-                else
-                {
-                    HandleMouseClick(mousePos, context.Renderer);
-                }
-
-                _isMouseDown = true;
-            }
-        }
-
-        // Mouse button released
-        if (input.IsMouseButtonReleased(MouseButton.Left))
-        {
-            _isMouseDown = false;
-        }
-
-        // Mouse drag - extend selection
-        if (_isMouseDown && Rect.Contains(mousePos))
-        {
-            HandleMouseDrag(mousePos, context.Renderer);
-        }
+        // Handle all mouse interactions
+        HandleMouseInput(context, input, mousePos);
 
         // Handle keyboard input if focused
         if (IsFocused())
@@ -1195,11 +1778,17 @@ public class TextEditor : UIComponent, ITextInput
             var lineY = textStartY + (line - _scrollOffsetY) * lineHeight;
             var lineX = textStartX + leftMarginWidth; // Always use left margin width
 
-            int selStart = (line == startLine) ? startCol : 0;
-            int selEnd = (line == endLine) ? endCol : _lines[line].Length;
+            var lineLength = _lines[line].Length;
+            int selStart = (line == startLine) ? Math.Min(startCol, lineLength) : 0;
+            int selEnd = (line == endLine) ? Math.Min(endCol, lineLength) : lineLength;
+
+            // Ensure valid range
+            if (selStart > selEnd) selStart = selEnd;
+            if (selStart < 0) selStart = 0;
+            if (selEnd < 0) selEnd = 0;
 
             var beforeSelection = _lines[line].Substring(0, selStart);
-            var selection = _lines[line].Substring(selStart, selEnd - selStart);
+            var selection = selEnd > selStart ? _lines[line].Substring(selStart, selEnd - selStart) : "";
 
             var beforeWidth = renderer.MeasureText(beforeSelection).X;
             var selectionWidth = renderer.MeasureText(selection).X;
@@ -1221,15 +1810,145 @@ public class TextEditor : UIComponent, ITextInput
         return Math.Max(1, (int)(visibleHeight / lineHeight));
     }
 
-    private void HandleMouseClick(Point mousePos, UIRenderer renderer)
+    /// <summary>
+    /// Handles all mouse input for focus, cursor positioning, and selection.
+    /// </summary>
+    private void HandleMouseInput(UIContext context, InputState input, Point mousePos)
+    {
+        bool isOverComponent = Rect.Contains(mousePos);
+
+        // Mouse button pressed - set focus and position cursor
+        if (input.IsMouseButtonPressed(MouseButton.Left))
+        {
+            if (isOverComponent)
+            {
+                // Set focus immediately on press
+                context.SetFocus(Id);
+
+                // Capture input for drag selection (continues even if mouse leaves bounds)
+                context.CaptureInput(Id);
+                _isMouseDown = true;
+
+                // Check for multi-click (must be within threshold time AND near same position)
+                var currentTime = (float)input.GameTime.TotalGameTime.TotalSeconds;
+                var timeSinceLastClick = currentTime - _lastClickTime;
+                var distanceFromLastClick = Math.Abs(mousePos.X - _lastClickPosition.X) + Math.Abs(mousePos.Y - _lastClickPosition.Y);
+                var isMultiClick = timeSinceLastClick < Theme.DoubleClickThreshold && distanceFromLastClick < 10;
+
+                _lastClickTime = currentTime;
+                _lastClickPosition = mousePos;
+
+                if (isMultiClick)
+                {
+                    _clickCount++;
+                }
+                else
+                {
+                    _clickCount = 1;
+                }
+
+                if (_clickCount >= 3)
+                {
+                    // Triple-click: select all
+                    SelectAll();
+                    _doubleClickedWord = false;
+                    _clickCount = 0; // Reset after triple click
+                }
+                else if (_clickCount == 2)
+                {
+                    // Double-click: select word
+                    HandleDoubleClick(mousePos, context.Renderer);
+                    _doubleClickedWord = true; // Prevent drag from overwriting word selection
+                }
+                else
+                {
+                    // Single click: position cursor or start selection
+                    HandleMouseClick(mousePos, context.Renderer, input.IsShiftDown());
+                    _doubleClickedWord = false;
+                }
+
+                // Track drag start position for minimum drag distance detection
+                _dragStartPosition = mousePos;
+
+                // Consume the mouse button to prevent other components from processing
+                input.ConsumeMouseButton(MouseButton.Left);
+            }
+            else
+            {
+                // Clicked outside - clear focus
+                if (IsFocused())
+                {
+                    context.ClearFocus();
+                }
+            }
+        }
+
+        // Mouse dragging - extend selection (continues even outside bounds due to input capture)
+        if (_isMouseDown && input.IsMouseButtonDown(MouseButton.Left))
+        {
+            // Only start drag selection after initial click processing
+            if (!input.IsMouseButtonPressed(MouseButton.Left))
+            {
+                HandleMouseDrag(mousePos, context.Renderer);
+            }
+        }
+
+        // Mouse button released - end drag
+        if (input.IsMouseButtonReleased(MouseButton.Left))
+        {
+            if (_isMouseDown)
+            {
+                _isMouseDown = false;
+                _doubleClickedWord = false; // Reset double-click state
+                context.ReleaseCapture();
+
+                // If we dragged but ended up with zero-length selection, clear it
+                if (_hasSelection)
+                {
+                    var (startLine, startCol, endLine, endCol) = GetNormalizedSelection();
+                    if (startLine == endLine && startCol == endCol)
+                    {
+                        ClearSelection();
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles mouse click to position cursor.
+    /// </summary>
+    /// <param name="mousePos">Mouse position</param>
+    /// <param name="renderer">UI renderer for text measurement</param>
+    /// <param name="extendSelection">If true (Shift held), extends selection instead of clearing</param>
+    private void HandleMouseClick(Point mousePos, UIRenderer renderer, bool extendSelection = false)
     {
         // Position cursor at click location
         var (clickedLine, clickedColumn) = GetCursorPositionAtMouse(mousePos, renderer);
+
+        if (extendSelection)
+        {
+            // Shift+Click: extend selection from current position
+            if (!_hasSelection)
+            {
+                // Start new selection from current cursor position
+                _hasSelection = true;
+                _selectionStartLine = _cursorLine;
+                _selectionStartColumn = _cursorColumn;
+            }
+            // Update selection end to clicked position
+            _selectionEndLine = clickedLine;
+            _selectionEndColumn = clickedColumn;
+        }
+        else
+        {
+            // Normal click: clear any existing selection
+            ClearSelection();
+        }
+
+        // Move cursor to clicked position
         _cursorLine = clickedLine;
         _cursorColumn = clickedColumn;
-
-        // Start selection anchor for potential drag
-        BeginSelection();
     }
 
     private void HandleKeyboardInput(InputState input)
@@ -1278,6 +1997,13 @@ public class TextEditor : UIComponent, ITextInput
                 SelectAll();
                 return;
             }
+
+            // Format Code (Ctrl+Shift+F)
+            if (input.IsShiftDown() && input.IsKeyPressed(Keys.F))
+            {
+                FormatCode();
+                return;
+            }
         }
 
         // Shift+Enter - New line
@@ -1294,17 +2020,33 @@ public class TextEditor : UIComponent, ITextInput
             return;
         }
 
-        // Escape
+        // Escape - exit snippet mode first, then invoke OnEscape
         if (input.IsKeyPressed(Keys.Escape))
         {
-            OnEscape?.Invoke();
+            if (_activeSnippet != null)
+            {
+                ExitSnippetMode();
+            }
+            else
+            {
+                OnEscape?.Invoke();
+            }
             return;
         }
 
-        // Tab - Request completions
+        // Tab / Shift+Tab - snippet navigation or expansion
         if (input.IsKeyPressed(Keys.Tab))
         {
-            OnRequestCompletions?.Invoke(Text);
+            if (input.IsShiftDown() && _activeSnippet != null)
+            {
+                // Shift+Tab: go to previous tabstop
+                MoveToPreviousTabStop();
+            }
+            else if (!TryExpandSnippet())
+            {
+                // No snippet expanded, request completions
+                OnRequestCompletions?.Invoke(Text);
+            }
             return;
         }
 
@@ -1548,10 +2290,93 @@ public class TextEditor : UIComponent, ITextInput
                 var ch = KeyToChar(key, input.IsShiftDown());
                 if (ch.HasValue)
                 {
-                    InsertText(ch.Value.ToString());
+                    // Try auto-close first, fall back to normal insert
+                    if (!TryAutoClose(ch.Value))
+                    {
+                        InsertText(ch.Value.ToString());
+                    }
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Attempts to auto-close brackets and quotes.
+    /// Returns true if auto-close was handled, false otherwise.
+    /// </summary>
+    private bool TryAutoClose(char ch)
+    {
+        if (!AutoCloseBrackets)
+            return false;
+
+        // Check if this is an opening character
+        if (AutoClosePairs.TryGetValue(ch, out var closingChar))
+        {
+            // For quotes, check if we're already inside a string (simple heuristic)
+            if (ch == '"' || ch == '\'')
+            {
+                // If the next character is the same quote, just move past it (skip closing)
+                var currentLine = _lines[_cursorLine];
+                if (_cursorColumn < currentLine.Length && currentLine[_cursorColumn] == ch)
+                {
+                    _cursorColumn++;
+                    return true;
+                }
+            }
+
+            // Insert both opening and closing, then move cursor between them
+            SaveUndoState();
+
+            if (_hasSelection)
+            {
+                // Wrap selection with brackets/quotes
+                var selectedText = GetSelectedText();
+                DeleteSelection();
+                InsertTextWithoutUndo($"{ch}{selectedText}{closingChar}");
+                // Move cursor to end of wrapped selection
+                _cursorColumn--; // Move before closing char
+            }
+            else
+            {
+                // Insert pair and position cursor between
+                InsertTextWithoutUndo($"{ch}{closingChar}");
+                _cursorColumn--; // Move cursor between the pair
+            }
+
+            OnTextChanged?.Invoke(Text);
+            return true;
+        }
+
+        // Check if typing a closing character that matches what's next (skip over it)
+        if (AutoClosePairs.ContainsValue(ch))
+        {
+            var currentLine = _lines[_cursorLine];
+            if (_cursorColumn < currentLine.Length && currentLine[_cursorColumn] == ch)
+            {
+                _cursorColumn++;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Inserts text without saving undo state (for internal use).
+    /// </summary>
+    private void InsertTextWithoutUndo(string text)
+    {
+        if (_hasSelection)
+        {
+            DeleteSelection();
+        }
+
+        var currentLine = _lines[_cursorLine];
+        currentLine = currentLine.Insert(_cursorColumn, text);
+        _lines[_cursorLine] = currentLine;
+        _cursorColumn += text.Length;
+
+        _historyIndex = -1;
     }
 
     private char? KeyToChar(Keys key, bool shift)

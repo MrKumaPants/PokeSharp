@@ -35,6 +35,8 @@ public class WatchCommand : IConsoleCommand
   preset delete <name>: Delete a preset
   preset builtin: Create built-in presets
 
+Use 'tab watch' to switch to the Watch tab.
+
 Examples:
   watch add money Player.GetMoney() --group player
   watch add hp Player.GetHP() --group player --when ""Game.InBattle()""
@@ -52,13 +54,22 @@ Examples:
 
         if (args.Length == 0 || args[0].Equals("list", StringComparison.OrdinalIgnoreCase))
         {
-            // Show watch count and switch to watch tab
+            // Show watch count and summary
             var watchCount = context.GetWatchCount();
             var groups = context.GetWatchGroups().ToList();
-            var groupInfo = groups.Any() ? $" ({groups.Count} group{(groups.Count == 1 ? "" : "s")})" : "";
+            var (total, pinned, errors, alertsTriggered, groupCount) = context.GetWatchStatistics();
 
-            context.WriteLine($"Showing watch panel ({watchCount} watch{(watchCount == 1 ? "" : "es")}){groupInfo}", theme.Success);
-            context.SwitchToTab(1); // Switch to Watch tab (index 1)
+            context.WriteLine($"Watches: {watchCount} total", theme.Info);
+            if (pinned > 0)
+                context.WriteLine($"  Pinned: {pinned}", theme.Success);
+            if (errors > 0)
+                context.WriteLine($"  Errors: {errors}", theme.Error);
+            if (alertsTriggered > 0)
+                context.WriteLine($"  Alerts triggered: {alertsTriggered}", theme.Warning);
+            if (groupCount > 0)
+                context.WriteLine($"  Groups: {groupCount}", theme.TextSecondary);
+            context.WriteLine("", theme.TextPrimary);
+            context.WriteLine("Use 'tab watch' to view the Watch panel", theme.TextDim);
         }
         else if (args[0].Equals("add", StringComparison.OrdinalIgnoreCase))
         {
@@ -514,7 +525,7 @@ Examples:
                 if (context.LoadWatchPreset(name))
                 {
                     context.WriteLine($"Preset '{name}' loaded successfully", theme.Success);
-                    context.SwitchToTab(1); // Switch to Watch tab
+                    context.WriteLine("Use 'tab watch' to view", theme.TextDim);
                 }
                 else
                 {

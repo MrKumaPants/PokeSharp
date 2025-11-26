@@ -747,6 +747,11 @@ _wasVisible = Visible;
 | 2024-11-26 | #9,#10 | Reviewed architecture - acceptable        | (no changes needed)                                 |
 | 2024-11-26 | #11    | Graceful stack imbalance recovery         | UIRenderer.cs, UIContext.cs                         |
 | 2024-11-26 | -      | Thread safety fix for SuggestionsDropdown | SuggestionsDropdown.cs (added locks)                |
+| 2024-11-26 | -      | Console output mouse support              | TextBuffer.cs (char-level selection, word select)   |
+| 2024-11-26 | -      | TextEditor triple-click to select all     | TextEditor.cs                                       |
+| 2024-11-26 | -      | Log category filtering                    | LogsPanel.cs                                        |
+| 2024-11-26 | -      | Font size controls (Ctrl+/-/0)            | UIRenderer.cs, NewConsoleScene.cs                   |
+| 2024-11-26 | -      | Log commands (level/category/categories)  | LogCommand.cs, IConsoleContext.cs, ConsoleContext.cs|
 
 ---
 
@@ -796,4 +801,4 @@ _wasVisible = Visible;
 ---
 
 _Document generated from code review conducted November 25, 2024_
-_Last updated: November 26, 2024 - 16/17 issues resolved! Code review complete_ 🎉
+_Last updated: November 26, 2024 - 16/17 issues resolved + console features (mouse, font, logs)_ 🎉

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 
 namespace PokeSharp.Engine.Debug.Logging;
 
@@ -13,14 +14,32 @@ public class ConsoleLoggerProvider : ILoggerProvider
 {
     private readonly ConcurrentDictionary<string, ConsoleLogger> _loggers = new();
     private Action<string, Color>? _writeToConsole;
+    private Action<LogLevel, string, string>? _addLogEntry; // level, message, category
     private Func<LogLevel, bool> _isEnabled = _ => true;
 
+    // Buffer for logs that arrive before handlers are set
+    private readonly List<(LogLevel Level, string Message, string Category)> _pendingLogs = new();
+    private readonly object _pendingLogsLock = new();
+    private const int MaxPendingLogs = 1000;
+    private bool _handlersConfigured = false;
+
     /// <summary>
-    ///     Sets the function to write messages to the console.
+    ///     Sets the function to write messages to the console output.
     /// </summary>
     public void SetConsoleWriter(Action<string, Color> writeToConsole)
     {
         _writeToConsole = writeToConsole;
+    }
+
+    /// <summary>
+    ///     Sets the function to add structured log entries to the Logs panel.
+    /// </summary>
+    public void SetLogEntryHandler(Action<LogLevel, string, string> addLogEntry)
+    {
+        _addLogEntry = addLogEntry;
+
+        // Flush any pending logs
+        FlushPendingLogs();
     }
 
     /// <summary>
@@ -31,15 +50,80 @@ public class ConsoleLoggerProvider : ILoggerProvider
         _isEnabled = isEnabled;
     }
 
+    /// <summary>
+    ///     Flushes any logs that were buffered before handlers were set.
+    /// </summary>
+    private void FlushPendingLogs()
+    {
+        List<(LogLevel, string, string)> logsToFlush;
+
+        lock (_pendingLogsLock)
+        {
+            if (_pendingLogs.Count == 0 || _addLogEntry == null)
+                return;
+
+            logsToFlush = new List<(LogLevel, string, string)>(_pendingLogs);
+            _pendingLogs.Clear();
+            _handlersConfigured = true;
+        }
+
+        // Flush outside of lock
+        foreach (var (level, message, category) in logsToFlush)
+        {
+            _addLogEntry(level, message, category);
+        }
+    }
+
     public ILogger CreateLogger(string categoryName)
     {
+        // Pass a wrapper that always calls the current _isEnabled, not a captured copy
         return _loggers.GetOrAdd(categoryName, name =>
-            new ConsoleLogger(name, WriteToConsole, _isEnabled));
+            new ConsoleLogger(name, WriteToConsole, AddLogEntry, IsLogLevelEnabled));
+    }
+
+    /// <summary>
+    ///     Checks if a log level is enabled (called by loggers).
+    ///     This ensures loggers always use the current filter, not a captured copy.
+    /// </summary>
+    private bool IsLogLevelEnabled(LogLevel level)
+    {
+        return _isEnabled(level);
     }
 
     private void WriteToConsole(string message, Color color)
     {
         _writeToConsole?.Invoke(message, color);
+    }
+
+    private void AddLogEntry(LogLevel level, string message, string category)
+    {
+        if (_addLogEntry != null)
+        {
+            _addLogEntry(level, message, category);
+        }
+        else
+        {
+            // Buffer logs that arrive before handler is set
+            lock (_pendingLogsLock)
+            {
+                if (!_handlersConfigured)
+                {
+                    _pendingLogs.Add((level, message, category));
+
+                    // Debug: show pending log count periodically
+                    if (_pendingLogs.Count % 50 == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ConsoleLoggerProvider] Pending logs: {_pendingLogs.Count}");
+                    }
+
+                    // Prevent unbounded growth
+                    while (_pendingLogs.Count > MaxPendingLogs)
+                    {
+                        _pendingLogs.RemoveAt(0);
+                    }
+                }
+            }
+        }
     }
 
     public void Dispose()
