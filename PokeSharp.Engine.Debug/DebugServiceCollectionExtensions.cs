@@ -6,10 +6,11 @@ using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Engine.Debug.Console.Configuration;
 using PokeSharp.Engine.Debug.Console.Features;
 using PokeSharp.Engine.Debug.Console.Scripting;
+using PokeSharp.Engine.Debug.Features;
 using PokeSharp.Engine.Debug.Logging;
 using PokeSharp.Engine.Debug.Scripting;
 using PokeSharp.Engine.Debug.Systems;
-using PokeSharp.Engine.Debug.Systems.Services;
+using PokeSharp.Engine.UI.Debug.Core;
 using PokeSharp.Game.Scripting.Api;
 
 namespace PokeSharp.Engine.Debug;
@@ -37,7 +38,13 @@ public static class DebugServiceCollectionExtensions
             // Get configuration from appsettings.json using Get<T>() which supports records
             var consoleConfigSection = configuration.GetSection(ConsoleConfig.SectionName);
             var consoleConfig = consoleConfigSection.Get<ConsoleConfig>() ?? new ConsoleConfig();
-            
+
+            // Set default theme from config (must be done before ThemeManager is accessed)
+            if (!string.IsNullOrEmpty(consoleConfig.Theme))
+            {
+                ThemeManager.SetDefaultTheme(consoleConfig.Theme);
+            }
+
             // Register as singleton
             services.AddSingleton(consoleConfig);
         }
@@ -83,6 +90,15 @@ public static class DebugServiceCollectionExtensions
             return new AliasMacroManager(aliasesPath, logger);
         });
 
+        // Bookmark Manager
+        services.AddSingleton<BookmarkedCommandsManager>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<BookmarkedCommandsManager>>();
+            var scriptManager = sp.GetRequiredService<ScriptManager>();
+            var bookmarksPath = Path.Combine(scriptManager.ScriptsDirectory, "bookmarks.txt");
+            return new BookmarkedCommandsManager(bookmarksPath, logger);
+        });
+
         // Console Script Evaluator
         services.AddSingleton<ConsoleScriptEvaluator>(sp =>
         {
@@ -109,10 +125,14 @@ public static class DebugServiceCollectionExtensions
             return new ConsoleGlobals(apiProvider, world, systemManager, null!, logger);
         });
 
-        // Console Services (following SOLID principles)
-        services.AddSingleton<IConsoleInputHandler, ConsoleInputHandler>();
-        services.AddSingleton<IConsoleCommandExecutor, ConsoleCommandExecutor>();
-        services.AddSingleton<IConsoleAutoCompleteCoordinator, ConsoleAutoCompleteCoordinator>();
+        // Watch Preset Manager
+        services.AddSingleton<WatchPresetManager>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<WatchPresetManager>>();
+            var scriptManager = sp.GetRequiredService<ScriptManager>();
+            var presetsPath = Path.Combine(scriptManager.ScriptsDirectory, "watch_presets");
+            return new WatchPresetManager(presetsPath, logger);
+        });
 
         // Console System Factory
         // Note: ConsoleSystem and its dependencies that need GraphicsDevice

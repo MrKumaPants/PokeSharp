@@ -20,7 +20,7 @@ public class EntityPool
     private readonly Queue<Entity> _availableEntities;
     private readonly int _initialSize;
     private readonly object _lock = new();
-    private readonly int _maxSize;
+    private int _maxSize;
     private readonly string _poolName;
     private readonly bool _trackStatistics;
     private readonly World _world;
@@ -28,6 +28,32 @@ public class EntityPool
     private int _totalAcquisitions;
 
     private int _totalReleases;
+    private int _resizeCount;
+
+    /// <summary>
+    ///     Whether the pool should automatically resize when exhausted.
+    /// </summary>
+    public bool AutoResize { get; set; } = true;
+
+    /// <summary>
+    ///     Growth factor when auto-resizing (e.g., 1.5 = 50% increase).
+    /// </summary>
+    public float GrowthFactor { get; set; } = 1.5f;
+
+    /// <summary>
+    ///     Absolute maximum size the pool can grow to, even with auto-resize.
+    /// </summary>
+    public int AbsoluteMaxSize { get; set; } = 10000;
+
+    /// <summary>
+    ///     Number of times this pool has been auto-resized.
+    /// </summary>
+    public int ResizeCount => _resizeCount;
+
+    /// <summary>
+    ///     Current maximum size of the pool.
+    /// </summary>
+    public int MaxSize => _maxSize;
 
     /// <summary>
     ///     Creates a new entity pool with specified configuration.
@@ -131,9 +157,10 @@ public class EntityPool
     /// <summary>
     ///     Acquire an entity from the pool for use.
     ///     Creates new entity if pool is empty and below max size.
+    ///     Auto-resizes if enabled and pool is exhausted.
     /// </summary>
     /// <returns>Entity ready for use</returns>
-    /// <exception cref="InvalidOperationException">Thrown if pool exhausted (at max size with no available entities)</exception>
+    /// <exception cref="InvalidOperationException">Thrown if pool exhausted and cannot resize</exception>
     public Entity Acquire()
     {
         var sw = _trackStatistics ? Stopwatch.StartNew() : null;
@@ -144,15 +171,38 @@ public class EntityPool
 
             // Try to get from pool first
             if (_availableEntities.Count > 0)
+            {
                 entity = _availableEntities.Dequeue();
+            }
             // Create new if below max size
             else if (TotalCreated < _maxSize)
+            {
                 entity = CreateNewEntity();
-            // Pool exhausted
-            else
-                throw new InvalidOperationException(
-                    $"Entity pool '{_poolName}' exhausted (max size: {_maxSize}, active: {_activeEntities.Count})"
+            }
+            // Pool exhausted - try auto-resize
+            else if (AutoResize && _maxSize < AbsoluteMaxSize)
+            {
+                var newMaxSize = Math.Min(
+                    (int)(_maxSize * GrowthFactor),
+                    AbsoluteMaxSize
                 );
+                // Ensure we grow by at least 1
+                if (newMaxSize <= _maxSize)
+                    newMaxSize = Math.Min(_maxSize + 10, AbsoluteMaxSize);
+
+                _maxSize = newMaxSize;
+                _resizeCount++;
+
+                // Now we can create a new entity
+                entity = CreateNewEntity();
+            }
+            // Pool exhausted and cannot resize
+            else
+            {
+                throw new InvalidOperationException(
+                    $"Entity pool '{_poolName}' exhausted (max size: {_maxSize}, active: {_activeEntities.Count}, auto-resize: {AutoResize})"
+                );
+            }
 
             // Mark as active
             _activeEntities.Add(entity);
@@ -175,6 +225,30 @@ public class EntityPool
             }
 
             return entity;
+        }
+    }
+
+    /// <summary>
+    ///     Manually resize the pool to a new maximum size.
+    /// </summary>
+    /// <param name="newMaxSize">New maximum size</param>
+    /// <exception cref="ArgumentException">Thrown if new size is smaller than current active count</exception>
+    public void Resize(int newMaxSize)
+    {
+        lock (_lock)
+        {
+            if (newMaxSize < _activeEntities.Count)
+                throw new ArgumentException(
+                    $"Cannot resize pool '{_poolName}' to {newMaxSize}: {_activeEntities.Count} entities are active"
+                );
+
+            if (newMaxSize > AbsoluteMaxSize)
+                throw new ArgumentException(
+                    $"Cannot resize pool '{_poolName}' to {newMaxSize}: exceeds absolute max of {AbsoluteMaxSize}"
+                );
+
+            _maxSize = newMaxSize;
+            _resizeCount++;
         }
     }
 
@@ -248,6 +322,8 @@ public class EntityPool
                 AverageAcquireTimeMs = AverageAcquireTimeMs,
                 MaxSize = _maxSize,
                 UsagePercent = TotalCreated > 0 ? (float)_activeEntities.Count / _maxSize : 0f,
+                ResizeCount = _resizeCount,
+                AutoResizeEnabled = AutoResize,
             };
         }
     }
@@ -310,4 +386,6 @@ public struct PoolStatistics
     public double AverageAcquireTimeMs;
     public int MaxSize;
     public float UsagePercent;
+    public int ResizeCount;
+    public bool AutoResizeEnabled;
 }

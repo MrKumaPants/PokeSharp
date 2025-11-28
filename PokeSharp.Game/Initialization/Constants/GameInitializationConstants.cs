@@ -24,12 +24,12 @@ public static class GameInitializationConstants
     /// <summary>
     ///     Default X coordinate for initial player spawn (in tiles).
     /// </summary>
-    public const int DefaultPlayerSpawnX = 10;
+    public const int DefaultPlayerSpawnX = 20;
 
     /// <summary>
     ///     Default Y coordinate for initial player spawn (in tiles).
     /// </summary>
-    public const int DefaultPlayerSpawnY = 8;
+    public const int DefaultPlayerSpawnY = 15;
 
     /// <summary>
     ///     Default content root directory for MonoGame content pipeline.

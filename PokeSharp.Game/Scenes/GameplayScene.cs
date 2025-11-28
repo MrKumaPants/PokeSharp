@@ -1,9 +1,11 @@
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Engine.Scenes;
 using PokeSharp.Engine.Systems.Management;
+using PokeSharp.Engine.Systems.Pooling;
 using PokeSharp.Game.Infrastructure.Diagnostics;
 using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Input;
@@ -26,6 +28,8 @@ public class GameplayScene : SceneBase
     private readonly InputManager _inputManager;
     private readonly PerformanceMonitor _performanceMonitor;
     private readonly IGameTimeService _gameTime;
+    private readonly PerformanceOverlay _performanceOverlay;
+    private readonly SceneManager? _sceneManager;
 
     /// <summary>
     ///     Initializes a new instance of the GameplayScene class.
@@ -40,6 +44,7 @@ public class GameplayScene : SceneBase
     /// <param name="inputManager">The input manager.</param>
     /// <param name="performanceMonitor">The performance monitor.</param>
     /// <param name="gameTime">The game time service.</param>
+    /// <param name="sceneManager">The scene manager (optional, used to check for exclusive input).</param>
     public GameplayScene(
         GraphicsDevice graphicsDevice,
         IServiceProvider services,
@@ -50,7 +55,8 @@ public class GameplayScene : SceneBase
         IMapInitializer mapInitializer,
         InputManager inputManager,
         PerformanceMonitor performanceMonitor,
-        IGameTimeService gameTime
+        IGameTimeService gameTime,
+        SceneManager? sceneManager = null
     )
         : base(graphicsDevice, services, logger)
     {
@@ -69,28 +75,44 @@ public class GameplayScene : SceneBase
         _inputManager = inputManager;
         _performanceMonitor = performanceMonitor;
         _gameTime = gameTime;
+        _sceneManager = sceneManager;
+
+        // Create performance overlay
+        var poolManager = services.GetService<EntityPoolManager>();
+        _performanceOverlay = new PerformanceOverlay(
+            graphicsDevice,
+            performanceMonitor,
+            world,
+            poolManager);
+
+        // Hook up F3 toggle
+        _inputManager.OnPerformanceOverlayToggled += () => _performanceOverlay.Toggle();
     }
 
     /// <inheritdoc />
     public override void Update(GameTime gameTime)
     {
-
-        var deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        var rawDeltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
         var totalSeconds = (float)gameTime.TotalGameTime.TotalSeconds;
         var frameTimeMs = (float)gameTime.ElapsedGameTime.TotalMilliseconds;
 
-        // Update game time service
-        _gameTime.Update(totalSeconds, deltaTime);
+        // Update game time service (applies time scale)
+        _gameTime.Update(totalSeconds, rawDeltaTime);
 
-        // Update performance monitoring
+        // Update performance monitoring (always use raw time for accurate metrics)
         _performanceMonitor.Update(frameTimeMs);
 
-        // Handle input (zoom, debug controls)
+        // Handle input only if not blocked by a scene above (e.g., console with ExclusiveInput)
+        // Use unscaled time so controls work when paused
         // Pass render system so InputManager can control profiling when P is pressed
-        _inputManager.ProcessInput(_world, deltaTime, _gameInitializer.RenderSystem);
+        if (_sceneManager?.IsInputBlocked != true)
+        {
+            _inputManager.ProcessInput(_world, _gameTime.UnscaledDeltaTime, _gameInitializer.RenderSystem);
+        }
 
-        // Update all systems
-        _systemManager.Update(_world, deltaTime);
+        // Update all systems using scaled delta time
+        // When paused (TimeScale=0), DeltaTime will be 0 and systems won't advance
+        _systemManager.Update(_world, _gameTime.DeltaTime);
     }
 
     /// <summary>
@@ -105,6 +127,21 @@ public class GameplayScene : SceneBase
 
         // Render all systems (this includes the ElevationRenderSystem)
         _systemManager.Render(_world);
+
+        // Draw performance overlay on top (F3 to toggle)
+        _performanceOverlay.Draw();
+    }
+
+    /// <summary>
+    ///     Disposes scene resources.
+    /// </summary>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _performanceOverlay.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }
 

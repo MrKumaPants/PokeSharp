@@ -1,4 +1,4 @@
-using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 
 namespace PokeSharp.Engine.Debug.Console.Configuration;
 
@@ -14,20 +14,14 @@ public static class ConsoleConstants
     public static class Rendering
     {
         // Layout
-        public const int LineHeight = 16;
+        // NOTE: LineHeight is now defined in UITheme (use ThemeManager.Current.LineHeight)
+        // NOTE: Semantic padding constants moved to UITheme (use ThemeManager.Current.PaddingTiny, etc.)
         public const int FontScale = 2;
         public const int Padding = 10;  // Main padding for console edges
         public const int InputAreaTopPadding = 5;
         public const int InputAreaBottomPadding = 5;
         public const int MultiLineIndicatorSpacing = 3;
         public const int GeneralSpacing = 5; // General purpose spacing
-
-        // Semantic Padding Constants (for consistent spacing throughout UI)
-        public const int Padding_Tiny = 2;       // Minimal spacing (e.g., borders, tight elements)
-        public const int Padding_Small = 4;      // Minor spacing (e.g., between related items)
-        public const int Padding_Medium = 8;     // Standard spacing (e.g., within panels)
-        public const int Padding_Large = 12;     // Section spacing (e.g., between groups)
-        public const int Padding_XLarge = 20;    // Major spacing (e.g., major UI sections)
 
         // Parameter hints
         public const int ParameterHintPadding = 10;
@@ -97,8 +91,8 @@ public static class ConsoleConstants
         public const int LineNumberSuffixChars = 2; // Characters for ": " suffix
         public const int LineNumberSpacing = 4; // Extra spacing after line numbers
 
-        // NOTE: All color constants have been moved to ConsoleColors.cs for centralized color management.
-        // This improves consistency, maintainability, and makes it easier to implement theming.
+        // NOTE: Color constants are managed by UITheme in PokeSharp.Engine.UI.Debug.Core.
+        // Use ThemeManager.Current for runtime theme access.
     }
 
     /// <summary>
@@ -247,11 +241,11 @@ public static class ConsoleConstants
         // Multi-line indicator format
         public const string MultiLineIndicatorFormat = "({0} lines) [Enter] submit • [Shift+Enter] new line";
 
-        // Symbols
-        public const string PromptSymbol = ">";
+        // Symbols (Nerd Font icons when available, ASCII fallback)
+        public const string PromptSymbol = ""; // Nerd Font chevron
         // Note: Scroll indicators use programmatic drawing (DrawUpTriangle/DrawDownTriangle)
         // instead of text symbols for pixel-perfect control and consistent scaling
-        public const string CursorSymbol = "_";
+        public const string CursorSymbol = "▌"; // Block cursor
 
         // Descriptions
         public const string PropertyDescription = "property";
@@ -342,6 +336,42 @@ public static class ConsoleConstants
         public const string NextMatch = "F3 or Enter (in search)";
         public const string PreviousMatch = "Shift+F3";
         public const string ExitSearch = "Escape (in search)";
+    }
+
+    /// <summary>
+    /// Console tab definitions.
+    /// Re-exported from PokeSharp.Engine.UI.Debug.Core.ConsoleTabs for convenience.
+    /// The canonical definition is in the UI.Debug assembly to avoid circular dependencies.
+    /// </summary>
+    public static class Tabs
+    {
+        // Re-export from UI.Debug for backward compatibility
+        public static PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition Console
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.Console;
+        public static PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition Watch
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.Watch;
+        public static PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition Logs
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.Logs;
+        public static PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition Variables
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.Variables;
+        public static PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition Entities
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.Entities;
+
+        public static IReadOnlyList<PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition> All
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.All;
+        public static int Count => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.Count;
+
+        public static PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition? GetByIndex(int index)
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.GetByIndex(index);
+
+        public static bool TryGet(string input, out PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition? tab)
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TryGet(input, out tab);
+
+        public static PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.TabDefinition? GetByShortcut(Keys key)
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.GetByShortcut(key);
+
+        public static IEnumerable<string> GetAllAliases()
+            => PokeSharp.Engine.UI.Debug.Core.ConsoleTabs.GetAllAliases();
     }
 }
 

@@ -2,19 +2,22 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
+using PokeSharp.Engine.Core.Services;
 
 namespace PokeSharp.Engine.Scenes;
 
 /// <summary>
 ///     Manages scene transitions and the current active scene.
 ///     Uses a two-step transition pattern to prevent mid-frame scene changes.
+///     Implements IInputBlocker to allow systems to check if input is blocked by a stacked scene.
 /// </summary>
-public class SceneManager
+public class SceneManager : IInputBlocker
 {
     private readonly ILogger<SceneManager> _logger;
     private IScene? _currentScene;
     private IScene? _nextScene;
     private bool _isPushOperation;
+    private bool _popRequested;
     private readonly Stack<IScene> _sceneStack = new();
 
     /// <summary>
@@ -65,6 +68,21 @@ public class SceneManager
     }
 
     /// <summary>
+    ///     Gets a value indicating whether input is blocked for scenes below the top of the stack.
+    ///     Returns true if there is a stacked scene with ExclusiveInput = true.
+    ///     Scenes should check this property before processing input if they are updated
+    ///     while a scene above them has exclusive input.
+    /// </summary>
+    public bool IsInputBlocked
+    {
+        get
+        {
+            // If there's at least one stacked scene with ExclusiveInput, input is blocked for scenes below
+            return _sceneStack.Count > 0 && _sceneStack.Any(s => s.ExclusiveInput);
+        }
+    }
+
+    /// <summary>
     ///     Changes to a new scene. The transition will occur at the start of the next Update cycle.
     /// </summary>
     /// <param name="newScene">The scene to transition to.</param>
@@ -102,6 +120,21 @@ public class SceneManager
             return;
         }
 
+        _logger.LogInformation("Queuing scene pop from stack");
+        _popRequested = true;
+    }
+
+    /// <summary>
+    ///     Processes a pending pop operation. Called during Update.
+    /// </summary>
+    private void ProcessPopScene()
+    {
+        if (_sceneStack.Count == 0)
+        {
+            _logger.LogWarning("Pop requested but stack is empty");
+            return;
+        }
+
         _logger.LogInformation("Popping scene from stack");
         var previousScene = _sceneStack.Pop();
         previousScene.Dispose();
@@ -121,6 +154,13 @@ public class SceneManager
     /// <param name="gameTime">Provides timing information.</param>
     public void Update(GameTime gameTime)
     {
+        // Handle pop request first (before push/change)
+        if (_popRequested)
+        {
+            _popRequested = false;
+            ProcessPopScene();
+        }
+
         // Handle scene transition at START of update cycle (two-step pattern)
         if (_nextScene != null)
         {
@@ -178,22 +218,22 @@ public class SceneManager
             }
         }
 
-        // Update scenes based on exclusive input property
+        // Update scenes based on UpdateScenesBelow property
         if (_sceneStack.Count > 0)
         {
             // Get the top scene (most recently pushed)
             var topScene = _sceneStack.Peek();
-            
-            // If top scene doesn't take exclusive input, update from bottom to top
-            if (!topScene.ExclusiveInput)
+
+            // If top scene allows scenes below to update, update from bottom to top
+            if (topScene.UpdateScenesBelow)
             {
                 // Update base scene first
                 if (_currentScene != null)
                 {
                     _currentScene.Update(gameTime);
                 }
-                
-                // Update all stacked scenes in order (input falls through)
+
+                // Update all stacked scenes in order
                 foreach (var scene in _sceneStack)
                 {
                     scene.Update(gameTime);
@@ -201,7 +241,7 @@ public class SceneManager
             }
             else
             {
-                // Top scene takes exclusive input, only update it
+                // Top scene pauses lower scenes, only update it
                 topScene.Update(gameTime);
             }
         }
@@ -221,12 +261,16 @@ public class SceneManager
     /// <param name="gameTime">Provides timing information.</param>
     public void Draw(GameTime gameTime)
     {
+        // Take a snapshot of the stack to avoid "collection was modified" errors
+        // This is important because scene rendering might trigger state changes
+        var stackSnapshot = _sceneStack.ToArray();
+
         // If we have stacked scenes, determine what to render based on the top scene
-        if (_sceneStack.Count > 0)
+        if (stackSnapshot.Length > 0)
         {
-            // Get the top scene (most recently pushed)
-            var topScene = _sceneStack.Peek();
-            
+            // Get the top scene (most recently pushed - first in array since Stack iterates LIFO)
+            var topScene = stackSnapshot[0];
+
             // If top scene wants to render scenes below, render from bottom to top
             if (topScene.RenderScenesBelow)
             {
@@ -235,34 +279,33 @@ public class SceneManager
                 {
                     _currentScene.Draw(gameTime);
                 }
-                
-                // Render all stacked scenes in order (they all want to render scenes below)
-                foreach (var scene in _sceneStack)
+
+                // Render all stacked scenes in order (bottom to top = reverse of snapshot)
+                for (var i = stackSnapshot.Length - 1; i >= 0; i--)
                 {
-                    scene.Draw(gameTime);
+                    stackSnapshot[i].Draw(gameTime);
                 }
             }
             else
             {
                 // Top scene is full-screen, only render it (and any above it that are also full-screen)
-                // But actually, if top is full-screen, we should only render scenes from the first full-screen one up
                 // Find the first full-screen scene from the bottom
-                bool foundFullScreen = false;
-                for (int i = 0; i < _sceneStack.Count; i++)
+                var foundFullScreen = false;
+                for (var i = stackSnapshot.Length - 1; i >= 0; i--)
                 {
-                    var scene = _sceneStack.ElementAt(i);
+                    var scene = stackSnapshot[i];
                     if (!scene.RenderScenesBelow)
                     {
-                        // Found first full-screen scene, render from here up
-                        for (int j = i; j < _sceneStack.Count; j++)
+                        // Found first full-screen scene, render from here up (to index 0)
+                        for (var j = i; j >= 0; j--)
                         {
-                            _sceneStack.ElementAt(j).Draw(gameTime);
+                            stackSnapshot[j].Draw(gameTime);
                         }
                         foundFullScreen = true;
                         break;
                     }
                 }
-                
+
                 // If no full-screen scene found (shouldn't happen since top is full-screen), render top
                 if (!foundFullScreen)
                 {

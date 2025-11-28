@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Xna.Framework;
 using System;
 using System.Text.RegularExpressions;
 
@@ -11,13 +10,16 @@ namespace PokeSharp.Engine.Debug.Logging;
 public class ConsoleLogger : ILogger
 {
     private readonly string _categoryName;
-    private readonly Action<string, Color> _writeToConsole;
+    private readonly Action<LogLevel, string, string> _addLogEntry;
     private readonly Func<LogLevel, bool> _isEnabled;
 
-    public ConsoleLogger(string categoryName, Action<string, Color> writeToConsole, Func<LogLevel, bool> isEnabled)
+    public ConsoleLogger(
+        string categoryName,
+        Action<LogLevel, string, string> addLogEntry,
+        Func<LogLevel, bool> isEnabled)
     {
         _categoryName = categoryName;
-        _writeToConsole = writeToConsole;
+        _addLogEntry = addLogEntry;
         _isEnabled = isEnabled;
     }
 
@@ -43,36 +45,12 @@ public class ConsoleLogger : ILogger
         // Strip Serilog/Spectre.Console markup tags (e.g., [cyan], [red], etc.)
         message = StripMarkupTags(message);
 
-        // Format log message
-        var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
-        var level = GetLogLevelString(logLevel);
+        // Get short category name for display
         var category = GetShortCategoryName(_categoryName);
 
-        var formattedMessage = $"[{timestamp}] [{level}] \"{category}\": {message}";
-
-        if (exception != null)
-        {
-            formattedMessage += $"\n{exception}";
-        }
-
-        // Get color based on log level
-        var color = GetColorForLogLevel(logLevel);
-
-        _writeToConsole(formattedMessage, color);
-    }
-
-    private static string GetLogLevelString(LogLevel logLevel)
-    {
-        return logLevel switch
-        {
-            LogLevel.Trace => "TRACE",
-            LogLevel.Debug => "DEBUG",
-            LogLevel.Information => "INFOR",
-            LogLevel.Warning => "WARNI",
-            LogLevel.Error => "ERROR",
-            LogLevel.Critical => "CRIT!",
-            _ => "UNKNO"
-        };
+        // Add to Logs panel only (not console output)
+        var logMessage = exception != null ? $"{message}\n{exception}" : message;
+        _addLogEntry(logLevel, logMessage, category);
     }
 
     private static string GetShortCategoryName(string category)
@@ -84,20 +62,6 @@ public class ConsoleLogger : ILogger
             return category.Substring(lastDot + 1);
         }
         return category;
-    }
-
-    private static Color GetColorForLogLevel(LogLevel logLevel)
-    {
-        return logLevel switch
-        {
-            LogLevel.Trace => new Color(150, 150, 150),       // Gray
-            LogLevel.Debug => new Color(180, 180, 255),       // Light Blue
-            LogLevel.Information => Color.White,              // White
-            LogLevel.Warning => new Color(255, 200, 100),     // Orange
-            LogLevel.Error => new Color(255, 100, 100),       // Red
-            LogLevel.Critical => new Color(255, 50, 255),     // Magenta
-            _ => Color.LightGray
-        };
     }
 
     /// <summary>

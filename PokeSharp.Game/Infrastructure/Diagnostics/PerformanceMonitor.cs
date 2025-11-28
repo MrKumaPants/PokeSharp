@@ -20,6 +20,34 @@ public class PerformanceMonitor(ILogger<PerformanceMonitor> logger)
     private int _lastGen1Count;
     private int _lastGen2Count;
 
+    // Public stats for overlay display
+    /// <summary>Current FPS (frames per second).</summary>
+    public float Fps => _frameTimeTracker.Average > 0 ? 1000f / _frameTimeTracker.Average : 0;
+
+    /// <summary>Average frame time in milliseconds.</summary>
+    public float FrameTimeMs => _frameTimeTracker.Average;
+
+    /// <summary>Minimum frame time in the sample window.</summary>
+    public float MinFrameTimeMs => _frameTimeTracker.Min;
+
+    /// <summary>Maximum frame time in the sample window.</summary>
+    public float MaxFrameTimeMs => _frameTimeTracker.Max;
+
+    /// <summary>Current memory usage in megabytes.</summary>
+    public double MemoryMb => GC.GetTotalMemory(false) / 1024.0 / 1024.0;
+
+    /// <summary>Total Gen0 garbage collections.</summary>
+    public int Gen0Collections => GC.CollectionCount(0);
+
+    /// <summary>Total Gen1 garbage collections.</summary>
+    public int Gen1Collections => GC.CollectionCount(1);
+
+    /// <summary>Total Gen2 garbage collections.</summary>
+    public int Gen2Collections => GC.CollectionCount(2);
+
+    /// <summary>Total frame count since start.</summary>
+    public ulong FrameCount => _frameCounter;
+
     /// <summary>
     ///     Updates performance metrics for the current frame.
     /// </summary>

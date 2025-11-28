@@ -21,6 +21,16 @@ public class InputManager(ILogger<InputManager> logger)
     public bool IsDetailedProfilingEnabled { get; private set; }
 
     /// <summary>
+    ///     Gets whether the performance overlay is enabled.
+    /// </summary>
+    public bool IsPerformanceOverlayEnabled { get; private set; }
+
+    /// <summary>
+    ///     Event fired when performance overlay toggle is requested.
+    /// </summary>
+    public event Action? OnPerformanceOverlayToggled;
+
+    /// <summary>
     ///     Handles zoom controls and debug inputs.
     /// </summary>
     /// <param name="world">The ECS world.</param>
@@ -32,18 +42,21 @@ public class InputManager(ILogger<InputManager> logger)
         ElevationRenderSystem? renderSystem = null
     )
     {
-        HandleZoomControls(world);
-        HandleDebugControls(renderSystem);
+        var currentKeyboardState = Keyboard.GetState();
+
+        HandleZoomControls(world, currentKeyboardState);
+        HandleDebugControls(renderSystem, currentKeyboardState);
+
+        // Update previous state ONCE after all handlers
+        _previousKeyboardState = currentKeyboardState;
     }
 
     /// <summary>
     ///     Handles zoom control keyboard input.
     ///     +/- keys for zoom in/out, number keys for presets.
     /// </summary>
-    private void HandleZoomControls(World world)
+    private void HandleZoomControls(World world, KeyboardState currentKeyboardState)
     {
-        var currentKeyboardState = Keyboard.GetState();
-
         var query = new QueryDescription().WithAll<Player, Camera>();
         world.Query(
             in query,
@@ -91,18 +104,15 @@ public class InputManager(ILogger<InputManager> logger)
                 }
             }
         );
-
-        _previousKeyboardState = currentKeyboardState;
     }
 
     /// <summary>
     ///     Handles debug controls for profiling and diagnostics.
     ///     P key: Toggle detailed rendering profiling
+    ///     F3 key: Toggle performance overlay
     /// </summary>
-    private void HandleDebugControls(ElevationRenderSystem? renderSystem)
+    private void HandleDebugControls(ElevationRenderSystem? renderSystem, KeyboardState currentKeyboardState)
     {
-        var currentKeyboardState = Keyboard.GetState();
-
         // Toggle detailed rendering profiling with P key
         if (IsKeyPressed(currentKeyboardState, Keys.P))
         {
@@ -114,7 +124,16 @@ public class InputManager(ILogger<InputManager> logger)
             );
         }
 
-        _previousKeyboardState = currentKeyboardState;
+        // Toggle performance overlay with F3 key (like Minecraft)
+        if (IsKeyPressed(currentKeyboardState, Keys.F3))
+        {
+            IsPerformanceOverlayEnabled = !IsPerformanceOverlayEnabled;
+            OnPerformanceOverlayToggled?.Invoke();
+            logger.LogInformation(
+                "Performance overlay: {State}",
+                IsPerformanceOverlayEnabled ? "ON" : "OFF"
+            );
+        }
     }
 
     /// <summary>

@@ -93,7 +93,7 @@ public class PoolConfigs
     /// <summary>
     ///     NPC entity pool configuration.
     /// </summary>
-    public PoolConfig Npc { get; set; } = new() { InitialSize = 20, MaxSize = 100 };
+    public PoolConfig Npc { get; set; } = new() { InitialSize = 100, MaxSize = 200, AutoResize = true };
 
     /// <summary>
     ///     Tile entity pool configuration.
@@ -120,4 +120,22 @@ public class PoolConfig
     ///     Whether to warmup the pool on creation.
     /// </summary>
     public bool Warmup { get; set; } = true;
+
+    /// <summary>
+    ///     Whether the pool should automatically resize when exhausted.
+    ///     When enabled, pool will grow by <see cref="GrowthFactor"/> when full.
+    /// </summary>
+    public bool AutoResize { get; set; } = true;
+
+    /// <summary>
+    ///     Growth factor when auto-resizing (e.g., 2.0 = double the size).
+    ///     Only used when <see cref="AutoResize"/> is enabled.
+    /// </summary>
+    public float GrowthFactor { get; set; } = 1.5f;
+
+    /// <summary>
+    ///     Absolute maximum size the pool can grow to, even with auto-resize.
+    ///     Set to 0 for unlimited growth (not recommended).
+    /// </summary>
+    public int AbsoluteMaxSize { get; set; } = 10000;
 }
