@@ -42,8 +42,7 @@ public class LiveEntityInspector : Panel
 
     public LiveEntityInspector()
     {
-        BackgroundColor = UITheme.Dark.BackgroundSecondary;
-        BorderColor = UITheme.Dark.BorderPrimary;
+        // Colors set dynamically in OnRenderContainer for theme switching
         BorderThickness = 1;
 
         InitializeComponents();
@@ -141,6 +140,10 @@ public class LiveEntityInspector : Panel
 
     protected override void OnRenderContainer(UIContext context)
     {
+        // Set theme colors dynamically for theme switching
+        BackgroundColor = ThemeManager.Current.BackgroundSecondary;
+        BorderColor = ThemeManager.Current.BorderPrimary;
+
         base.OnRenderContainer(context);
 
         // Update dropdown options
@@ -197,7 +200,7 @@ public class LiveEntityInspector : Panel
         }
 
         float yOffset = 0;
-        float lineHeight = 25;
+        float lineHeight = ThemeManager.Current.PanelRowHeight;
 
         // Entity header
         var headerLabel = new Label

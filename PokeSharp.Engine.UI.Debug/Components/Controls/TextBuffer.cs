@@ -34,7 +34,6 @@ public class TextBuffer : UIComponent, ITextDisplay
     // Search
     private readonly List<int> _searchMatches = new(); // Line indices that match search
     private int _currentSearchMatchIndex = -1; // Current match being viewed
-    private Color _searchHighlightColor = UITheme.Dark.ReverseSearchMatchHighlight; // Yellow highlight
 
     // Selection (character-level for word selection support)
     private bool _hasSelection = false;
@@ -63,15 +62,32 @@ public class TextBuffer : UIComponent, ITextDisplay
     // Hover tracking
     private int _hoveredLine = -1;
 
-    // Visual properties
-    public Color BackgroundColor { get; set; } = UITheme.Dark.BackgroundPrimary;
-    public Color ScrollbarTrackColor { get; set; } = UITheme.Dark.ScrollbarTrack;
-    public Color ScrollbarThumbColor { get; set; } = UITheme.Dark.ScrollbarThumb;
-    public Color ScrollbarThumbHoverColor { get; set; } = UITheme.Dark.ScrollbarThumbHover;
-    public Color SelectionColor { get; set; } = UITheme.Dark.InputSelection;
-    public Color HoverColor { get; set; } = new Color(60, 60, 80, 100); // Subtle hover highlight
+    // Keyboard cursor line (for keyboard navigation highlight)
+    private int _cursorLine = -1;
+
+    // Visual properties - nullable to allow theme fallback
+    // Use GetXxxColor() methods at render time for dynamic theme support
+    private Color? _backgroundColor;
+    private Color? _scrollbarTrackColor;
+    private Color? _scrollbarThumbColor;
+    private Color? _scrollbarThumbHoverColor;
+    private Color? _selectionColor;
+    private Color? _hoverColor;
+    private Color? _cursorLineColor;
+    private Color? _searchHighlightColor;
+
+    public Color BackgroundColor { get => _backgroundColor ?? ThemeManager.Current.BackgroundPrimary; set => _backgroundColor = value; }
+    public Color ScrollbarTrackColor { get => _scrollbarTrackColor ?? ThemeManager.Current.ScrollbarTrack; set => _scrollbarTrackColor = value; }
+    public Color ScrollbarThumbColor { get => _scrollbarThumbColor ?? ThemeManager.Current.ScrollbarThumb; set => _scrollbarThumbColor = value; }
+    public Color ScrollbarThumbHoverColor { get => _scrollbarThumbHoverColor ?? ThemeManager.Current.ScrollbarThumbHover; set => _scrollbarThumbHoverColor = value; }
+    public Color SelectionColor { get => _selectionColor ?? ThemeManager.Current.InputSelection; set => _selectionColor = value; }
+    public Color HoverColor { get => _hoverColor ?? ThemeManager.Current.HoverBackground; set => _hoverColor = value; }
+    public Color CursorLineColor { get => _cursorLineColor ?? ThemeManager.Current.CursorLineHighlight; set => _cursorLineColor = value; }
+    public Color SearchHighlightColor { get => _searchHighlightColor ?? ThemeManager.Current.ReverseSearchMatchHighlight; set => _searchHighlightColor = value; }
+
+    // Sizing properties - defaults match theme values (ScrollbarWidth=10, ScrollbarPadding=4, LineHeight=20)
     public int ScrollbarWidth { get; set; } = 10;
-    public int ScrollbarPadding { get; set; } = 4; // Gap between content and scrollbar
+    public int ScrollbarPadding { get; set; } = 4;
     public int LineHeight { get; set; } = 20;
     public int LinePadding { get; set; } = 5;
 
@@ -94,6 +110,16 @@ public class TextBuffer : UIComponent, ITextDisplay
     public string SelectedText => GetSelectedText();
 
     /// <summary>
+    /// Gets or sets the keyboard cursor line (highlighted during keyboard navigation).
+    /// Set to -1 to disable cursor highlighting.
+    /// </summary>
+    public int CursorLine
+    {
+        get => _cursorLine;
+        set => _cursorLine = value;
+    }
+
+    /// <summary>
     /// Gets the current scroll offset (number of lines scrolled from top).
     /// </summary>
     public int ScrollOffset => _scrollOffset;
@@ -114,7 +140,7 @@ public class TextBuffer : UIComponent, ITextDisplay
     /// </summary>
     public void AppendLine(string text)
     {
-        AppendLine(text, UITheme.Dark.TextPrimary, "General");
+        AppendLine(text, ThemeManager.Current.TextPrimary, "General");
     }
 
     /// <summary>
@@ -475,6 +501,11 @@ public class TextBuffer : UIComponent, ITextDisplay
     /// <summary>
     /// Gets the number of visible lines based on the component's height.
     /// </summary>
+    public int VisibleLineCount => GetVisibleLineCount();
+
+    /// <summary>
+    /// Gets the number of visible lines based on the component's height.
+    /// </summary>
     private int GetVisibleLineCount()
     {
         // Use Rect.Height (resolved layout) not Constraint.Height (input constraint)
@@ -572,14 +603,8 @@ public class TextBuffer : UIComponent, ITextDisplay
                 ScrollbarWidth + ScrollbarPadding,
                 resolvedRect.Height
             );
-            // Use a slightly darker shade for the scrollbar background
-            var scrollbarBgColor = new Color(
-                (int)(BackgroundColor.R * 0.9f),
-                (int)(BackgroundColor.G * 0.9f),
-                (int)(BackgroundColor.B * 0.9f),
-                BackgroundColor.A
-            );
-            renderer.DrawRectangle(scrollbarBgRect, scrollbarBgColor);
+            // Use theme scrollbar track color
+            renderer.DrawRectangle(scrollbarBgRect, ThemeManager.Current.ScrollbarTrack);
         }
 
         // Clamp scroll offset now that we have proper context
@@ -672,8 +697,19 @@ public class TextBuffer : UIComponent, ITextDisplay
             // Check if this line has any selection
             bool isSelected = _hasSelection && i >= _selectionStartLine && i <= _selectionEndLine;
 
-            // Draw hover highlight (only if no selection on this line)
-            if (!isSelected && i == _hoveredLine)
+            // Draw cursor line highlight (keyboard navigation) - takes priority
+            if (!isSelected && i == _cursorLine)
+            {
+                var cursorRect = new LayoutRect(
+                    resolvedRect.X,
+                    y,
+                    contentWidth,
+                    LineHeight
+                );
+                renderer.DrawRectangle(cursorRect, CursorLineColor);
+            }
+            // Draw hover highlight (only if no selection and not cursor line)
+            else if (!isSelected && i == _hoveredLine && i != _cursorLine)
             {
                 var hoverRect = new LayoutRect(
                     resolvedRect.X,
@@ -738,8 +774,8 @@ public class TextBuffer : UIComponent, ITextDisplay
                     // This line contains a search match - highlight each occurrence
                     var isCurrentMatch = matchIndex == _currentSearchMatchIndex;
                     var highlightColor = isCurrentMatch
-                        ? new Color(255, 200, 0, 150) // Bright yellow for current match
-                        : _searchHighlightColor; // Dimmer yellow for other matches
+                        ? ThemeManager.Current.Warning // Bright for current match
+                        : SearchHighlightColor; // Dimmer for other matches
 
                     // Find all occurrences of the search term in this line
                     var searchIndex = 0;

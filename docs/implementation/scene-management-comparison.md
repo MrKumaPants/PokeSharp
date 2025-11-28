@@ -113,7 +113,7 @@ protected override void Update(GameTime gameTime)
         s_activeScene.Initialize();
         s_nextScene = null;
     }
-    
+
     s_activeScene?.Update(gameTime);
 }
 ```
@@ -238,7 +238,7 @@ public void Update(GameTime gameTime)
         _currentScene.Initialize();
         _nextScene = null;
     }
-    
+
     _currentScene?.Update(gameTime);
 }
 ```
@@ -310,7 +310,7 @@ public void Update(GameTime gameTime)
         _currentScene.Initialize();
         _nextScene = null;
     }
-    
+
     _currentScene?.Update(gameTime);
 }
 ```

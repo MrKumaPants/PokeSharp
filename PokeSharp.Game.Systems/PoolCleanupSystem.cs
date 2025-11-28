@@ -113,30 +113,52 @@ public class PoolCleanupSystem : SystemBase, IUpdateSystem
     {
         // Calculate usage percentage
         var usagePercent = stats.UsagePercent;
+        var autoResizeNote = stats.AutoResizeEnabled
+            ? " (auto-resize enabled, will expand if needed)"
+            : " Consider increasing pool size or optimizing entity lifecycle.";
 
         // Critical: Pool near exhaustion
         if (usagePercent >= _criticalThreshold)
-            _logger?.LogError(
-                "CRITICAL: Pool '{PoolName}' is {UsagePercent:P0} full! "
-                    + "({ActiveCount}/{MaxSize} entities active, {AvailableCount} available). "
-                    + "Consider increasing pool size or optimizing entity lifecycle.",
-                poolName,
-                usagePercent,
-                stats.ActiveCount,
-                stats.MaxSize,
-                stats.AvailableCount
-            );
+        {
+            if (stats.AutoResizeEnabled)
+            {
+                _logger?.LogWarning(
+                    "Pool '{PoolName}' is {UsagePercent:P0} full "
+                        + "({ActiveCount}/{MaxSize} entities active, {AvailableCount} available). "
+                        + "Auto-resize enabled - pool will expand if needed. Resized {ResizeCount} times.",
+                    poolName,
+                    usagePercent,
+                    stats.ActiveCount,
+                    stats.MaxSize,
+                    stats.AvailableCount,
+                    stats.ResizeCount
+                );
+            }
+            else
+            {
+                _logger?.LogError(
+                    "CRITICAL: Pool '{PoolName}' is {UsagePercent:P0} full! "
+                        + "({ActiveCount}/{MaxSize} entities active, {AvailableCount} available). "
+                        + "Consider increasing pool size or enabling auto-resize.",
+                    poolName,
+                    usagePercent,
+                    stats.ActiveCount,
+                    stats.MaxSize,
+                    stats.AvailableCount
+                );
+            }
+        }
         // Warning: Pool getting full
         else if (usagePercent >= _warningThreshold)
             _logger?.LogWarning(
                 "Pool '{PoolName}' is {UsagePercent:P0} full "
-                    + "({ActiveCount}/{MaxSize} entities active, {AvailableCount} available). "
-                    + "Pool may exhaust soon.",
+                    + "({ActiveCount}/{MaxSize} entities active, {AvailableCount} available).{AutoResizeNote}",
                 poolName,
                 usagePercent,
                 stats.ActiveCount,
                 stats.MaxSize,
-                stats.AvailableCount
+                stats.AvailableCount,
+                autoResizeNote
             );
 
         // Log performance metrics

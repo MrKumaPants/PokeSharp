@@ -39,8 +39,8 @@ fontRenderer.DrawString("Hello World", x, y, Color.White);
 
 **Usage**:
 ```csharp
-var config = new ConsoleConfig 
-{ 
+var config = new ConsoleConfig
+{
     Size = ConsoleSize.Medium,  // or Small, Full
     FontSize = 16
 };
@@ -357,12 +357,12 @@ Phase 3 will add advanced features:
 
 Phase 2 transforms the debug console from a functional tool into a **professional, IDE-like** experience:
 
-✅ Beautiful TrueType fonts  
-✅ Flexible sizing  
-✅ Multi-line scripting  
-✅ Syntax highlighting  
-✅ Auto-completion  
-✅ Persistent history  
+✅ Beautiful TrueType fonts
+✅ Flexible sizing
+✅ Multi-line scripting
+✅ Syntax highlighting
+✅ Auto-completion
+✅ Persistent history
 
 **Ready to use!** All features compile and integrate seamlessly with Phase 1.
 

@@ -47,15 +47,23 @@ public class ParameterHintTooltip : UIComponent
     private ParamHints? _hintInfo = null;
     private int _currentParameterIndex = 0;
 
-    // Visual properties
-    public Color BackgroundColor { get; set; } = UITheme.Dark.BackgroundElevated;
-    public Color BorderColor { get; set; } = UITheme.Dark.BorderPrimary;
-    public Color MethodNameColor { get; set; } = UITheme.Dark.SyntaxMethod;
-    public Color ParameterColor { get; set; } = UITheme.Dark.TextSecondary;
-    public Color CurrentParameterColor { get; set; } = UITheme.Dark.TextPrimary;
-    public Color TypeColor { get; set; } = UITheme.Dark.SyntaxType;
-    public Color CounterColor { get; set; } = UITheme.Dark.TextDim;
-    public float Padding { get; set; } = UITheme.Dark.PaddingMedium;
+    // Visual properties - nullable for theme fallback
+    private Color? _backgroundColor;
+    private Color? _borderColor;
+    private Color? _methodNameColor;
+    private Color? _parameterColor;
+    private Color? _currentParameterColor;
+    private Color? _typeColor;
+    private Color? _counterColor;
+
+    public Color BackgroundColor { get => _backgroundColor ?? ThemeManager.Current.BackgroundElevated; set => _backgroundColor = value; }
+    public Color BorderColor { get => _borderColor ?? ThemeManager.Current.BorderPrimary; set => _borderColor = value; }
+    public Color MethodNameColor { get => _methodNameColor ?? ThemeManager.Current.SyntaxMethod; set => _methodNameColor = value; }
+    public Color ParameterColor { get => _parameterColor ?? ThemeManager.Current.TextSecondary; set => _parameterColor = value; }
+    public Color CurrentParameterColor { get => _currentParameterColor ?? ThemeManager.Current.TextPrimary; set => _currentParameterColor = value; }
+    public Color TypeColor { get => _typeColor ?? ThemeManager.Current.SyntaxType; set => _typeColor = value; }
+    public Color CounterColor { get => _counterColor ?? ThemeManager.Current.TextDim; set => _counterColor = value; }
+    public float Padding { get; set; } = 8f;
     public float BorderThickness { get; set; } = 1f;
 
     public ParameterHintTooltip(string id)
@@ -226,7 +234,7 @@ public class ParameterHintTooltip : UIComponent
                         paramSize.X + 8,
                         lineHeight
                     );
-                    renderer.DrawRectangle(highlightRect, new Color(60, 60, 80, 180));
+                    renderer.DrawRectangle(highlightRect, ThemeManager.Current.InputSelection);
                 }
 
                 renderer.DrawText(paramText, new Vector2(xPos, yPos), paramColor);

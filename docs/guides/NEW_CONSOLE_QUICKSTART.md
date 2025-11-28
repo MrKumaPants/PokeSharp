@@ -154,9 +154,9 @@ If the new console still doesn't open after trying Ctrl+~:
    ```
 
 2. **Check the integration**:
-   - File exists: `PokeSharp.Engine.UI.Debug/Scenes/NewConsoleScene.cs` ✓
+   - File exists: `PokeSharp.Engine.UI.Debug/Scenes/ConsoleScene.cs` ✓
    - ConsoleSystem modified: `ToggleNewConsole()` method ✓
-   - DI registration: `AddTransient<NewConsoleScene>()` ✓
+   - DI registration: `AddTransient<ConsoleScene>()` ✓
 
 3. **Try the test scenes** (to verify UI system works):
    - Press `F11` → Should show basic UI test
@@ -166,8 +166,8 @@ If the new console still doesn't open after trying Ctrl+~:
 4. **Check for initialization errors**:
    Look in logs for:
    ```
-   "NewConsoleScene UI context initialized"
-   "NewConsoleScene content loaded successfully"
+   "ConsoleScene UI context initialized"
+   "ConsoleScene content loaded successfully"
    ```
 
 ---

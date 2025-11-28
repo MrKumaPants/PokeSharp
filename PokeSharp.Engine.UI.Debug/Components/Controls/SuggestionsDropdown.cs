@@ -39,21 +39,29 @@ public class SuggestionsDropdown : UIComponent
     // Store the actual visible count from last render
     private int _actualVisibleCount = 0;
 
-    // Visual properties
-    public Color BackgroundColor { get; set; } = UITheme.Dark.BackgroundElevated;
-    public Color SelectedColor { get; set; } = UITheme.Dark.Info;
-    public Color HoverColor { get; set; } = UITheme.Dark.ButtonHover;
-    public Color TextColor { get; set; } = UITheme.Dark.TextPrimary;
-    public Color DescriptionColor { get; set; } = UITheme.Dark.TextSecondary;
-    public Color CategoryColor { get; set; } = UITheme.Dark.TextDim;
-    public Color BorderColor { get; set; } = UITheme.Dark.BorderFocus;
+    // Visual properties - nullable for theme fallback
+    private Color? _backgroundColor;
+    private Color? _selectedColor;
+    private Color? _hoverColor;
+    private Color? _textColor;
+    private Color? _descriptionColor;
+    private Color? _categoryColor;
+    private Color? _borderColor;
+
+    public Color BackgroundColor { get => _backgroundColor ?? ThemeManager.Current.BackgroundElevated; set => _backgroundColor = value; }
+    public Color SelectedColor { get => _selectedColor ?? ThemeManager.Current.Info; set => _selectedColor = value; }
+    public Color HoverColor { get => _hoverColor ?? ThemeManager.Current.ButtonHover; set => _hoverColor = value; }
+    public Color TextColor { get => _textColor ?? ThemeManager.Current.TextPrimary; set => _textColor = value; }
+    public Color DescriptionColor { get => _descriptionColor ?? ThemeManager.Current.TextSecondary; set => _descriptionColor = value; }
+    public Color CategoryColor { get => _categoryColor ?? ThemeManager.Current.TextDim; set => _categoryColor = value; }
+    public Color BorderColor { get => _borderColor ?? ThemeManager.Current.BorderFocus; set => _borderColor = value; }
     public float BorderThickness { get; set; } = 2;
     public float ItemHeight { get; set; } = 30;
-    public float Padding { get; set; } = UITheme.Dark.PaddingMedium;
+    public float Padding { get; set; } = 8f;
 
-    // Scrollbar dimensions
-    private const float ScrollbarWidth = 6f;
-    private const float ScrollbarPadding = 4f;
+    // Scrollbar dimensions (use theme values)
+    private float ScrollbarWidth => ThemeManager.Current.ScrollbarWidth;
+    private float ScrollbarPadding => ThemeManager.Current.ScrollbarPadding;
 
     // Properties
     public int MaxVisibleItems
@@ -533,7 +541,7 @@ public class SuggestionsDropdown : UIComponent
             }
 
             // Draw text (sanitized for single line, manually clipped)
-            var textColor = isSelected ? Color.White : TextColor;
+            var textColor = isSelected ? ThemeManager.Current.TextPrimary : TextColor;
             var textPos = new Vector2(textX, itemRect.Y + 3);
             var sanitizedText = SanitizeForSingleLine(item.Text);
             DrawClippedText(renderer, sanitizedText, textPos, textColor, availableWidth);
@@ -542,7 +550,7 @@ public class SuggestionsDropdown : UIComponent
             if (!string.IsNullOrEmpty(item.Description))
             {
                 var descPos = new Vector2(textX, itemRect.Y + 16);
-                var descColor = isSelected ? new Color(220, 220, 220) : DescriptionColor;
+                var descColor = isSelected ? ThemeManager.Current.TextPrimary : DescriptionColor;
                 var sanitizedDesc = SanitizeForSingleLine(item.Description);
                 // For description, use the full width (including category space since it's on different line)
                 var descAvailableWidth = itemRect.Width - (textX - itemRect.X) - 8;
@@ -648,7 +656,7 @@ public class SuggestionsDropdown : UIComponent
             ScrollbarWidth,
             scrollbarHeight
         );
-        renderer.DrawRectangle(trackRect, new Color(60, 60, 60, 150));
+        renderer.DrawRectangle(trackRect, ThemeManager.Current.ScrollbarTrack);
 
         // Thumb
         var thumbRect = new LayoutRect(
@@ -657,7 +665,7 @@ public class SuggestionsDropdown : UIComponent
             ScrollbarWidth,
             thumbHeight
         );
-        renderer.DrawRectangle(thumbRect, new Color(120, 120, 120, 200));
+        renderer.DrawRectangle(thumbRect, ThemeManager.Current.ScrollbarThumb);
     }
 
     protected override bool IsInteractive() => true;

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
+using PokeSharp.Engine.UI.Debug.Core;
 using System;
 using System.Text.RegularExpressions;
 
@@ -99,15 +100,16 @@ public class ConsoleLogger : ILogger
 
     private static Color GetColorForLogLevel(LogLevel logLevel)
     {
+        var theme = ThemeManager.Current;
         return logLevel switch
         {
-            LogLevel.Trace => new Color(150, 150, 150),       // Gray
-            LogLevel.Debug => new Color(180, 180, 255),       // Light Blue
-            LogLevel.Information => Color.White,              // White
-            LogLevel.Warning => new Color(255, 200, 100),     // Orange
-            LogLevel.Error => new Color(255, 100, 100),       // Red
-            LogLevel.Critical => new Color(255, 50, 255),     // Magenta
-            _ => Color.LightGray
+            LogLevel.Trace => theme.TextDim,
+            LogLevel.Debug => theme.Info,
+            LogLevel.Information => theme.TextPrimary,
+            LogLevel.Warning => theme.Warning,
+            LogLevel.Error => theme.Error,
+            LogLevel.Critical => theme.Error,  // Use same as error, could add theme.Critical
+            _ => theme.TextSecondary
         };
     }
 

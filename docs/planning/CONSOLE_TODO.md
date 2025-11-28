@@ -189,7 +189,7 @@ Implementation: TextEditor.cs lines 887-923, BracketMatcher utility, rendering 1
 
 ```
 Status: ✅ IMPLEMENTED
-Implementation: UIRenderer.cs, NewConsoleScene.cs
+Implementation: UIRenderer.cs, ConsoleScene.cs
 ```
 
 **Implemented:**
@@ -471,7 +471,7 @@ Not needed - existing timestamp display and text search is sufficient.
 
 ```
 Status: ✅ IMPLEMENTED
-Implementation: LogsPanel.cs, NewConsoleScene.cs, IConsoleContext.cs, ExportCommand.cs
+Implementation: LogsPanel.cs, ConsoleScene.cs, IConsoleContext.cs, ExportCommand.cs
 ```
 
 **Implemented:**
@@ -651,6 +651,200 @@ Priority: LOW
 - [ ] Compare snapshots over time
 
 **Why Low:** Nice to have, but rarely used.
+
+---
+
+## 🏷️ Entities Tab - ECS Entity Browser (NEW)
+
+### Overview
+
+Browse and inspect all entities in the Arch ECS World. Useful for debugging entity state, component values, and entity relationships.
+
+**Existing Foundation:**
+
+- `LiveEntityInspector.cs` - Real-time entity inspector panel
+- `EntityInspector.cs` - Basic entity inspector panel
+- `EntityInfo.cs` - Entity data model
+- Arch ECS: `World`, `EntityPoolManager`, `EntityFactoryService`
+
+---
+
+### 🔴 HIGH PRIORITY
+
+#### 1. **Entity List View**
+
+```
+Status: NOT IMPLEMENTED
+Complexity: High (6-8 hours)
+Priority: HIGH
+```
+
+**Required:**
+
+- [ ] Query all entities from Arch World
+- [ ] Display entity list with ID, name/tag, component count
+- [ ] Virtual scrolling for large entity counts (1000+)
+- [ ] Entity count in header
+
+**Implementation:**
+
+```csharp
+// EntitiesPanel.cs
+public class EntitiesPanel : Panel
+{
+    private List<EntityInfo> _entities = new();
+    private Arch.Core.World _world;
+
+    public void RefreshEntities();
+    public void SetWorld(Arch.Core.World world);
+}
+
+// Query example
+var query = new QueryDescription().WithAll<Transform>();
+_world.Query(in query, (Entity entity, ref Transform t) => {
+    _entities.Add(new EntityInfo { Id = entity.Id, ... });
+});
+```
+
+---
+
+#### 2. **Entity Filtering**
+
+```
+Status: NOT IMPLEMENTED
+Complexity: Medium (3-4 hours)
+Priority: HIGH
+```
+
+**Required:**
+
+- [ ] Filter by archetype/tag (pokemon, npc, item, trigger)
+- [ ] Filter by component type (has Transform, has Sprite, etc.)
+- [ ] Filter by active/inactive state
+- [ ] Text search by name or ID
+
+**Implementation:**
+
+```csharp
+public void SetTagFilter(string? tag);
+public void SetComponentFilter(Type? componentType);
+public void SetSearchFilter(string text);
+```
+
+---
+
+#### 3. **Entity Inspector Integration**
+
+```
+Status: NOT IMPLEMENTED
+Complexity: Medium (4-5 hours)
+Priority: HIGH
+```
+
+**Required:**
+
+- [ ] Click entity to expand and show components
+- [ ] Display all component types attached
+- [ ] Show component property values
+- [ ] Tree-view with expand/collapse
+
+**Implementation:**
+
+```csharp
+public void SelectEntity(int entityId);
+public void ExpandEntity(int entityId);
+public void CollapseEntity(int entityId);
+```
+
+---
+
+### 🟡 MEDIUM PRIORITY
+
+#### 4. **Live Entity Updates**
+
+```
+Status: NOT IMPLEMENTED
+Complexity: Medium (3-4 hours)
+Priority: MEDIUM
+```
+
+**Features:**
+
+- [ ] Auto-refresh entity list (configurable interval)
+- [ ] Highlight newly spawned entities
+- [ ] Highlight recently despawned entities
+- [ ] Show entity spawn/despawn rate
+
+---
+
+#### 5. **Component Value Editing**
+
+```
+Status: NOT IMPLEMENTED
+Complexity: High (5-6 hours)
+Priority: MEDIUM
+```
+
+**Features:**
+
+- [ ] Edit primitive component values inline
+- [ ] Type validation
+- [ ] Undo/redo for component edits
+- [ ] Live update to ECS World
+
+---
+
+#### 6. **Entity Commands**
+
+```
+Status: NOT IMPLEMENTED
+Complexity: Medium (2-3 hours)
+Priority: MEDIUM
+```
+
+**Commands:**
+
+- [ ] `entity list` - List all entities
+- [ ] `entity find <name/id>` - Find entity by name or ID
+- [ ] `entity inspect <id>` - Show entity details
+- [ ] `entity filter <tag>` - Filter by tag
+- [ ] `entity spawn <template>` - Spawn from template
+- [ ] `entity destroy <id>` - Destroy entity
+
+---
+
+### 🟢 LOW PRIORITY
+
+#### 7. **Entity Relationships**
+
+```
+Status: NOT IMPLEMENTED
+Complexity: Medium (3-4 hours)
+Priority: LOW
+```
+
+**Features:**
+
+- [ ] Show parent/child relationships
+- [ ] Show EntityRef references
+- [ ] Visualize entity graph
+
+---
+
+#### 8. **Entity Statistics**
+
+```
+Status: NOT IMPLEMENTED
+Complexity: Low (1-2 hours)
+Priority: LOW
+```
+
+**Features:**
+
+- [ ] Total entity count
+- [ ] Count by archetype/tag
+- [ ] Memory usage estimation
+- [ ] Pool statistics
 
 ---
 
@@ -837,10 +1031,10 @@ Priority: LOW
 
 **Total Features:**
 
-- ✅ Implemented: 75+ features
-- 🔴 High Priority: 0 remaining
-- 🟡 Medium Priority: 1 (configurable themes)
-- 🟢 Low Priority: 0
+- ✅ Implemented: 75+ features (Console, Watch, Logs, Variables tabs complete)
+- 🔴 High Priority: 3 (Entity Browser core features)
+- 🟡 Medium Priority: 4 (configurable themes + entity enhancements)
+- 🟢 Low Priority: 2 (entity relationships, statistics)
 
 ---
 
@@ -903,11 +1097,17 @@ Priority: LOW
 | Watch     | ✅ 100% Complete |
 | Logs      | ✅ 100% Complete |
 | Variables | ✅ 100% Complete |
+| Entities  | 🔴 Not Started   |
 
 **Remaining:**
 
+- 🔴 **Entity Browser Tab** (NEW)
+  - Entity list view with virtual scrolling
+  - Entity filtering (by tag, component, search)
+  - Entity inspector with component values
 - 🟡 Configurable themes (light theme, high contrast)
+- 🟡 Entity live updates, component editing, commands
 
 ---
 
-**The console system is production-ready! All tabs fully functional with advanced features. 🚀**
+**The console system is production-ready! Console, Watch, Logs, Variables tabs are 100% complete. Entity Browser tab is next! 🚀**

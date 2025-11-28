@@ -46,18 +46,28 @@ public class TextEditor : UIComponent, ITextInput
     private int _maxHistory = 100;
     private bool _historyPersistenceEnabled = true;
 
-    // Visual properties
-    public Color BackgroundColor { get; set; } = UITheme.Dark.InputBackground;
-    public Color TextColor { get; set; } = UITheme.Dark.InputText;
-    public Color CursorColor { get; set; } = UITheme.Dark.InputCursor;
-    public Color SelectionColor { get; set; } = UITheme.Dark.InputSelection;
-    public Color BracketMatchColor { get; set; } = UITheme.Dark.BracketMatch;
-    public Color BorderColor { get; set; } = UITheme.Dark.BorderPrimary;
-    public Color FocusBorderColor { get; set; } = UITheme.Dark.BorderFocus;
-    public Color LineNumberColor { get; set; } = UITheme.Dark.LineNumberDim;
-    public Color CurrentLineNumberColor { get; set; } = UITheme.Dark.LineNumberCurrent;
+    // Visual properties - nullable for theme fallback
+    private Color? _backgroundColor;
+    private Color? _textColor;
+    private Color? _cursorColor;
+    private Color? _selectionColor;
+    private Color? _bracketMatchColor;
+    private Color? _borderColor;
+    private Color? _focusBorderColor;
+    private Color? _lineNumberColor;
+    private Color? _currentLineNumberColor;
+
+    public Color BackgroundColor { get => _backgroundColor ?? ThemeManager.Current.InputBackground; set => _backgroundColor = value; }
+    public Color TextColor { get => _textColor ?? ThemeManager.Current.InputText; set => _textColor = value; }
+    public Color CursorColor { get => _cursorColor ?? ThemeManager.Current.InputCursor; set => _cursorColor = value; }
+    public Color SelectionColor { get => _selectionColor ?? ThemeManager.Current.InputSelection; set => _selectionColor = value; }
+    public Color BracketMatchColor { get => _bracketMatchColor ?? ThemeManager.Current.BracketMatch; set => _bracketMatchColor = value; }
+    public Color BorderColor { get => _borderColor ?? ThemeManager.Current.BorderPrimary; set => _borderColor = value; }
+    public Color FocusBorderColor { get => _focusBorderColor ?? ThemeManager.Current.BorderFocus; set => _focusBorderColor = value; }
+    public Color LineNumberColor { get => _lineNumberColor ?? ThemeManager.Current.LineNumberDim; set => _lineNumberColor = value; }
+    public Color CurrentLineNumberColor { get => _currentLineNumberColor ?? ThemeManager.Current.LineNumberCurrent; set => _currentLineNumberColor = value; }
     public float BorderThickness { get; set; } = 1;
-    public float Padding { get; set; } = UITheme.Dark.PaddingMedium;
+    public float Padding { get; set; } = 8f;
     public bool ShowLineNumbers { get; set; } = false;
 
     // Smart code features
@@ -136,8 +146,9 @@ public class TextEditor : UIComponent, ITextInput
     }
 
     // Prompt string (e.g., "> ")
+    private Color? _promptColor;
     public string Prompt { get; set; } = "> ";
-    public Color PromptColor { get; set; } = UITheme.Dark.Prompt;
+    public Color PromptColor { get => _promptColor ?? ThemeManager.Current.Prompt; set => _promptColor = value; }
 
     // Properties
     public string Text

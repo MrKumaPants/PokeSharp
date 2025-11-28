@@ -133,7 +133,7 @@ private bool HandleInput()
     }
 
     // Handle Ctrl+Space - trigger auto-complete
-    if (WasKeyJustPressed(Keys.Space, currentKeyboard) && 
+    if (WasKeyJustPressed(Keys.Space, currentKeyboard) &&
         (currentKeyboard.IsKeyDown(Keys.LeftControl) || currentKeyboard.IsKeyDown(Keys.RightControl)) &&
         _console.Config.AutoCompleteEnabled)
     {
@@ -302,7 +302,7 @@ After integration, verify:
 
 **After (Phase 2)**:
 ```
-> var x = 10;           
+> var x = 10;
   ^^^(blue) ^(white) ^^(cyan) ^^(white)
   (smooth TrueType font, syntax colored)
 ```

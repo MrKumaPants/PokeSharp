@@ -23,19 +23,33 @@ public class TabContainer : Panel
     /// <summary>Event triggered when active tab changes</summary>
     public Action<int>? OnTabChanged { get; set; }
 
+    // Track if colors were explicitly set
+    private bool _backgroundColorSet = false;
+    private bool _borderColorSet = false;
+
+    public new Color? BackgroundColor
+    {
+        get => base.BackgroundColor;
+        set { base.BackgroundColor = value; _backgroundColorSet = value.HasValue; }
+    }
+
+    public new Color? BorderColor
+    {
+        get => base.BorderColor;
+        set { base.BorderColor = value; _borderColorSet = value.HasValue; }
+    }
+
     public TabContainer()
     {
-        // Create tab bar
+        // Create tab bar - colors set dynamically in OnRenderContainer
         _tabBar = new TabBar
         {
             Id = $"{Id}_tabbar",
-            BackgroundColor = UITheme.Dark.BackgroundSecondary,
-            BorderColor = UITheme.Dark.BorderPrimary,
             BorderThickness = 1,
             Constraint = new LayoutConstraint
             {
                 Anchor = Anchor.StretchTop,
-                Height = UITheme.Dark.ButtonHeight
+                Height = 30 // Fixed height
             }
         };
 
@@ -55,6 +69,24 @@ public class TabContainer : Panel
     }
 
     /// <summary>
+    /// Override to set theme colors dynamically.
+    /// </summary>
+    protected override void OnRenderContainer(UIContext context)
+    {
+        // Set colors from theme if not explicitly set
+        if (!_backgroundColorSet)
+            base.BackgroundColor = ThemeManager.Current.ConsoleBackground;
+        if (!_borderColorSet)
+            base.BorderColor = ThemeManager.Current.BorderPrimary;
+
+        // Update tab bar colors
+        _tabBar.BackgroundColor = ThemeManager.Current.TabBarBackground;
+        _tabBar.BorderColor = ThemeManager.Current.BorderPrimary;
+
+        base.OnRenderContainer(context);
+    }
+
+    /// <summary>
     /// Adds a new tab with the specified title and content panel.
     /// </summary>
     /// <param name="title">Tab title</param>
@@ -70,7 +102,7 @@ public class TabContainer : Panel
         content.Id = $"{Id}_content_{tabIndex}";
 
         // Get the tab bar height from constraint or default
-        var tabBarHeight = _tabBar.Constraint.Height ?? UITheme.Dark.ButtonHeight;
+        var tabBarHeight = _tabBar.Constraint.Height ?? ThemeManager.Current.ButtonHeight;
 
         content.Constraint = new LayoutConstraint
         {
@@ -120,11 +152,6 @@ public class TabContainer : Panel
     public Panel? GetActiveContentPanel()
     {
         return GetContentPanel(ActiveTabIndex);
-    }
-
-    protected override void OnRenderContainer(UIContext context)
-    {
-        base.OnRenderContainer(context);
     }
 
     protected override void OnRenderChildren(UIContext context)

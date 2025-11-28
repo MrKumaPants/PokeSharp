@@ -13,7 +13,7 @@ This document lists the remaining items from `CODE_QUALITY_ANALYSIS.md` that hav
 ## Medium Priority Items
 
 ### 1. ScriptService SRP Violation (3.1.2)
-**Severity**: Medium  
+**Severity**: Medium
 **Location**: `PokeSharp.Game.Scripting/Services/ScriptService.cs`
 
 **Issue**: `ScriptService` handles multiple responsibilities:
@@ -35,7 +35,7 @@ This document lists the remaining items from `CODE_QUALITY_ANALYSIS.md` that hav
 ---
 
 ### 2. Hard-Coded Initialization Steps (3.2.1)
-**Severity**: Medium  
+**Severity**: Medium
 **Location**: `PokeSharp.Game/PokeSharpGame.cs`
 
 **Issue**: Initialization steps are hard-coded in `InitializeGameplaySceneAsync`, making it difficult to extend without modification.
@@ -59,7 +59,7 @@ This document lists the remaining items from `CODE_QUALITY_ANALYSIS.md` that hav
 ---
 
 ### 3. Generic Exception Catching (5.3.2)
-**Severity**: Medium  
+**Severity**: Medium
 **Location**: Multiple files
 
 **Issue**: Many catch blocks use `catch (Exception ex)` instead of specific exception types.
@@ -91,7 +91,7 @@ This document lists the remaining items from `CODE_QUALITY_ANALYSIS.md` that hav
 ## Low Priority Items
 
 ### 4. Duplicate Progress Reporting (4.4)
-**Severity**: Low  
+**Severity**: Low
 **Location**: `PokeSharp.Game/PokeSharpGame.cs`
 
 **Issue**: Repeated pattern:
@@ -111,7 +111,7 @@ progress.Progress = InitializationProgress.X;
 ---
 
 ### 5. String Interpolation in Logging (5.4.1)
-**Severity**: Low  
+**Severity**: Low
 **Location**: Check throughout codebase
 
 **Issue**: Some logs may use string interpolation instead of structured logging.
@@ -134,7 +134,7 @@ progress.Progress = InitializationProgress.X;
 ---
 
 ### 6. Hard-Coded Configuration (5.7.1)
-**Severity**: Low  
+**Severity**: Low
 **Location**: `PokeSharp.Game/PokeSharpGame.cs`
 
 **Issue**: Some configuration is still hard-coded:
@@ -162,7 +162,7 @@ var windowConfig = GameWindowConfig.CreateDefault();
 ---
 
 ### 7. Commented-Out Code (2.4)
-**Severity**: Low  
+**Severity**: Low
 **Location**: `PokeSharp.Engine.Rendering/Assets/AssetManager.cs` (line 48-49)
 
 **Issue**: Commented-out code should be removed.
@@ -183,7 +183,7 @@ var windowConfig = GameWindowConfig.CreateDefault();
 ---
 
 ### 8. TODO Comments (8.1)
-**Severity**: Low  
+**Severity**: Low
 **Location**: Multiple files
 
 **Found TODOs**:

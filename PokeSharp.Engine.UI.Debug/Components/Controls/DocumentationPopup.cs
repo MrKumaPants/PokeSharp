@@ -39,18 +39,28 @@ public class DocumentationPopup : UIComponent
 {
     private DocInfo? _documentation = null;
 
-    // Visual properties
-    public Color BackgroundColor { get; set; } = UITheme.Dark.BackgroundElevated;
-    public Color BorderColor { get; set; } = UITheme.Dark.BorderPrimary;
-    public Color TitleColor { get; set; } = UITheme.Dark.SyntaxMethod; // Yellow (method names)
-    public Color SummaryColor { get; set; } = UITheme.Dark.TextSecondary;
-    public Color SignatureColor { get; set; } = UITheme.Dark.TextPrimary;
-    public Color SectionHeaderColor { get; set; } = UITheme.Dark.Info; // Light blue
-    public Color ParameterNameColor { get; set; } = UITheme.Dark.SyntaxType; // Cyan/Teal
-    public Color ParameterDescColor { get; set; } = UITheme.Dark.TextSecondary;
-    public Color ExampleColor { get; set; } = UITheme.Dark.SyntaxString; // Orange (string color)
-    public float Padding { get; set; } = UITheme.Dark.PaddingLarge;
-    public float LineSpacing { get; set; } = UITheme.Dark.PaddingSmall;
+    // Visual properties - nullable for theme fallback
+    private Color? _backgroundColor;
+    private Color? _borderColor;
+    private Color? _titleColor;
+    private Color? _summaryColor;
+    private Color? _signatureColor;
+    private Color? _sectionHeaderColor;
+    private Color? _parameterNameColor;
+    private Color? _parameterDescColor;
+    private Color? _exampleColor;
+
+    public Color BackgroundColor { get => _backgroundColor ?? ThemeManager.Current.BackgroundElevated; set => _backgroundColor = value; }
+    public Color BorderColor { get => _borderColor ?? ThemeManager.Current.BorderPrimary; set => _borderColor = value; }
+    public Color TitleColor { get => _titleColor ?? ThemeManager.Current.SyntaxMethod; set => _titleColor = value; }
+    public Color SummaryColor { get => _summaryColor ?? ThemeManager.Current.TextSecondary; set => _summaryColor = value; }
+    public Color SignatureColor { get => _signatureColor ?? ThemeManager.Current.TextPrimary; set => _signatureColor = value; }
+    public Color SectionHeaderColor { get => _sectionHeaderColor ?? ThemeManager.Current.Info; set => _sectionHeaderColor = value; }
+    public Color ParameterNameColor { get => _parameterNameColor ?? ThemeManager.Current.SyntaxType; set => _parameterNameColor = value; }
+    public Color ParameterDescColor { get => _parameterDescColor ?? ThemeManager.Current.TextSecondary; set => _parameterDescColor = value; }
+    public Color ExampleColor { get => _exampleColor ?? ThemeManager.Current.SyntaxString; set => _exampleColor = value; }
+    public float Padding { get; set; } = 12f;
+    public float LineSpacing { get; set; } = 4f;
     public float SectionSpacing { get; set; } = 8f;
     public float BorderThickness { get; set; } = 1f;
     public float MaxWidth { get; set; } = 500f;

@@ -33,7 +33,8 @@ public class TextEditorCursor
     /// <summary>
     /// Gets or sets the blink rate in seconds.
     /// </summary>
-    public float BlinkRate { get; set; } = UITheme.Dark.CursorBlinkRate;
+    private float? _blinkRate;
+    public float BlinkRate { get => _blinkRate ?? ThemeManager.Current.CursorBlinkRate; set => _blinkRate = value; }
 
     /// <summary>
     /// Gets whether the cursor should be visible based on blink animation.

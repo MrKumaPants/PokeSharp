@@ -76,11 +76,11 @@ public class GameInitializationConfig
     /// <summary>
     ///     Default X coordinate for initial player spawn (in tiles).
     /// </summary>
-    public int PlayerSpawnX { get; set; } = 10;
+    public int PlayerSpawnX { get; set; } = 20;
 
     /// <summary>
     ///     Default Y coordinate for initial player spawn (in tiles).
     /// </summary>
-    public int PlayerSpawnY { get; set; } = 8;
+    public int PlayerSpawnY { get; set; } = 15;
 }
 

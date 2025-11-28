@@ -16,16 +16,23 @@ public class SearchBar : UIComponent
     private string _searchText = string.Empty;
     private int _cursorPosition = 0;
     private float _cursorBlinkTimer = 0;
-    private static float CursorBlinkRate => UITheme.Dark.CursorBlinkRate;
+    private static float CursorBlinkRate => ThemeManager.Current.CursorBlinkRate;
 
-    // Visual properties
-    public Color BackgroundColor { get; set; } = UITheme.Dark.ConsoleSearchBackground;
-    public Color TextColor { get; set; } = UITheme.Dark.InputText;
-    public Color CursorColor { get; set; } = UITheme.Dark.InputCursor;
-    public Color BorderColor { get; set; } = UITheme.Dark.BorderPrimary;
-    public Color FocusBorderColor { get; set; } = UITheme.Dark.BorderFocus;
-    public Color InfoColor { get; set; } = UITheme.Dark.TextSecondary;
-    public float Padding { get; set; } = UITheme.Dark.PaddingMedium;
+    // Visual properties - nullable for theme fallback
+    private Color? _backgroundColor;
+    private Color? _textColor;
+    private Color? _cursorColor;
+    private Color? _borderColor;
+    private Color? _focusBorderColor;
+    private Color? _infoColor;
+
+    public Color BackgroundColor { get => _backgroundColor ?? ThemeManager.Current.ConsoleSearchBackground; set => _backgroundColor = value; }
+    public Color TextColor { get => _textColor ?? ThemeManager.Current.InputText; set => _textColor = value; }
+    public Color CursorColor { get => _cursorColor ?? ThemeManager.Current.InputCursor; set => _cursorColor = value; }
+    public Color BorderColor { get => _borderColor ?? ThemeManager.Current.BorderPrimary; set => _borderColor = value; }
+    public Color FocusBorderColor { get => _focusBorderColor ?? ThemeManager.Current.BorderFocus; set => _focusBorderColor = value; }
+    public Color InfoColor { get => _infoColor ?? ThemeManager.Current.TextSecondary; set => _infoColor = value; }
+    public float Padding { get; set; } = 8f;
     public float BorderThickness { get; set; } = 1f;
 
     // Search state

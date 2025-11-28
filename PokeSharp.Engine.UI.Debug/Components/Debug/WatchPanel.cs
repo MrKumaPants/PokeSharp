@@ -3,6 +3,7 @@ using PokeSharp.Engine.UI.Debug.Components.Base;
 using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Components.Layout;
 using PokeSharp.Engine.UI.Debug.Core;
+using PokeSharp.Engine.UI.Debug.Interfaces;
 using PokeSharp.Engine.UI.Debug.Layout;
 using System;
 using System.Collections.Generic;
@@ -14,10 +15,12 @@ namespace PokeSharp.Engine.UI.Debug.Components.Debug;
 /// Panel for watching and displaying variable values in real-time.
 /// Completely redesigned for better debugging UX.
 /// Uses background thread evaluation to prevent blocking the game loop.
+/// Implements <see cref="IWatchOperations"/> for command access.
 /// </summary>
-public class WatchPanel : Panel, IDisposable
+public class WatchPanel : Panel, IDisposable, IWatchOperations
 {
     private readonly TextBuffer _watchBuffer;
+    private readonly StatusBar _statusBar;
     private readonly Dictionary<string, WatchEntry> _watches = new();
     private readonly List<string> _watchKeys = new(); // Maintain insertion order
     private readonly Dictionary<string, bool> _groupCollapsedState = new(); // Track collapsed groups
@@ -89,19 +92,27 @@ public class WatchPanel : Panel, IDisposable
     /// Creates a WatchPanel with the specified components.
     /// Use <see cref="WatchPanelBuilder"/> to construct instances.
     /// </summary>
-    internal WatchPanel(TextBuffer watchBuffer, double updateInterval, bool autoUpdate)
+    internal WatchPanel(TextBuffer watchBuffer, StatusBar statusBar, double updateInterval, bool autoUpdate)
     {
         _watchBuffer = watchBuffer;
+        _statusBar = statusBar;
         UpdateInterval = updateInterval;
         AutoUpdate = autoUpdate;
 
         Id = "watch_panel";
-        BackgroundColor = UITheme.Dark.ConsoleBackground;
-        BorderColor = UITheme.Dark.BorderPrimary;
+        // Colors set dynamically in OnRenderContainer for theme switching
         BorderThickness = 1;
-        Constraint.Padding = UITheme.Dark.PaddingMedium;
+        Constraint.Padding = 8;
+
+        // StatusBar anchored to bottom
+        _statusBar.Constraint.Anchor = Anchor.StretchBottom;
+        _statusBar.Constraint.OffsetY = 0;
 
         AddChild(_watchBuffer);
+        AddChild(_statusBar);
+
+        // Initialize status bar with default content
+        UpdateStatusBar();
     }
 
     /// <summary>
@@ -682,8 +693,8 @@ public class WatchPanel : Panel, IDisposable
         // Display pinned watches first (regardless of group)
         if (pinnedWatches.Any())
         {
-            _watchBuffer.AppendLine("  ═══ PINNED ═══", UITheme.Dark.Warning);
-            _watchBuffer.AppendLine("", Color.White);
+            _watchBuffer.AppendLine("  ═══ PINNED ═══", ThemeManager.Current.Warning);
+            _watchBuffer.AppendLine("", ThemeManager.Current.TextDim);
 
             foreach (var entry in pinnedWatches.OrderBy(w => _watchKeys.IndexOf(w.Name)))
             {
@@ -705,11 +716,11 @@ public class WatchPanel : Panel, IDisposable
                 var collapseIndicator = isCollapsed ? "[+]" : "[-]";
                 var groupCount = group.Count();
 
-                _watchBuffer.AppendLine($"  {collapseIndicator} {group.Key.ToUpper()} ({groupCount} watch{(groupCount == 1 ? "" : "es")})", UITheme.Dark.Info);
+                _watchBuffer.AppendLine($"  {collapseIndicator} {group.Key.ToUpper()} ({groupCount} watch{(groupCount == 1 ? "" : "es")})", ThemeManager.Current.Info);
 
                 if (!isCollapsed)
                 {
-                    _watchBuffer.AppendLine("", Color.White);
+                    _watchBuffer.AppendLine("", ThemeManager.Current.TextDim);
                     foreach (var entry in group.OrderBy(w => _watchKeys.IndexOf(w.Name)))
                     {
                         DisplayWatch(entry, ref displayIndex, indent: "    ");
@@ -717,7 +728,7 @@ public class WatchPanel : Panel, IDisposable
                 }
                 else
                 {
-                    _watchBuffer.AppendLine("", Color.White);
+                    _watchBuffer.AppendLine("", ThemeManager.Current.TextDim);
                 }
             }
             else
@@ -741,14 +752,14 @@ public class WatchPanel : Panel, IDisposable
         var alertIndicator = entry.AlertType != null ? " [ALERT]" : "";
         var alertTriggeredIndicator = entry.AlertTriggered ? " ⚠" : "";
 
-        var nameColor = entry.IsPinned ? UITheme.Dark.Warning :
-                       entry.AlertTriggered ? UITheme.Dark.Error :
-                       UITheme.Dark.BorderFocus;
+        var nameColor = entry.IsPinned ? ThemeManager.Current.Warning :
+                       entry.AlertTriggered ? ThemeManager.Current.Error :
+                       ThemeManager.Current.BorderFocus;
 
         _watchBuffer.AppendLine($"{indent}[{displayIndex}] {entry.Name}{conditionalIndicator}{alertIndicator}{alertTriggeredIndicator}", nameColor);
 
         // Expression
-        _watchBuffer.AppendLine($"{indent}    Expression: {entry.Expression}", UITheme.Dark.TextSecondary);
+        _watchBuffer.AppendLine($"{indent}    Expression: {entry.Expression}", ThemeManager.Current.TextSecondary);
 
         // Alert status (if alert configured)
         if (entry.AlertType != null)
@@ -763,7 +774,7 @@ public class WatchPanel : Panel, IDisposable
             };
 
             var alertStatus = entry.AlertTriggered ? "TRIGGERED" : "watching";
-            var alertColor = entry.AlertTriggered ? UITheme.Dark.Error : UITheme.Dark.TextSecondary;
+            var alertColor = entry.AlertTriggered ? ThemeManager.Current.Error : ThemeManager.Current.TextSecondary;
 
             var lastAlertInfo = entry.LastAlertTime.HasValue
                 ? $" (last: {(DateTime.Now - entry.LastAlertTime.Value).TotalSeconds:F1}s ago)"
@@ -776,24 +787,24 @@ public class WatchPanel : Panel, IDisposable
         if (entry.Condition != null)
         {
             var condStatus = entry.ConditionMet ? "TRUE" : "FALSE (skipped)";
-            var condColor = entry.ConditionMet ? UITheme.Dark.Success : UITheme.Dark.TextDim;
+            var condColor = entry.ConditionMet ? ThemeManager.Current.Success : ThemeManager.Current.TextDim;
             _watchBuffer.AppendLine($"{indent}    Condition:  {entry.Condition} = {condStatus}", condColor);
         }
 
         // Value or error (only if condition met or no condition)
         if (!entry.ConditionMet && entry.Condition != null)
         {
-            _watchBuffer.AppendLine($"{indent}    Value:      <waiting for condition>", UITheme.Dark.TextDim);
+            _watchBuffer.AppendLine($"{indent}    Value:      <waiting for condition>", ThemeManager.Current.TextDim);
         }
         else if (entry.HasError)
         {
-            _watchBuffer.AppendLine($"{indent}    Value:      <ERROR>", UITheme.Dark.Error);
-            _watchBuffer.AppendLine($"{indent}    Error:      {entry.ErrorMessage}", UITheme.Dark.Error);
+            _watchBuffer.AppendLine($"{indent}    Value:      <ERROR>", ThemeManager.Current.Error);
+            _watchBuffer.AppendLine($"{indent}    Error:      {entry.ErrorMessage}", ThemeManager.Current.Error);
         }
         else
         {
             var valueStr = FormatValue(entry.LastValue);
-            var valueColor = UITheme.Dark.TextPrimary;
+            var valueColor = ThemeManager.Current.TextPrimary;
 
             // Check if value changed
             var changeIndicator = "";
@@ -801,7 +812,7 @@ public class WatchPanel : Panel, IDisposable
             {
                 var prevStr = FormatValue(entry.PreviousValue);
                 changeIndicator = $"  (was: {prevStr})";
-                valueColor = UITheme.Dark.Warning; // Highlight changed values
+                valueColor = ThemeManager.Current.Warning; // Highlight changed values
             }
 
             _watchBuffer.AppendLine($"{indent}    Value:      {valueStr}{changeIndicator}", valueColor);
@@ -810,7 +821,7 @@ public class WatchPanel : Panel, IDisposable
             if (entry.History.Count > 0)
             {
                 var historyStr = $"{entry.History.Count} change{(entry.History.Count == 1 ? "" : "s")} tracked";
-                _watchBuffer.AppendLine($"{indent}    History:    {historyStr}", UITheme.Dark.TextDim);
+                _watchBuffer.AppendLine($"{indent}    History:    {historyStr}", ThemeManager.Current.TextDim);
             }
 
             // Show comparison if configured
@@ -819,13 +830,13 @@ public class WatchPanel : Panel, IDisposable
                 var compareLabel = entry.ComparisonLabel ?? "Compare";
                 var compareValue = FormatValue(entry.ComparisonValue);
 
-                _watchBuffer.AppendLine($"{indent}    {compareLabel}: {compareValue}", UITheme.Dark.TextSecondary);
+                _watchBuffer.AppendLine($"{indent}    {compareLabel}: {compareValue}", ThemeManager.Current.TextSecondary);
 
                 // Show difference if calculated
                 if (entry.ComparisonDiff != null)
                 {
                     var diffStr = "";
-                    var diffColor = UITheme.Dark.TextDim;
+                    var diffColor = ThemeManager.Current.TextDim;
 
                     if (entry.ComparisonDiff is (double diff, double percent))
                     {
@@ -835,15 +846,15 @@ public class WatchPanel : Panel, IDisposable
                         diffStr = $"{sign}{diff:F2} ({percentSign}{percent:F1}%)";
 
                         // Color code the difference
-                        diffColor = Math.Abs(diff) < 0.001 ? UITheme.Dark.Success : // Equal
-                                   diff > 0 ? UITheme.Dark.Warning :                  // Higher
-                                   UITheme.Dark.Info;                                 // Lower
+                        diffColor = Math.Abs(diff) < 0.001 ? ThemeManager.Current.Success : // Equal
+                                   diff > 0 ? ThemeManager.Current.Warning :                  // Higher
+                                   ThemeManager.Current.Info;                                 // Lower
                     }
                     else if (entry.ComparisonDiff is string str)
                     {
                         // Non-numeric comparison
                         diffStr = str;
-                        diffColor = str == "EQUAL" ? UITheme.Dark.Success : UITheme.Dark.Warning;
+                        diffColor = str == "EQUAL" ? ThemeManager.Current.Success : ThemeManager.Current.Warning;
                     }
 
                     _watchBuffer.AppendLine($"{indent}    Difference: {diffStr}", diffColor);
@@ -854,10 +865,10 @@ public class WatchPanel : Panel, IDisposable
         // Metadata
         var timeSinceUpdate = (DateTime.Now - entry.LastUpdated).TotalSeconds;
         var updateInfo = timeSinceUpdate < 1 ? "just now" : $"{timeSinceUpdate:F1}s ago";
-        _watchBuffer.AppendLine($"{indent}    Updated:    {updateInfo} ({entry.UpdateCount} times)", UITheme.Dark.TextDim);
+        _watchBuffer.AppendLine($"{indent}    Updated:    {updateInfo} ({entry.UpdateCount} times)", ThemeManager.Current.TextDim);
 
         // Separator between watches
-        _watchBuffer.AppendLine("", Color.White);
+        _watchBuffer.AppendLine("", ThemeManager.Current.TextDim);
 
         displayIndex++;
     }
@@ -873,26 +884,9 @@ public class WatchPanel : Panel, IDisposable
 
         _watchBuffer.Clear();
 
-        // Header
-        var updateStatus = AutoUpdate ? "AUTO-UPDATE ON" : "AUTO-UPDATE OFF";
-        var pinnedCount = _watches.Values.Count(w => w.IsPinned);
-        var limitWarning = _watches.Count >= MaxWatches ? " [LIMIT REACHED]" :
-                          _watches.Count >= MaxWatches * 0.8 ? $" [{MaxWatches - _watches.Count} remaining]" : "";
-
-        _watchBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
-        _watchBuffer.AppendLine($"  WATCH EXPRESSIONS ({_watchKeys.Count}/{MaxWatches}){limitWarning}", UITheme.Dark.Info);
-
-        var intervalDisplay = UpdateInterval < 1.0
-            ? $"{UpdateInterval * 1000:F0}ms"
-            : $"{UpdateInterval:F1}s";
-        var pinnedInfo = pinnedCount > 0 ? $" | {pinnedCount} pinned" : "";
-        _watchBuffer.AppendLine($"  {updateStatus} | Interval: {intervalDisplay}{pinnedInfo}", UITheme.Dark.TextSecondary);
-        _watchBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
-        _watchBuffer.AppendLine("", Color.White);
-
         if (_watchKeys.Count == 0)
         {
-            _watchBuffer.AppendLine("  No watches defined.", UITheme.Dark.TextDim);
+            _watchBuffer.AppendLine("  No watches defined.", ThemeManager.Current.TextDim);
             return;
         }
 
@@ -902,22 +896,38 @@ public class WatchPanel : Panel, IDisposable
         // Display watches organized by groups
         DisplayWatchesByGroup();
 
-        // Footer
-        _watchBuffer.AppendLine("─────────────────────────────────────────────────────────────────", UITheme.Dark.BorderPrimary);
-
-        var errorCount = _watches.Values.Count(w => w.HasError);
-        if (errorCount > 0)
-        {
-            _watchBuffer.AppendLine($"Total: {_watchKeys.Count} watch(es) | {errorCount} error(s)", UITheme.Dark.Warning);
-        }
-        else
-        {
-            _watchBuffer.AppendLine($"Total: {_watchKeys.Count} watch(es) | All OK", UITheme.Dark.Success);
-        }
+        // Update status bar
+        UpdateStatusBar();
 
         // Restore scroll position and auto-scroll state after update
         _watchBuffer.SetScrollOffset(previousScrollOffset);
         _watchBuffer.AutoScroll = previousAutoScroll;
+    }
+
+    /// <summary>
+    /// Updates the status bar with current watch stats.
+    /// </summary>
+    private void UpdateStatusBar()
+    {
+        var errorCount = _watches.Values.Count(w => w.HasError);
+        var pinnedCount = _watches.Values.Count(w => w.IsPinned);
+        var alertCount = _watches.Values.Count(w => w.AlertTriggered);
+
+        // Build stats text
+        var stats = $"Watches: {_watchKeys.Count}";
+        if (pinnedCount > 0) stats += $" | Pinned: {pinnedCount}";
+        if (errorCount > 0) stats += $" | Errors: {errorCount}";
+        if (alertCount > 0) stats += $" | ⚠ Alerts: {alertCount}";
+
+        // Build hints text
+        var hints = AutoUpdate ? $"Auto: {UpdateInterval:F1}s" : "Manual";
+
+        _statusBar.Set(stats, hints);
+        // Only set color explicitly for non-default (Warning), otherwise use null for theme fallback
+        if (errorCount > 0)
+            _statusBar.StatsColor = ThemeManager.Current.Warning;
+        else
+            _statusBar.ResetStatsColor(); // Use theme default (Success)
     }
 
     /// <summary>
@@ -985,7 +995,21 @@ public class WatchPanel : Panel, IDisposable
 
     protected override void OnRenderContainer(UIContext context)
     {
+        // Set theme colors dynamically for theme switching
+        BackgroundColor = ThemeManager.Current.ConsoleBackground;
+        BorderColor = ThemeManager.Current.BorderPrimary;
+
         base.OnRenderContainer(context);
+
+        // Layout: Position StatusBar at bottom and size TextBuffer above it
+        var statusBarHeight = _statusBar.GetDesiredHeight(context.Renderer);
+        _statusBar.Constraint.Height = statusBarHeight;
+
+        // TextBuffer fills remaining space above StatusBar
+        var paddingTop = Constraint.GetPaddingTop();
+        var paddingBottom = Constraint.GetPaddingBottom();
+        var contentHeight = Rect.Height - paddingTop - paddingBottom;
+        _watchBuffer.Constraint.Height = contentHeight - statusBarHeight;
 
         // Auto-update if enabled
         if (AutoUpdate && context.Input?.GameTime != null)
@@ -1100,4 +1124,35 @@ public class WatchPanel : Panel, IDisposable
         _disposed = true;
         _evaluator.Dispose();
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // IWatchOperations Explicit Interface Implementation
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    bool IWatchOperations.Add(string name, string expression, Func<object?> valueGetter, string? group, string? condition, Func<bool>? conditionEvaluator)
+        => AddWatch(name, expression, valueGetter, group, condition, conditionEvaluator);
+    bool IWatchOperations.Remove(string name) => RemoveWatch(name);
+    void IWatchOperations.Clear() => ClearWatches();
+    int IWatchOperations.Count => Count;
+    bool IWatchOperations.AutoUpdate { get => AutoUpdate; set => AutoUpdate = value; }
+    double IWatchOperations.UpdateInterval { get => UpdateInterval; set => UpdateInterval = value; }
+    bool IWatchOperations.Pin(string name) => PinWatch(name);
+    bool IWatchOperations.Unpin(string name) => UnpinWatch(name);
+    bool IWatchOperations.IsPinned(string name) => IsWatchPinned(name);
+    bool IWatchOperations.CollapseGroup(string groupName) => CollapseGroup(groupName);
+    bool IWatchOperations.ExpandGroup(string groupName) => ExpandGroup(groupName);
+    bool IWatchOperations.ToggleGroup(string groupName) => ToggleGroup(groupName);
+    IEnumerable<string> IWatchOperations.GetGroups() => GetGroups();
+    bool IWatchOperations.SetAlert(string name, string alertType, object? threshold) => SetAlert(name, alertType, threshold);
+    bool IWatchOperations.RemoveAlert(string name) => RemoveAlert(name);
+    IEnumerable<(string Name, string AlertType, bool Triggered)> IWatchOperations.GetWatchesWithAlerts() => GetWatchesWithAlerts();
+    bool IWatchOperations.ClearAlertStatus(string name) => ClearAlertStatus(name);
+    bool IWatchOperations.SetComparison(string watchName, string compareWithName, string comparisonLabel) => SetComparison(watchName, compareWithName, comparisonLabel);
+    bool IWatchOperations.RemoveComparison(string name) => RemoveComparison(name);
+    IEnumerable<(string Name, string ComparedWith)> IWatchOperations.GetWatchesWithComparisons() => GetWatchesWithComparisons();
+    string IWatchOperations.ExportToCsv() => ExportToCsv();
+    void IWatchOperations.CopyToClipboard(bool asCsv) => CopyToClipboard(asCsv);
+    (int Total, int Pinned, int WithErrors, int WithAlerts, int Groups) IWatchOperations.GetStatistics() => GetStatistics();
+    (List<(string Name, string Expression, string? Group, string? Condition, bool IsPinned, string? AlertType, object? AlertThreshold, string? ComparisonWith, string? ComparisonLabel)> Watches, double UpdateInterval, bool AutoUpdateEnabled)? IWatchOperations.ExportConfiguration()
+        => ExportConfiguration();
 }

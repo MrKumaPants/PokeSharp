@@ -77,10 +77,29 @@ public class GameInitializer(
             "player",
             playerPool.InitialSize,
             playerPool.MaxSize,
-            playerPool.Warmup
+            playerPool.Warmup,
+            playerPool.AutoResize,
+            playerPool.GrowthFactor,
+            playerPool.AbsoluteMaxSize
         );
-        poolManager.RegisterPool("npc", npcPool.InitialSize, npcPool.MaxSize, npcPool.Warmup);
-        poolManager.RegisterPool("tile", tilePool.InitialSize, tilePool.MaxSize, tilePool.Warmup);
+        poolManager.RegisterPool(
+            "npc",
+            npcPool.InitialSize,
+            npcPool.MaxSize,
+            npcPool.Warmup,
+            npcPool.AutoResize,
+            npcPool.GrowthFactor,
+            npcPool.AbsoluteMaxSize
+        );
+        poolManager.RegisterPool(
+            "tile",
+            tilePool.InitialSize,
+            tilePool.MaxSize,
+            tilePool.Warmup,
+            tilePool.AutoResize,
+            tilePool.GrowthFactor,
+            tilePool.AbsoluteMaxSize
+        );
 
         logger.LogInformation(
             "Entity pool manager initialized with {NPCPoolSize} NPC, {PlayerPoolSize} player, and {TilePoolSize} tile pool capacity",

@@ -39,8 +39,7 @@ public class StatsPanel : Panel
         EntityCount = entityCount;
         DrawCalls = drawCalls;
 
-        BackgroundColor = UITheme.Dark.BackgroundSecondary;
-        BorderColor = UITheme.Dark.BorderPrimary;
+        // Colors set dynamically in OnRenderContainer for theme switching
         BorderThickness = 1;
 
         InitializeLabels();
@@ -65,7 +64,7 @@ public class StatsPanel : Panel
         AddChild(titleLabel);
 
         float yOffset = 30;
-        float lineHeight = 25;
+        float lineHeight = ThemeManager.Current.PanelRowHeight;
 
         // FPS
         _fpsLabel = CreateStatLabel("fps", yOffset, theme.Success);
@@ -107,13 +106,17 @@ public class StatsPanel : Panel
             {
                 Anchor = Anchor.TopLeft,
                 OffsetY = yOffset,
-                MarginLeft = UITheme.Dark.PaddingMedium
+                MarginLeft = ThemeManager.Current.PaddingMedium
             }
         };
     }
 
     protected override void OnRenderContainer(UIContext context)
     {
+        // Set theme colors dynamically for theme switching
+        BackgroundColor = ThemeManager.Current.BackgroundSecondary;
+        BorderColor = ThemeManager.Current.BorderPrimary;
+
         base.OnRenderContainer(context);
 
         // Update label texts with current stats

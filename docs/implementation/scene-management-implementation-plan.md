@@ -52,7 +52,7 @@ public interface IScene : IDisposable
     bool IsDisposed { get; }
     bool IsInitialized { get; }
     bool IsContentLoaded { get; }
-    
+
     void Initialize();
     void LoadContent();
     void UnloadContent();
@@ -188,12 +188,12 @@ public interface IScene : IDisposable
 - Pattern:
   ```csharp
   private IScene? _nextScene;
-  
+
   public void ChangeScene(IScene newScene)
   {
       _nextScene = newScene; // Defer until Update()
   }
-  
+
   public void Update(GameTime gameTime)
   {
       // Handle transition at START of update cycle
@@ -215,7 +215,7 @@ public interface IScene : IDisposable
               // Keep current scene active on error
           }
       }
-      
+
       _currentScene?.Update(gameTime);
   }
   ```
@@ -487,7 +487,7 @@ progress.Progress = 0.2f;
   - Which systems are registered in GameInitializer (likely gameplay-specific)
   - Which systems are registered globally (if any)
   - Whether SystemManager supports unregistering systems
-- **Decision**: 
+- **Decision**:
   - If SystemManager supports unregistration: Register in GameplayScene.Initialize(), unregister in Dispose()
   - If SystemManager doesn't support unregistration: Systems remain registered globally, but GameplayScene controls when they're active via Update/Draw
 - Keep core systems (rendering pipeline) registered globally

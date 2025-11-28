@@ -17,7 +17,7 @@ public class CommandInput : UIComponent, ITextInput
     private string _text = string.Empty;
     private int _cursorPosition = 0;
     private float _cursorBlinkTimer = 0;
-    private static float CursorBlinkRate => UITheme.Dark.CursorBlinkRate;
+    private static float CursorBlinkRate => 0.5f; // Fixed value, doesn't need theme
 
     // Selection
     private int _selectionStart = 0;
@@ -39,19 +39,27 @@ public class CommandInput : UIComponent, ITextInput
     // Multi-line support
     private bool _multiLineMode = false;
 
-    // Visual properties
-    public Color BackgroundColor { get; set; } = UITheme.Dark.InputBackground;
-    public Color TextColor { get; set; } = UITheme.Dark.InputText;
-    public Color CursorColor { get; set; } = UITheme.Dark.InputCursor;
-    public Color SelectionColor { get; set; } = UITheme.Dark.InputSelection;
-    public Color BorderColor { get; set; } = UITheme.Dark.BorderPrimary;
-    public Color FocusBorderColor { get; set; } = UITheme.Dark.BorderFocus;
+    // Visual properties - nullable for theme fallback
+    private Color? _backgroundColor;
+    private Color? _textColor;
+    private Color? _cursorColor;
+    private Color? _selectionColor;
+    private Color? _borderColor;
+    private Color? _focusBorderColor;
+    private Color? _promptColor;
+
+    public Color BackgroundColor { get => _backgroundColor ?? ThemeManager.Current.InputBackground; set => _backgroundColor = value; }
+    public Color TextColor { get => _textColor ?? ThemeManager.Current.InputText; set => _textColor = value; }
+    public Color CursorColor { get => _cursorColor ?? ThemeManager.Current.InputCursor; set => _cursorColor = value; }
+    public Color SelectionColor { get => _selectionColor ?? ThemeManager.Current.InputSelection; set => _selectionColor = value; }
+    public Color BorderColor { get => _borderColor ?? ThemeManager.Current.BorderPrimary; set => _borderColor = value; }
+    public Color FocusBorderColor { get => _focusBorderColor ?? ThemeManager.Current.BorderFocus; set => _focusBorderColor = value; }
     public float BorderThickness { get; set; } = 1;
-    public float Padding { get; set; } = UITheme.Dark.PaddingMedium;
+    public float Padding { get; set; } = 8f;
 
     // Prompt string (e.g., "> ")
     public string Prompt { get; set; } = "> ";
-    public Color PromptColor { get; set; } = UITheme.Dark.Prompt;
+    public Color PromptColor { get => _promptColor ?? ThemeManager.Current.Prompt; set => _promptColor = value; }
 
     // Properties
     public string Text => _text;
@@ -381,7 +389,7 @@ public class CommandInput : UIComponent, ITextInput
                 textPos.X + beforeWidth,
                 textPos.Y,
                 selectionWidth,
-                UITheme.Dark.LineHeight
+                ThemeManager.Current.LineHeight
             );
             renderer.DrawRectangle(selectionRect, SelectionColor);
         }
@@ -415,7 +423,7 @@ public class CommandInput : UIComponent, ITextInput
                     cursorX,
                     textPos.Y,
                     2,
-                    UITheme.Dark.LineHeight
+                    ThemeManager.Current.LineHeight
                 );
                 renderer.DrawRectangle(cursorRect, CursorColor);
             }

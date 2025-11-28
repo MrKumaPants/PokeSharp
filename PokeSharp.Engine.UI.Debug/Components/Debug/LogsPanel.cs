@@ -4,6 +4,7 @@ using PokeSharp.Engine.UI.Debug.Components.Base;
 using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Components.Layout;
 using PokeSharp.Engine.UI.Debug.Core;
+using PokeSharp.Engine.UI.Debug.Interfaces;
 using PokeSharp.Engine.UI.Debug.Layout;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,10 +13,12 @@ namespace PokeSharp.Engine.UI.Debug.Components.Debug;
 
 /// <summary>
 /// Panel for viewing and filtering console logs.
+/// Implements <see cref="ILogOperations"/> for command access.
 /// </summary>
-public class LogsPanel : Panel
+public class LogsPanel : Panel, ILogOperations
 {
     private readonly TextBuffer _logBuffer;
+    private readonly StatusBar _statusBar;
     private readonly List<LogEntry> _allLogs = new();
     private LogLevel _filterLevel = LogLevel.Trace; // Show all by default
     private string? _searchFilter = null;
@@ -34,19 +37,24 @@ public class LogsPanel : Panel
     /// Creates a LogsPanel with the specified components.
     /// Use <see cref="LogsPanelBuilder"/> to construct instances.
     /// </summary>
-    internal LogsPanel(TextBuffer logBuffer, int maxLogs, LogLevel filterLevel)
+    internal LogsPanel(TextBuffer logBuffer, StatusBar statusBar, int maxLogs, LogLevel filterLevel)
     {
         _logBuffer = logBuffer;
+        _statusBar = statusBar;
         _maxLogs = maxLogs;
         _filterLevel = filterLevel;
 
         Id = "logs_panel";
-        BackgroundColor = UITheme.Dark.ConsoleBackground;
-        BorderColor = UITheme.Dark.BorderPrimary;
+        // Colors set dynamically in OnRenderContainer for theme switching
         BorderThickness = 1;
-        Constraint.Padding = UITheme.Dark.PaddingMedium;
+        Constraint.Padding = 8;
+
+        // StatusBar anchored to bottom
+        _statusBar.Constraint.Anchor = Anchor.StretchBottom;
+        _statusBar.Constraint.OffsetY = 0;
 
         AddChild(_logBuffer);
+        AddChild(_statusBar);
         UpdateLogDisplay();
     }
 
@@ -220,40 +228,73 @@ public class LogsPanel : Panel
     {
         _logBuffer.Clear();
 
-        // Display header
         var filteredCount = _allLogs.Count(PassesFilter);
-        var hiddenCount = _allLogs.Count - filteredCount;
-
-        _logBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
-        _logBuffer.AppendLine($"  CONSOLE LOGS ({filteredCount} shown, {hiddenCount} hidden)", UITheme.Dark.Info);
-        _logBuffer.AppendLine($"  Level: {GetFilterLevelName(_filterLevel)} and above", UITheme.Dark.TextSecondary);
-        if (_enabledCategories.Count > 0)
-        {
-            _logBuffer.AppendLine($"  Categories: {string.Join(", ", _enabledCategories.OrderBy(c => c))}", UITheme.Dark.TextSecondary);
-        }
-        if (_searchFilter != null)
-        {
-            _logBuffer.AppendLine($"  Search: \"{_searchFilter}\"", UITheme.Dark.TextSecondary);
-        }
-        _logBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
-        _logBuffer.AppendLine("", Color.White);
 
         // Display filtered logs
         if (filteredCount == 0)
         {
-            _logBuffer.AppendLine("  No logs to display.", UITheme.Dark.TextDim);
-            return;
+            _logBuffer.AppendLine("  No logs to display.", ThemeManager.Current.TextDim);
         }
-
-        foreach (var entry in _allLogs.Where(PassesFilter))
+        else
         {
-            AppendLogToBuffer(entry);
+            foreach (var entry in _allLogs.Where(PassesFilter))
+            {
+                AppendLogToBuffer(entry);
+            }
         }
 
-        // Footer
-        _logBuffer.AppendLine("", Color.White);
-        _logBuffer.AppendLine("─────────────────────────────────────────────────────────────────", UITheme.Dark.BorderPrimary);
-        _logBuffer.AppendLine($"Total: {_allLogs.Count} logs | Filtered: {filteredCount}", UITheme.Dark.TextSecondary);
+        // Update status bar (always, even with no logs)
+        UpdateStatusBar(filteredCount);
+    }
+
+    /// <summary>
+    /// Updates the status bar with current log stats.
+    /// </summary>
+    private void UpdateStatusBar(int filteredCount)
+    {
+        var errorCount = _allLogs.Count(l => l.Level >= LogLevel.Error);
+        var warningCount = _allLogs.Count(l => l.Level == LogLevel.Warning);
+
+        // Build stats text
+        var stats = $"Total: {_allLogs.Count}";
+        if (filteredCount != _allLogs.Count) stats += $" | Showing: {filteredCount}";
+        if (errorCount > 0) stats += $" | Errors: {errorCount}";
+        if (warningCount > 0) stats += $" | Warnings: {warningCount}";
+
+        // Build hints text with filter level
+        var hints = $"Level: {_filterLevel}+";
+        if (!string.IsNullOrEmpty(_searchFilter)) hints += " | Search active";
+
+        _statusBar.Set(stats, hints);
+        // Only set color explicitly for non-default, otherwise use theme fallback
+        if (errorCount > 0)
+            _statusBar.StatsColor = ThemeManager.Current.Error;
+        else if (warningCount > 0)
+            _statusBar.StatsColor = ThemeManager.Current.Warning;
+        else
+            _statusBar.ResetStatsColor(); // Use theme default (Success)
+    }
+
+    /// <summary>
+    /// Handles layout to position StatusBar at bottom and sets theme colors.
+    /// </summary>
+    protected override void OnRenderContainer(UIContext context)
+    {
+        // Set theme colors dynamically for theme switching
+        BackgroundColor = ThemeManager.Current.ConsoleBackground;
+        BorderColor = ThemeManager.Current.BorderPrimary;
+
+        base.OnRenderContainer(context);
+
+        // Layout: Position StatusBar at bottom and size TextBuffer above it
+        var statusBarHeight = _statusBar.GetDesiredHeight(context.Renderer);
+        _statusBar.Constraint.Height = statusBarHeight;
+
+        // TextBuffer fills remaining space above StatusBar
+        var paddingTop = Constraint.GetPaddingTop();
+        var paddingBottom = Constraint.GetPaddingBottom();
+        var contentHeight = Rect.Height - paddingTop - paddingBottom;
+        _logBuffer.Constraint.Height = contentHeight - statusBarHeight;
     }
 
     /// <summary>
@@ -277,13 +318,13 @@ public class LogsPanel : Panel
     {
         return level switch
         {
-            LogLevel.Trace => UITheme.Dark.TextDim,
-            LogLevel.Debug => UITheme.Dark.Info,
-            LogLevel.Information => UITheme.Dark.TextPrimary,
-            LogLevel.Warning => UITheme.Dark.Warning,
-            LogLevel.Error => UITheme.Dark.Error,
-            LogLevel.Critical => UITheme.Dark.Error,
-            _ => UITheme.Dark.TextPrimary
+            LogLevel.Trace => ThemeManager.Current.TextDim,
+            LogLevel.Debug => ThemeManager.Current.Info,
+            LogLevel.Information => ThemeManager.Current.TextPrimary,
+            LogLevel.Warning => ThemeManager.Current.Warning,
+            LogLevel.Error => ThemeManager.Current.Error,
+            LogLevel.Critical => ThemeManager.Current.Error,
+            _ => ThemeManager.Current.TextPrimary
         };
     }
 
@@ -447,6 +488,30 @@ public class LogsPanel : Panel
         public int LogsLastFiveMinutes { get; init; }
         public DateTime? OldestLog { get; init; }
         public DateTime? NewestLog { get; init; }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ILogOperations Explicit Interface Implementation
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    void ILogOperations.SetFilterLevel(LogLevel level) => SetFilterLevel(level);
+    void ILogOperations.SetSearch(string? searchText) => SetSearchFilter(searchText);
+    void ILogOperations.Add(LogLevel level, string message, string category) => AddLog(level, message, category);
+    void ILogOperations.Clear() => ClearLogs();
+    int ILogOperations.Count => GetTotalLogCount();
+    void ILogOperations.SetCategoryFilter(IEnumerable<string>? categories) => SetCategoryFilter(categories);
+    void ILogOperations.ClearCategoryFilter() => ClearCategoryFilter();
+    IEnumerable<string> ILogOperations.GetCategories() => GetAvailableCategories();
+    Dictionary<string, int> ILogOperations.GetCategoryCounts() => GetCategoryCounts();
+    string ILogOperations.Export(bool includeTimestamp, bool includeLevel, bool includeCategory) => ExportToString(includeTimestamp, includeLevel, includeCategory);
+    string ILogOperations.ExportToCsv() => ExportToCsv();
+    void ILogOperations.CopyToClipboard() => CopyToClipboard();
+    Dictionary<LogLevel, int> ILogOperations.GetLevelCounts() => GetLevelCounts();
+
+    (int Total, int Filtered, int Errors, int Warnings, int LastMinute, int Categories) ILogOperations.GetStatistics()
+    {
+        var stats = GetStatistics();
+        return (stats.TotalCount, stats.FilteredCount, stats.ErrorCount + stats.CriticalCount, stats.WarningCount, stats.LogsLastMinute, stats.CategoryCount);
     }
 }
 

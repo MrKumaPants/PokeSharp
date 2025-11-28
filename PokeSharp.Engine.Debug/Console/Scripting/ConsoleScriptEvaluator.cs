@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text;
 using Arch.Core;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.Extensions.Logging;
@@ -91,6 +92,127 @@ public class ConsoleScriptEvaluator
     {
         _scriptState = null;
         _logger.LogDebug("Console script state reset");
+    }
+
+    /// <summary>
+    ///     Checks if the given code is syntactically complete.
+    ///     Used to determine if multi-line input should continue.
+    /// </summary>
+    /// <param name="code">The code to check.</param>
+    /// <returns>True if the code is complete, false if more input is needed.</returns>
+    public bool IsCodeComplete(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return true;
+
+        // Quick check for obviously incomplete code
+        var trimmed = code.Trim();
+
+        // Check for unclosed braces/brackets/parens
+        var braceCount = 0;
+        var bracketCount = 0;
+        var parenCount = 0;
+        var inString = false;
+        var inVerbatimString = false;
+        var inChar = false;
+        var prevChar = '\0';
+
+        for (var i = 0; i < code.Length; i++)
+        {
+            var c = code[i];
+
+            // Handle string literals
+            if (c == '"' && !inChar)
+            {
+                if (i > 0 && code[i - 1] == '@' && !inString)
+                {
+                    inVerbatimString = !inVerbatimString;
+                }
+                else if (!inVerbatimString && prevChar != '\\')
+                {
+                    inString = !inString;
+                }
+                else if (inVerbatimString && i + 1 < code.Length && code[i + 1] == '"')
+                {
+                    i++; // Skip escaped quote in verbatim string
+                }
+                else if (inVerbatimString)
+                {
+                    inVerbatimString = false;
+                }
+            }
+            else if (c == '\'' && !inString && !inVerbatimString)
+            {
+                if (prevChar != '\\')
+                    inChar = !inChar;
+            }
+
+            // Only count braces outside of strings
+            if (!inString && !inVerbatimString && !inChar)
+            {
+                switch (c)
+                {
+                    case '{': braceCount++; break;
+                    case '}': braceCount--; break;
+                    case '[': bracketCount++; break;
+                    case ']': bracketCount--; break;
+                    case '(': parenCount++; break;
+                    case ')': parenCount--; break;
+                }
+            }
+
+            prevChar = c;
+        }
+
+        // If any brackets are unclosed, code is incomplete
+        if (braceCount > 0 || bracketCount > 0 || parenCount > 0)
+            return false;
+
+        // If we're still inside a string, code is incomplete
+        if (inString || inVerbatimString || inChar)
+            return false;
+
+        // Check for lines ending with operators that expect continuation
+        var lines = code.Split('\n');
+        var lastLine = lines.LastOrDefault()?.Trim() ?? "";
+
+        // Common patterns that indicate incomplete statements
+        if (lastLine.EndsWith("=>") ||
+            lastLine.EndsWith("&&") ||
+            lastLine.EndsWith("||") ||
+            lastLine.EndsWith("+") ||
+            lastLine.EndsWith("-") ||
+            lastLine.EndsWith("*") ||
+            lastLine.EndsWith("/") ||
+            lastLine.EndsWith(",") ||
+            lastLine.EndsWith("(") ||
+            lastLine.EndsWith("{") ||
+            lastLine.EndsWith("["))
+        {
+            return false;
+        }
+
+        // Use Roslyn to parse and check for incomplete syntax
+        var tree = CSharpSyntaxTree.ParseText(code, CSharpParseOptions.Default.WithKind(SourceCodeKind.Script));
+        var diagnostics = tree.GetDiagnostics();
+
+        // Check for "expected" errors which indicate incomplete code
+        foreach (var diagnostic in diagnostics)
+        {
+            // CS1733: Expected expression (common for incomplete for loops etc)
+            // CS1026: ) expected
+            // CS1513: } expected
+            // CS1002: ; expected (at end of incomplete statement)
+            if (diagnostic.Id == "CS1733" ||
+                diagnostic.Id == "CS1026" ||
+                diagnostic.Id == "CS1513" ||
+                (diagnostic.Id == "CS1002" && diagnostic.Location.SourceSpan.End >= code.Length - 1))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

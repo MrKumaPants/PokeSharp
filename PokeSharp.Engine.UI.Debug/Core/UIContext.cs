@@ -12,7 +12,6 @@ namespace PokeSharp.Engine.UI.Debug.Core;
 public class UIContext : IDisposable
 {
     private readonly UIRenderer _renderer;
-    private readonly UITheme _theme;
     private readonly UIFrame _frame = new();
     private readonly Stack<LayoutContainer> _containerStack = new();
     private LayoutContainer? _rootContainer;
@@ -32,10 +31,9 @@ public class UIContext : IDisposable
 
     private bool _disposed;
 
-    public UIContext(GraphicsDevice graphicsDevice, UITheme? theme = null)
+    public UIContext(GraphicsDevice graphicsDevice)
     {
         _renderer = new UIRenderer(graphicsDevice);
-        _theme = theme ?? UITheme.Dark;
 
         var viewport = graphicsDevice.Viewport;
         _screenWidth = viewport.Width;
@@ -43,9 +41,9 @@ public class UIContext : IDisposable
     }
 
     /// <summary>
-    /// Gets the current theme.
+    /// Gets the current theme from ThemeManager for runtime switching support.
     /// </summary>
-    public UITheme Theme => _theme;
+    public UITheme Theme => ThemeManager.Current;
 
     /// <summary>
     /// Gets the renderer.
@@ -67,7 +65,7 @@ public class UIContext : IDisposable
     /// </summary>
     public void SetFontSystem(FontStashSharp.FontSystem fontSystem)
     {
-        _renderer.SetFontSystem(fontSystem, _theme.FontSize);
+        _renderer.SetFontSystem(fontSystem, ThemeManager.Current.FontSize);
     }
 
     /// <summary>

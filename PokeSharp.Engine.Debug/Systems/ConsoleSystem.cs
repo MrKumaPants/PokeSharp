@@ -1,15 +1,18 @@
 using Arch.Core;
+using Arch.Core.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Reflection;
+using System.Text;
 using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Debug.Commands;
 using PokeSharp.Engine.Debug.Console.Configuration;
 using PokeSharp.Engine.Debug.Console.Features;
 using PokeSharp.Engine.Debug.Console.Scripting;
+using PokeSharp.Engine.Debug.Entities;
 using PokeSharp.Engine.Debug.Features;
 using PokeSharp.Engine.Debug.Logging;
 using PokeSharp.Engine.Debug.Scripting;
@@ -21,6 +24,7 @@ using PokeSharp.Engine.UI.Debug.Scenes;
 using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Utilities;
 using PokeSharp.Engine.UI.Debug.Core;
+using PokeSharp.Engine.UI.Debug.Models;
 
 namespace PokeSharp.Engine.Debug.Systems;
 
@@ -51,11 +55,14 @@ public class ConsoleSystem : IUpdateSystem
     // Console state
     private KeyboardState _previousKeyboardState;
     private bool _isConsoleOpen;
-    private NewConsoleScene? _consoleScene;
+    private ConsoleScene? _consoleScene;
 
     // Console logging state
     private bool _loggingEnabled = false;
     private Microsoft.Extensions.Logging.LogLevel _minimumLogLevel = Microsoft.Extensions.Logging.LogLevel.Information;
+
+    // Entity component registry
+    private DebugComponentRegistry _componentRegistry = null!;
 
     // Persistent log buffer - stores logs even when console is closed
     private readonly List<(Microsoft.Extensions.Logging.LogLevel Level, string Message, string Category, DateTime Timestamp)> _persistentLogBuffer = new();
@@ -65,6 +72,10 @@ public class ConsoleSystem : IUpdateSystem
     // Auto-completion debouncing
     private CancellationTokenSource? _completionCts;
     private const int CompletionDebounceMs = 50;
+
+    // Multi-line input buffer for incomplete statements (like for loops)
+    private readonly StringBuilder _multiLineBuffer = new();
+    private bool _isMultiLineMode = false;
 
     // IUpdateSystem properties
     public int Priority => ConsoleConstants.System.UpdatePriority;
@@ -104,6 +115,9 @@ public class ConsoleSystem : IUpdateSystem
         {
             // Create command registry
             _commandRegistry = new ConsoleCommandRegistry(_logger);
+
+            // Create component registry for entity detection
+            _componentRegistry = DebugComponentRegistryFactory.CreateDefault();
 
             // Create script evaluator (shared component)
             _evaluator = new ConsoleScriptEvaluator(_logger);
@@ -251,9 +265,9 @@ public class ConsoleSystem : IUpdateSystem
             // Open console - push the scene
             try
             {
-                var consoleLogger = _services.GetRequiredService<ILogger<NewConsoleScene>>();
+                var consoleLogger = _services.GetRequiredService<ILogger<ConsoleScene>>();
 
-                _consoleScene = new NewConsoleScene(
+                _consoleScene = new ConsoleScene(
                     _graphicsDevice,
                     _services,
                     consoleLogger
@@ -313,11 +327,15 @@ public class ConsoleSystem : IUpdateSystem
             ReplayBufferedLogs();
         }
 
-        // Welcome message
-        _consoleScene?.AppendOutput("=== PokeSharp Debug Console ===", new Color(100, 200, 255));
-        _consoleScene?.AppendOutput("Type 'help' for available commands", Color.LightGray);
-        _consoleScene?.AppendOutput("Press ` or type 'exit' to close", Color.Gray);
-        _consoleScene?.AppendOutput("", Color.White);
+        // Set up entity provider for the Entities panel
+        _consoleScene?.SetEntityProvider(GetAllEntitiesAsInfo);
+
+        // Welcome message - use theme colors
+        var theme = ThemeManager.Current;
+        _consoleScene?.AppendOutput("=== PokeSharp Debug Console ===", theme.ConsolePrimary);
+        _consoleScene?.AppendOutput("Type 'help' for available commands", theme.TextSecondary);
+        _consoleScene?.AppendOutput("Press ` or type 'exit' to close", theme.TextDim);
+        _consoleScene?.AppendOutput("", theme.TextPrimary);
 
         // Execute startup script if it exists
         ExecuteStartupScript();
@@ -325,17 +343,61 @@ public class ConsoleSystem : IUpdateSystem
 
     /// <summary>
     /// Handles commands submitted from the console.
+    /// Supports multi-line input for incomplete statements (like for loops).
     /// </summary>
     private void HandleConsoleCommand(string command)
     {
         try
         {
-            _ = ExecuteConsoleCommand(command);
+            // Handle multi-line continuation
+            if (_isMultiLineMode)
+            {
+                // Check for empty line to cancel multi-line mode
+                if (string.IsNullOrWhiteSpace(command))
+                {
+                    _consoleScene?.AppendOutput("Multi-line input cancelled.", Theme.TextSecondary);
+                    _multiLineBuffer.Clear();
+                    _isMultiLineMode = false;
+                    _consoleScene?.SetPrompt("> ");
+                    return;
+                }
+
+                // Add the new line to buffer
+                _multiLineBuffer.AppendLine(command);
+            }
+            else
+            {
+                // Start fresh
+                _multiLineBuffer.Clear();
+                _multiLineBuffer.Append(command);
+            }
+
+            var fullCode = _multiLineBuffer.ToString();
+
+            // Check if the code is complete (for multi-line statements like for loops)
+            if (!_evaluator.IsCodeComplete(fullCode))
+            {
+                // Code is incomplete - switch to multi-line mode
+                _isMultiLineMode = true;
+                _consoleScene?.SetPrompt("... ");
+                _logger.LogDebug("Multi-line mode: waiting for more input. Current: {Code}", fullCode);
+                return;
+            }
+
+            // Code is complete - execute it
+            _isMultiLineMode = false;
+            _multiLineBuffer.Clear();
+            _consoleScene?.SetPrompt("> ");
+
+            _ = ExecuteConsoleCommand(fullCode);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error executing command from console: {Command}", command);
             _consoleScene?.AppendOutput($"Error: {ex.Message}", Theme.Error);
+            _isMultiLineMode = false;
+            _multiLineBuffer.Clear();
+            _consoleScene?.SetPrompt("> ");
         }
     }
 
@@ -552,14 +614,15 @@ public class ConsoleSystem : IUpdateSystem
             var cmd = parts[0];
             var args = parts.Skip(1).ToArray();
 
-            // Create console context for commands
-            var context = new ConsoleContext(
-                _consoleScene!,
-                () => ToggleConsole(),
+            // Create console context for commands using aggregated services
+            var loggingCallbacks = new ConsoleLoggingCallbacks(
                 () => _loggingEnabled,
                 (enabled) => _loggingEnabled = enabled,
                 () => _minimumLogLevel,
-                (level) => _minimumLogLevel = level,
+                (level) => _minimumLogLevel = level
+            );
+
+            var services = new ConsoleServices(
                 _commandRegistry,
                 aliasManager,
                 scriptManager,
@@ -567,6 +630,13 @@ public class ConsoleSystem : IUpdateSystem
                 _globals,
                 bookmarkManager,
                 watchPresetManager
+            );
+
+            var context = new ConsoleContext(
+                _consoleScene!,
+                () => ToggleConsole(),
+                loggingCallbacks,
+                services
             );
 
             // Try to execute as built-in command first
@@ -694,6 +764,114 @@ public class ConsoleSystem : IUpdateSystem
         foreach (var (name, typeName, valueGetter) in _evaluator.GetVariables())
         {
             _consoleScene.SetScriptVariable(name, typeName, valueGetter);
+        }
+    }
+
+    /// <summary>
+    /// Gets all entities from the Arch World as EntityInfo objects.
+    /// This is the entity provider for the Entities panel.
+    /// </summary>
+    private IEnumerable<EntityInfo> GetAllEntitiesAsInfo()
+    {
+        var result = new List<EntityInfo>();
+
+        try
+        {
+            // Query all entities from the World
+            var entities = new List<Entity>();
+            _world.Query(new QueryDescription(), (Entity entity) => entities.Add(entity));
+
+            foreach (var entity in entities)
+            {
+                if (!_world.IsAlive(entity))
+                    continue;
+
+                var info = ConvertEntityToInfo(entity);
+                result.Add(info);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error querying entities from World");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Converts an Arch Entity to an EntityInfo for display.
+    /// </summary>
+    private EntityInfo ConvertEntityToInfo(Entity entity)
+    {
+        var info = new EntityInfo
+        {
+            Id = entity.Id,
+            IsActive = _world.IsAlive(entity),
+            Components = new List<string>(),
+            Properties = new Dictionary<string, string>()
+        };
+
+        try
+        {
+            // Detect components by checking for known types
+            var detectedComponents = DetectEntityComponents(entity);
+            info.Components = detectedComponents;
+
+            // Determine name and tag based on detected components
+            info.Name = DetermineEntityName(entity, detectedComponents);
+            info.Tag = DetermineEntityTag(detectedComponents);
+
+            // Get properties
+            info.Properties = GetEntityProperties(entity, detectedComponents);
+            info.Properties["Components"] = detectedComponents.Count.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error reading entity {EntityId} components", entity.Id);
+            info.Name = $"Entity_{entity.Id}";
+            info.Components = new List<string> { "[Error reading components]" };
+        }
+
+        return info;
+    }
+
+    /// <summary>
+    /// Detects which components an entity has using the component registry.
+    /// </summary>
+    private List<string> DetectEntityComponents(Entity entity)
+    {
+        return _componentRegistry.DetectComponents(entity);
+    }
+
+    /// <summary>
+    /// Determines an entity's display name based on its components.
+    /// </summary>
+    private string DetermineEntityName(Entity entity, List<string> components)
+    {
+        return _componentRegistry.DetermineEntityName(entity, components);
+    }
+
+    /// <summary>
+    /// Determines an entity's tag based on its components.
+    /// </summary>
+    private string? DetermineEntityTag(List<string> components)
+    {
+        return _componentRegistry.DetermineEntityTag(components);
+    }
+
+    /// <summary>
+    /// Gets display properties for an entity using the component registry.
+    /// </summary>
+    private Dictionary<string, string> GetEntityProperties(Entity entity, List<string> components)
+    {
+        try
+        {
+            return _componentRegistry.GetSimpleProperties(entity);
+        }
+        catch
+        {
+            // Ignore errors reading properties
+            return new Dictionary<string, string>();
         }
     }
 }

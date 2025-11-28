@@ -44,6 +44,7 @@ public class WatchPanelBuilder
     {
         return new WatchPanel(
             _watchBuffer ?? CreateDefaultWatchBuffer(),
+            CreateDefaultStatusBar(),
             _updateInterval,
             _autoUpdate
         );
@@ -53,12 +54,23 @@ public class WatchPanelBuilder
     {
         return new TextBuffer("watch_buffer")
         {
-            BackgroundColor = UITheme.Dark.ConsoleOutputBackground,
+            // BackgroundColor uses theme fallback - don't set explicitly
             AutoScroll = false,
             MaxLines = _maxLines,
             Constraint = new LayoutConstraint
             {
-                Anchor = Anchor.Fill
+                Anchor = Anchor.StretchTop
+            }
+        };
+    }
+
+    private static StatusBar CreateDefaultStatusBar()
+    {
+        return new StatusBar("watch_status")
+        {
+            Constraint = new LayoutConstraint
+            {
+                Anchor = Anchor.StretchBottom
             }
         };
     }

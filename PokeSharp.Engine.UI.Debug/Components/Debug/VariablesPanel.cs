@@ -3,6 +3,7 @@ using PokeSharp.Engine.UI.Debug.Components.Base;
 using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Components.Layout;
 using PokeSharp.Engine.UI.Debug.Core;
+using PokeSharp.Engine.UI.Debug.Interfaces;
 using PokeSharp.Engine.UI.Debug.Layout;
 using System;
 using System.Collections;
@@ -15,10 +16,12 @@ namespace PokeSharp.Engine.UI.Debug.Components.Debug;
 /// <summary>
 /// Panel for viewing, inspecting, and editing script variables.
 /// Supports object expansion, inline editing, search, and pinning.
+/// Implements <see cref="IVariableOperations"/> for command access.
 /// </summary>
-public class VariablesPanel : Panel
+public class VariablesPanel : Panel, IVariableOperations
 {
     private readonly TextBuffer _variablesBuffer;
+    private readonly StatusBar _statusBar;
     private readonly Dictionary<string, VariableInfo> _variables = new();
     private readonly List<GlobalInfo> _globals = new();
 
@@ -65,7 +68,7 @@ public class VariablesPanel : Panel
         public bool IsPinned { get; set; } = false;
         public bool IsEditable { get; set; } = false;
         public object? Value { get; set; } = null;
-        public Color ValueColor { get; set; } = Color.White;
+        public Color ValueColor { get; set; } = default; // Uses theme at render time
     }
 
     private List<DisplayRow> _displayRows = new();
@@ -74,17 +77,22 @@ public class VariablesPanel : Panel
     /// Creates a VariablesPanel with the specified components.
     /// Use <see cref="VariablesPanelBuilder"/> to construct instances.
     /// </summary>
-    internal VariablesPanel(TextBuffer variablesBuffer)
+    internal VariablesPanel(TextBuffer variablesBuffer, StatusBar statusBar)
     {
         _variablesBuffer = variablesBuffer;
+        _statusBar = statusBar;
 
         Id = "variables_panel";
-        BackgroundColor = UITheme.Dark.ConsoleBackground;
-        BorderColor = UITheme.Dark.BorderPrimary;
+        // Colors set dynamically in OnRenderContainer for theme switching
         BorderThickness = 1;
-        Constraint.Padding = UITheme.Dark.PaddingMedium;
+        Constraint.Padding = 8;
+
+        // StatusBar anchored to bottom
+        _statusBar.Constraint.Anchor = Anchor.StretchBottom;
+        _statusBar.Constraint.OffsetY = 0;
 
         AddChild(_variablesBuffer);
+        AddChild(_statusBar);
     }
 
     /// <summary>
@@ -308,30 +316,16 @@ public class VariablesPanel : Panel
         var pinnedCount = _pinnedVariables.Count;
         var expandedCount = _expandedPaths.Count;
 
-        // Display header
-        _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
-        var headerInfo = $"  SCRIPT VARIABLES ({_variables.Count} defined)";
-        if (pinnedCount > 0) headerInfo += $" | {pinnedCount} pinned";
-        if (expandedCount > 0) headerInfo += $" | {expandedCount} expanded";
-        _variablesBuffer.AppendLine(headerInfo, UITheme.Dark.Info);
-
-        if (!string.IsNullOrEmpty(_searchFilter))
-        {
-            _variablesBuffer.AppendLine($"  Search: \"{_searchFilter}\" ({filteredRows.Count} matches)", UITheme.Dark.TextSecondary);
-        }
-        _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
-        _variablesBuffer.AppendLine("", Color.White);
-
         // Display pinned variables first
         var pinnedRows = filteredRows.Where(r => r.Depth == 0 && r.IsPinned).ToList();
         if (pinnedRows.Count > 0)
         {
-            _variablesBuffer.AppendLine("  📌 PINNED", UITheme.Dark.Warning);
+            _variablesBuffer.AppendLine("  [*] PINNED", ThemeManager.Current.Warning);
             foreach (var row in pinnedRows)
             {
                 RenderRow(row);
             }
-            _variablesBuffer.AppendLine("", Color.White);
+            _variablesBuffer.AppendLine("", ThemeManager.Current.TextDim);
         }
 
         // Display user-defined variables
@@ -341,8 +335,7 @@ public class VariablesPanel : Panel
 
         if (userRows.Count == 0 && pinnedRows.Count == 0 && _variables.Count == 0)
         {
-            _variablesBuffer.AppendLine("  No variables defined.", UITheme.Dark.TextDim);
-            _variablesBuffer.AppendLine("  Use 'var x = value;' to create variables.", UITheme.Dark.TextDim);
+            _variablesBuffer.AppendLine("  No variables defined.", ThemeManager.Current.TextDim);
         }
         else if (userRows.Count > 0)
         {
@@ -359,11 +352,8 @@ public class VariablesPanel : Panel
 
         if (globalRows.Count > 0)
         {
-            _variablesBuffer.AppendLine("", Color.White);
-            _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
-            _variablesBuffer.AppendLine("  BUILT-IN GLOBALS", UITheme.Dark.Info);
-            _variablesBuffer.AppendLine("═══════════════════════════════════════════════════════════════════", UITheme.Dark.Info);
-            _variablesBuffer.AppendLine("", Color.White);
+            _variablesBuffer.AppendLine("", ThemeManager.Current.TextDim);
+            _variablesBuffer.AppendLine("  [G] GLOBALS", ThemeManager.Current.Info);
 
             foreach (var row in globalRows)
             {
@@ -371,10 +361,48 @@ public class VariablesPanel : Panel
             }
         }
 
-        // Footer with keyboard hints
-        _variablesBuffer.AppendLine("", Color.White);
-        _variablesBuffer.AppendLine("─────────────────────────────────────────────────────────────────", UITheme.Dark.BorderPrimary);
-        _variablesBuffer.AppendLine($"Variables: {_variables.Count} | Globals: {_globals.Count} | Use 'var' command to manage", UITheme.Dark.TextSecondary);
+        // Update status bar
+        UpdateStatusBar();
+    }
+
+    /// <summary>
+    /// Updates the status bar with current variable stats.
+    /// </summary>
+    private void UpdateStatusBar()
+    {
+        // Build stats text
+        var stats = $"Variables: {_variables.Count}";
+        if (_globals.Count > 0) stats += $" | Globals: {_globals.Count}";
+        if (_pinnedVariables.Count > 0) stats += $" | Pinned: {_pinnedVariables.Count}";
+        if (_expandedPaths.Count > 0) stats += $" | Expanded: {_expandedPaths.Count}";
+
+        // Build hints text
+        var hints = !string.IsNullOrEmpty(_searchFilter) ? "Search active" : "'variables' to manage";
+
+        _statusBar.Set(stats, hints);
+        // StatsColor uses theme fallback (Success) - don't set explicitly for dynamic theme support
+    }
+
+    /// <summary>
+    /// Handles layout to position StatusBar at bottom and sets theme colors.
+    /// </summary>
+    protected override void OnRenderContainer(UIContext context)
+    {
+        // Set theme colors dynamically for theme switching
+        BackgroundColor = ThemeManager.Current.ConsoleBackground;
+        BorderColor = ThemeManager.Current.BorderPrimary;
+
+        base.OnRenderContainer(context);
+
+        // Layout: Position StatusBar at bottom and size TextBuffer above it
+        var statusBarHeight = _statusBar.GetDesiredHeight(context.Renderer);
+        _statusBar.Constraint.Height = statusBarHeight;
+
+        // TextBuffer fills remaining space above StatusBar
+        var paddingTop = Constraint.GetPaddingTop();
+        var paddingBottom = Constraint.GetPaddingBottom();
+        var contentHeight = Rect.Height - paddingTop - paddingBottom;
+        _variablesBuffer.Constraint.Height = contentHeight - statusBarHeight;
     }
 
     /// <summary>
@@ -400,7 +428,7 @@ public class VariablesPanel : Panel
                     Name = variable.Name,
                     TypeName = variable.TypeName,
                     ValueStr = $"[Error: {ex.Message}]",
-                    ValueColor = UITheme.Dark.Error,
+                    ValueColor = ThemeManager.Current.Error,
                     Depth = 0,
                     IsPinned = _pinnedVariables.Contains(variable.Name)
                 });
@@ -469,7 +497,7 @@ public class VariablesPanel : Panel
                         TypeName = "",
                         ValueStr = "",
                         Depth = depth,
-                        ValueColor = UITheme.Dark.TextDim
+                        ValueColor = ThemeManager.Current.TextDim
                     });
                     break;
                 }
@@ -498,7 +526,7 @@ public class VariablesPanel : Panel
                     TypeName = "",
                     ValueStr = "",
                     Depth = depth,
-                    ValueColor = UITheme.Dark.TextDim
+                    ValueColor = ThemeManager.Current.TextDim
                 });
             }
         }
@@ -516,7 +544,7 @@ public class VariablesPanel : Panel
                         TypeName = "",
                         ValueStr = "",
                         Depth = depth,
-                        ValueColor = UITheme.Dark.TextDim
+                        ValueColor = ThemeManager.Current.TextDim
                     });
                     break;
                 }
@@ -552,7 +580,7 @@ public class VariablesPanel : Panel
                         TypeName = prop.PropertyType.Name,
                         ValueStr = "[Error reading]",
                         Depth = depth,
-                        ValueColor = UITheme.Dark.Error
+                        ValueColor = ThemeManager.Current.Error
                     });
                 }
             }
@@ -580,7 +608,7 @@ public class VariablesPanel : Panel
                         TypeName = field.FieldType.Name,
                         ValueStr = "[Error reading]",
                         Depth = depth,
-                        ValueColor = UITheme.Dark.Error
+                        ValueColor = ThemeManager.Current.Error
                     });
                 }
             }
@@ -809,26 +837,26 @@ public class VariablesPanel : Panel
     private static Color GetValueColor(object? value)
     {
         if (value == null)
-            return UITheme.Dark.TextDim;
+            return ThemeManager.Current.TextDim;
 
         var type = value.GetType();
 
         if (value is bool)
-            return UITheme.Dark.Info; // Blue for booleans
+            return ThemeManager.Current.Info; // Blue for booleans
 
         if (type.IsPrimitive)
-            return UITheme.Dark.Success; // Green for numbers
+            return ThemeManager.Current.Success; // Green for numbers
 
         if (value is string)
-            return new Color(206, 145, 120); // Orange for strings
+            return ThemeManager.Current.SyntaxString; // Theme string color
 
         if (type.IsEnum)
-            return UITheme.Dark.Warning; // Yellow for enums
+            return ThemeManager.Current.Warning; // Yellow for enums
 
         if (value is ICollection)
-            return UITheme.Dark.TextSecondary;
+            return ThemeManager.Current.TextSecondary;
 
-        return UITheme.Dark.TextPrimary;
+        return ThemeManager.Current.TextPrimary;
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -875,5 +903,23 @@ public class VariablesPanel : Panel
     {
         return (_variables.Count, _globals.Count, _pinnedVariables.Count, _expandedPaths.Count);
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // IVariableOperations Explicit Interface Implementation
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    (int Variables, int Globals, int Pinned, int Expanded) IVariableOperations.GetStatistics() => GetStatistics();
+    IEnumerable<string> IVariableOperations.GetNames() => GetVariableNames();
+    object? IVariableOperations.GetValue(string name) => GetVariableValue(name);
+    void IVariableOperations.SetSearchFilter(string filter) => SetSearchFilter(filter);
+    void IVariableOperations.ClearSearchFilter() => ClearSearchFilter();
+    void IVariableOperations.Expand(string path) => ExpandVariable(path);
+    void IVariableOperations.Collapse(string path) => CollapseVariable(path);
+    void IVariableOperations.ExpandAll() => ExpandAll();
+    void IVariableOperations.CollapseAll() => CollapseAll();
+    void IVariableOperations.Pin(string name) => PinVariable(name);
+    void IVariableOperations.Unpin(string name) => UnpinVariable(name);
+    void IVariableOperations.Clear() => ClearVariables();
+    void IVariableOperations.SetVariable(string name, string typeName, Func<object?> valueGetter) => SetVariable(name, typeName, valueGetter);
 }
 

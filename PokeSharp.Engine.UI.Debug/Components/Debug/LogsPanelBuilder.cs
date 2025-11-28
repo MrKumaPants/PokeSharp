@@ -38,6 +38,7 @@ public class LogsPanelBuilder
     {
         return new LogsPanel(
             _logBuffer ?? CreateDefaultLogBuffer(),
+            CreateDefaultStatusBar(),
             _maxLogs,
             _filterLevel
         );
@@ -47,14 +48,24 @@ public class LogsPanelBuilder
     {
         return new TextBuffer("log_buffer")
         {
-            BackgroundColor = UITheme.Dark.ConsoleOutputBackground,
+            // BackgroundColor uses theme fallback - don't set explicitly
             AutoScroll = true,
             MaxLines = _maxLogs,
             Constraint = new LayoutConstraint
             {
-                Anchor = Anchor.Fill
+                Anchor = Anchor.StretchTop
+            }
+        };
+    }
+
+    private static StatusBar CreateDefaultStatusBar()
+    {
+        return new StatusBar("logs_status")
+        {
+            Constraint = new LayoutConstraint
+            {
+                Anchor = Anchor.StretchBottom
             }
         };
     }
 }
-

@@ -31,17 +31,18 @@ public class ConsolePanel : Panel
     private bool _isCompletingText = false; // Flag to prevent completion requests during completion
 
     // Layout constraints (from UITheme)
-    private static float InputMinHeight => UITheme.Dark.MinInputHeight; // Minimum height for input (1 line)
-    private static float SuggestionsMaxHeight => UITheme.Dark.MaxSuggestionsHeight;
-    private static float Padding => UITheme.Dark.ComponentGap;
-    private static float ComponentSpacing => UITheme.Dark.ComponentGap; // Semantic name for gaps between components
-    private static float TooltipGap => UITheme.Dark.TooltipGap; // Gap for tooltips above components
-    private static float PanelEdgeGap => UITheme.Dark.PanelEdgeGap; // Gap from panel edges
+    private static float InputMinHeight => ThemeManager.Current.MinInputHeight; // Minimum height for input (1 line)
+    private static float SuggestionsMaxHeight => ThemeManager.Current.MaxSuggestionsHeight;
+    private static float Padding => ThemeManager.Current.ComponentGap;
+    private static float ComponentSpacing => ThemeManager.Current.ComponentGap; // Semantic name for gaps between components
+    private static float TooltipGap => ThemeManager.Current.TooltipGap; // Gap for tooltips above components
+    private static float PanelEdgeGap => ThemeManager.Current.PanelEdgeGap; // Gap from panel edges
 
     // Console state
     private bool _closeRequested = false; // Defer close until after rendering
     private ConsoleSize _currentSize = ConsoleSize.Medium; // Default to 50% height
     private bool _wasVisible = false; // Track visibility changes for focus management
+    private string _prompt = "> "; // Input prompt (changes for multi-line mode)
 
     // Events
     public Action<string>? OnCommandSubmitted { get; set; }
@@ -85,8 +86,7 @@ public class ConsolePanel : Panel
     private void Initialize(bool loadHistory)
     {
         Id = "console_panel";
-        BackgroundColor = UITheme.Dark.ConsoleBackground;
-        BorderColor = UITheme.Dark.BorderPrimary;
+        // Colors set dynamically in OnRenderContainer for theme switching
         BorderThickness = 1;
 
         // Add padding to the console panel - this creates the ContentRect for children
@@ -371,7 +371,7 @@ public class ConsolePanel : Panel
     private void HandleCommandSubmit(string command)
     {
         // Echo command to output
-        AppendOutput($"> {command}", UITheme.Dark.Prompt);
+        AppendOutput($"{_prompt}{command}", ThemeManager.Current.Prompt);
 
         // Execute command
         OnCommandSubmitted?.Invoke(command);
@@ -379,6 +379,14 @@ public class ConsolePanel : Panel
         // Hide suggestions and command history search
         if (_overlayMode == ConsoleOverlayMode.Suggestions || _overlayMode == ConsoleOverlayMode.CommandHistorySearch)
             _overlayMode = ConsoleOverlayMode.None;
+    }
+
+    /// <summary>
+    /// Sets the input prompt (e.g., "> " for normal, "... " for multi-line mode).
+    /// </summary>
+    public void SetPrompt(string prompt)
+    {
+        _prompt = prompt;
     }
 
     private void HandleTextChanged(string text)
@@ -618,6 +626,10 @@ public class ConsolePanel : Panel
 
     protected override void OnRenderContainer(UIContext context)
     {
+        // Update colors from current theme for dynamic theme switching
+        BackgroundColor = ThemeManager.Current.ConsoleBackground;
+        BorderColor = ThemeManager.Current.BorderPrimary;
+
         float inputHeight, hintHeight;
 
         if (_overlayMode == ConsoleOverlayMode.Search)

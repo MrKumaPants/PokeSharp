@@ -67,7 +67,7 @@ public async Task<Entity?> LoadMap(MapIdentifier mapId)
 public Entity SpawnFromTemplate(string templateId, World world)
 {
     ArgumentException.ThrowIfNullOrWhiteSpace(templateId);
-    
+
     var template = _templateCache.Get(templateId);
     if (template == null)
     {

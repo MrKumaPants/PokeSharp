@@ -2,6 +2,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Extensions.DependencyInjection;
 using PokeSharp.Engine.UI.Debug.Core;
+using PokeSharp.Engine.UI.Debug.Interfaces;
 using PokeSharp.Engine.UI.Debug.Scenes;
 using PokeSharp.Engine.Debug.Console.Features;
 using PokeSharp.Engine.Debug.Console.Scripting;
@@ -15,22 +16,35 @@ namespace PokeSharp.Engine.Debug.Commands;
 /// </summary>
 public class ConsoleContext : IConsoleContext
 {
-    private readonly NewConsoleScene _consoleScene;
+    private readonly ConsoleScene _consoleScene;
     private readonly Action _closeAction;
-    private readonly Func<bool> _isLoggingEnabledFunc;
-    private readonly Action<bool> _setLoggingEnabledAction;
-    private readonly Func<Microsoft.Extensions.Logging.LogLevel> _getLogLevelFunc;
-    private readonly Action<Microsoft.Extensions.Logging.LogLevel> _setLogLevelAction;
-    private readonly ConsoleCommandRegistry _commandRegistry;
-    private readonly AliasMacroManager _aliasManager;
-    private readonly ScriptManager _scriptManager;
-    private readonly ConsoleScriptEvaluator _scriptEvaluator;
-    private readonly ConsoleGlobals _consoleGlobals;
-    private readonly BookmarkedCommandsManager _bookmarkManager;
-    private readonly WatchPresetManager _watchPresetManager;
+    private readonly ConsoleLoggingCallbacks _loggingCallbacks;
+    private readonly ConsoleServices _services;
 
+    /// <summary>
+    /// Creates a new ConsoleContext with aggregated services.
+    /// This is the preferred constructor for new code.
+    /// </summary>
     public ConsoleContext(
-        NewConsoleScene consoleScene,
+        ConsoleScene consoleScene,
+        Action closeAction,
+        ConsoleLoggingCallbacks loggingCallbacks,
+        ConsoleServices services)
+    {
+        _consoleScene = consoleScene ?? throw new ArgumentNullException(nameof(consoleScene));
+        _closeAction = closeAction ?? throw new ArgumentNullException(nameof(closeAction));
+        _loggingCallbacks = loggingCallbacks ?? throw new ArgumentNullException(nameof(loggingCallbacks));
+        _services = services ?? throw new ArgumentNullException(nameof(services));
+    }
+
+    /// <summary>
+    /// Creates a new ConsoleContext with individual parameters.
+    /// This constructor is maintained for backward compatibility.
+    /// Prefer using the constructor with ConsoleServices and ConsoleLoggingCallbacks.
+    /// </summary>
+    [Obsolete("Use the constructor with ConsoleServices and ConsoleLoggingCallbacks instead")]
+    public ConsoleContext(
+        ConsoleScene consoleScene,
         Action closeAction,
         Func<bool> isLoggingEnabledFunc,
         Action<bool> setLoggingEnabledAction,
@@ -43,23 +57,25 @@ public class ConsoleContext : IConsoleContext
         ConsoleGlobals consoleGlobals,
         BookmarkedCommandsManager bookmarkManager,
         WatchPresetManager watchPresetManager)
+        : this(
+            consoleScene,
+            closeAction,
+            new ConsoleLoggingCallbacks(isLoggingEnabledFunc, setLoggingEnabledAction, getLogLevelFunc, setLogLevelAction),
+            new ConsoleServices(commandRegistry, aliasManager, scriptManager, scriptEvaluator, consoleGlobals, bookmarkManager, watchPresetManager))
     {
-        _consoleScene = consoleScene ?? throw new ArgumentNullException(nameof(consoleScene));
-        _closeAction = closeAction ?? throw new ArgumentNullException(nameof(closeAction));
-        _isLoggingEnabledFunc = isLoggingEnabledFunc ?? throw new ArgumentNullException(nameof(isLoggingEnabledFunc));
-        _setLoggingEnabledAction = setLoggingEnabledAction ?? throw new ArgumentNullException(nameof(setLoggingEnabledAction));
-        _getLogLevelFunc = getLogLevelFunc ?? throw new ArgumentNullException(nameof(getLogLevelFunc));
-        _setLogLevelAction = setLogLevelAction ?? throw new ArgumentNullException(nameof(setLogLevelAction));
-        _commandRegistry = commandRegistry ?? throw new ArgumentNullException(nameof(commandRegistry));
-        _aliasManager = aliasManager ?? throw new ArgumentNullException(nameof(aliasManager));
-        _scriptManager = scriptManager ?? throw new ArgumentNullException(nameof(scriptManager));
-        _scriptEvaluator = scriptEvaluator ?? throw new ArgumentNullException(nameof(scriptEvaluator));
-        _consoleGlobals = consoleGlobals ?? throw new ArgumentNullException(nameof(consoleGlobals));
-        _bookmarkManager = bookmarkManager ?? throw new ArgumentNullException(nameof(bookmarkManager));
-        _watchPresetManager = watchPresetManager ?? throw new ArgumentNullException(nameof(watchPresetManager));
     }
 
     public UITheme Theme => UITheme.Dark;
+
+    // Panel operation interfaces - expose panels directly for commands
+    public IEntityOperations Entities => _consoleScene.EntityOperations
+        ?? throw new InvalidOperationException("Entities panel not initialized");
+    public IWatchOperations Watches => _consoleScene.WatchOperations
+        ?? throw new InvalidOperationException("Watches panel not initialized");
+    public IVariableOperations Variables => _consoleScene.VariableOperations
+        ?? throw new InvalidOperationException("Variables panel not initialized");
+    public ILogOperations Logs => _consoleScene.LogOperations
+        ?? throw new InvalidOperationException("Logs panel not initialized");
 
     public void WriteLine(string text)
     {
@@ -76,18 +92,18 @@ public class ConsoleContext : IConsoleContext
         _consoleScene.ClearOutput();
     }
 
-    public bool IsLoggingEnabled => _isLoggingEnabledFunc();
+    public bool IsLoggingEnabled => _loggingCallbacks.IsLoggingEnabled();
 
     public void SetLoggingEnabled(bool enabled)
     {
-        _setLoggingEnabledAction(enabled);
+        _loggingCallbacks.SetLoggingEnabled(enabled);
     }
 
-    public Microsoft.Extensions.Logging.LogLevel MinimumLogLevel => _getLogLevelFunc();
+    public Microsoft.Extensions.Logging.LogLevel MinimumLogLevel => _loggingCallbacks.GetLogLevel();
 
     public void SetMinimumLogLevel(Microsoft.Extensions.Logging.LogLevel level)
     {
-        _setLogLevelAction(level);
+        _loggingCallbacks.SetLogLevel(level);
     }
 
     public void Close()
@@ -97,12 +113,12 @@ public class ConsoleContext : IConsoleContext
 
     public IEnumerable<IConsoleCommand> GetAllCommands()
     {
-        return _commandRegistry.GetAllCommands();
+        return _services.CommandRegistry.GetAllCommands();
     }
 
     public IConsoleCommand? GetCommand(string name)
     {
-        return _commandRegistry.GetCommand(name);
+        return _services.CommandRegistry.GetCommand(name);
     }
 
     public IReadOnlyList<string> GetCommandHistory()
@@ -127,54 +143,54 @@ public class ConsoleContext : IConsoleContext
 
     public bool DefineAlias(string name, string command)
     {
-        var result = _aliasManager.DefineAlias(name, command);
+        var result = _services.AliasManager.DefineAlias(name, command);
         if (result)
         {
-            _aliasManager.SaveAliases();
+            _services.AliasManager.SaveAliases();
         }
         return result;
     }
 
     public bool RemoveAlias(string name)
     {
-        var result = _aliasManager.RemoveAlias(name);
+        var result = _services.AliasManager.RemoveAlias(name);
         if (result)
         {
-            _aliasManager.SaveAliases();
+            _services.AliasManager.SaveAliases();
         }
         return result;
     }
 
     public IReadOnlyDictionary<string, string> GetAllAliases()
     {
-        return _aliasManager.GetAllAliases();
+        return _services.AliasManager.GetAllAliases();
     }
 
     public List<string> ListScripts()
     {
-        return _scriptManager.ListScripts();
+        return _services.ScriptManager.ListScripts();
     }
 
     public string GetScriptsDirectory()
     {
-        return _scriptManager.ScriptsDirectory;
+        return _services.ScriptManager.ScriptsDirectory;
     }
 
     public string? LoadScript(string filename)
     {
-        var result = _scriptManager.LoadScript(filename);
+        var result = _services.ScriptManager.LoadScript(filename);
         return result.IsSuccess ? result.Value : null;
     }
 
     public bool SaveScript(string filename, string content)
     {
-        var result = _scriptManager.SaveScript(filename, content);
+        var result = _services.ScriptManager.SaveScript(filename, content);
         return result.IsSuccess;
     }
 
     public async Task ExecuteScriptAsync(string scriptContent)
     {
-        var result = await _scriptEvaluator.EvaluateAsync(scriptContent, _consoleGlobals);
+        var result = await _services.ScriptEvaluator.EvaluateAsync(scriptContent, _services.ScriptGlobals);
 
         // Handle compilation errors
         if (result.IsCompilationError && result.Errors != null)
@@ -207,47 +223,47 @@ public class ConsoleContext : IConsoleContext
 
     public void ResetScriptState()
     {
-        _scriptEvaluator.Reset();
+        _services.ScriptEvaluator.Reset();
     }
 
     public IReadOnlyDictionary<int, string> GetAllBookmarks()
     {
-        return _bookmarkManager.GetAllBookmarks();
+        return _services.BookmarkManager.GetAllBookmarks();
     }
 
     public string? GetBookmark(int fkeyNumber)
     {
-        return _bookmarkManager.GetBookmark(fkeyNumber);
+        return _services.BookmarkManager.GetBookmark(fkeyNumber);
     }
 
     public bool SetBookmark(int fkeyNumber, string command)
     {
-        var result = _bookmarkManager.BookmarkCommand(fkeyNumber, command);
-        if (result) _bookmarkManager.SaveBookmarks(); // Auto-save on change
+        var result = _services.BookmarkManager.BookmarkCommand(fkeyNumber, command);
+        if (result) _services.BookmarkManager.SaveBookmarks(); // Auto-save on change
         return result;
     }
 
     public bool RemoveBookmark(int fkeyNumber)
     {
-        var result = _bookmarkManager.RemoveBookmark(fkeyNumber);
-        if (result) _bookmarkManager.SaveBookmarks(); // Auto-save on change
+        var result = _services.BookmarkManager.RemoveBookmark(fkeyNumber);
+        if (result) _services.BookmarkManager.SaveBookmarks(); // Auto-save on change
         return result;
     }
 
     public void ClearAllBookmarks()
     {
-        _bookmarkManager.ClearAll();
-        _bookmarkManager.SaveBookmarks(); // Auto-save on change
+        _services.BookmarkManager.ClearAll();
+        _services.BookmarkManager.SaveBookmarks(); // Auto-save on change
     }
 
     public bool SaveBookmarks()
     {
-        return _bookmarkManager.SaveBookmarks();
+        return _services.BookmarkManager.SaveBookmarks();
     }
 
     public int LoadBookmarks()
     {
-        return _bookmarkManager.LoadBookmarks();
+        return _services.BookmarkManager.LoadBookmarks();
     }
 
     public bool AddWatch(string name, string expression)
@@ -262,7 +278,7 @@ public class ConsoleContext : IConsoleContext
         {
             try
             {
-                var task = _scriptEvaluator.EvaluateAsync(expression, _consoleGlobals);
+                var task = _services.ScriptEvaluator.EvaluateAsync(expression, _services.ScriptGlobals);
                 task.Wait();
                 var result = task.Result;
 
@@ -293,7 +309,7 @@ public class ConsoleContext : IConsoleContext
             {
                 try
                 {
-                    var task = _scriptEvaluator.EvaluateAsync(condition, _consoleGlobals);
+                    var task = _services.ScriptEvaluator.EvaluateAsync(condition, _services.ScriptGlobals);
                     task.Wait();
                     var result = task.Result;
 
@@ -521,7 +537,7 @@ public class ConsoleContext : IConsoleContext
                 }).ToList()
             };
 
-            return _watchPresetManager.SavePreset(preset);
+            return _services.WatchPresetManager.SavePreset(preset);
         }
         catch
         {
@@ -533,7 +549,7 @@ public class ConsoleContext : IConsoleContext
     {
         try
         {
-            var preset = _watchPresetManager.LoadPreset(name);
+            var preset = _services.WatchPresetManager.LoadPreset(name);
             if (preset == null)
                 return false;
 
@@ -548,7 +564,7 @@ public class ConsoleContext : IConsoleContext
                 {
                     try
                     {
-                        var result = _scriptEvaluator.EvaluateAsync(watch.Expression, _consoleGlobals).Result;
+                        var result = _services.ScriptEvaluator.EvaluateAsync(watch.Expression, _services.ScriptGlobals).Result;
                         return result.IsSuccess ? result.Output : $"<error: {result.Errors?[0].Message ?? "evaluation failed"}>";
                     }
                     catch (Exception ex)
@@ -565,7 +581,7 @@ public class ConsoleContext : IConsoleContext
                     {
                         try
                         {
-                            var result = _scriptEvaluator.EvaluateAsync(watch.Condition, _consoleGlobals).Result;
+                            var result = _services.ScriptEvaluator.EvaluateAsync(watch.Condition, _services.ScriptGlobals).Result;
                             if (!result.IsSuccess) return false;
                             // Output is a string representation, parse it as boolean
                             if (string.IsNullOrEmpty(result.Output)) return false;
@@ -627,22 +643,22 @@ public class ConsoleContext : IConsoleContext
 
     public IEnumerable<(string Name, string Description, int WatchCount, DateTime CreatedAt)> ListWatchPresets()
     {
-        return _watchPresetManager.ListPresets();
+        return _services.WatchPresetManager.ListPresets();
     }
 
     public bool DeleteWatchPreset(string name)
     {
-        return _watchPresetManager.DeletePreset(name);
+        return _services.WatchPresetManager.DeletePreset(name);
     }
 
     public bool WatchPresetExists(string name)
     {
-        return _watchPresetManager.PresetExists(name);
+        return _services.WatchPresetManager.PresetExists(name);
     }
 
     public void CreateBuiltInWatchPresets()
     {
-        _watchPresetManager.CreateBuiltInPresets();
+        _services.WatchPresetManager.CreateBuiltInPresets();
     }
 
     public void SwitchToTab(int tabIndex)
@@ -653,6 +669,11 @@ public class ConsoleContext : IConsoleContext
     public int GetActiveTab()
     {
         return _consoleScene.GetActiveTab();
+    }
+
+    public void SetConsoleHeight(float heightPercent)
+    {
+        _consoleScene.SetHeightPercent(heightPercent);
     }
 
     public string ExportConsoleOutput()
@@ -748,5 +769,164 @@ public class ConsoleContext : IConsoleContext
     {
         _consoleScene.ClearVariables();
     }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Entities Tab
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    public void RefreshEntities()
+    {
+        _consoleScene.RefreshEntities();
+    }
+
+    public void SetEntityTagFilter(string tag)
+    {
+        _consoleScene.SetEntityTagFilter(tag);
+    }
+
+    public void SetEntitySearchFilter(string search)
+    {
+        _consoleScene.SetEntitySearchFilter(search);
+    }
+
+    public void SetEntityComponentFilter(string componentName)
+    {
+        _consoleScene.SetEntityComponentFilter(componentName);
+    }
+
+    public void ClearEntityFilters()
+    {
+        _consoleScene.ClearEntityFilters();
+    }
+
+    public (string Tag, string Search, string Component) GetEntityFilters()
+    {
+        return _consoleScene.GetEntityFilters();
+    }
+
+    public void SelectEntity(int entityId)
+    {
+        _consoleScene.SelectEntity(entityId);
+    }
+
+    public void ExpandEntity(int entityId)
+    {
+        _consoleScene.ExpandEntity(entityId);
+    }
+
+    public void CollapseEntity(int entityId)
+    {
+        _consoleScene.CollapseEntity(entityId);
+    }
+
+    public bool ToggleEntity(int entityId)
+    {
+        return _consoleScene.ToggleEntity(entityId);
+    }
+
+    public void ExpandAllEntities()
+    {
+        _consoleScene.ExpandAllEntities();
+    }
+
+    public void CollapseAllEntities()
+    {
+        _consoleScene.CollapseAllEntities();
+    }
+
+    public void PinEntity(int entityId)
+    {
+        _consoleScene.PinEntity(entityId);
+    }
+
+    public void UnpinEntity(int entityId)
+    {
+        _consoleScene.UnpinEntity(entityId);
+    }
+
+    public (int Total, int Filtered, int Pinned, int Expanded) GetEntityStatistics()
+    {
+        return _consoleScene.GetEntityStatistics();
+    }
+
+    public Dictionary<string, int> GetEntityTagCounts()
+    {
+        return _consoleScene.GetEntityTagCounts();
+    }
+
+    public IEnumerable<string> GetEntityComponentNames()
+    {
+        return _consoleScene.GetEntityComponentNames();
+    }
+
+    public IEnumerable<string> GetEntityTags()
+    {
+        return _consoleScene.GetEntityTags();
+    }
+
+    public PokeSharp.Engine.UI.Debug.Models.EntityInfo? FindEntity(int entityId)
+    {
+        return _consoleScene.FindEntity(entityId);
+    }
+
+    public IEnumerable<PokeSharp.Engine.UI.Debug.Models.EntityInfo> FindEntitiesByName(string name)
+    {
+        return _consoleScene.FindEntitiesByName(name);
+    }
+
+    public (int Spawned, int Removed, int CurrentlyHighlighted) GetEntitySessionStats()
+    {
+        return _consoleScene.GetEntitySessionStats();
+    }
+
+    public void ClearEntitySessionStats()
+    {
+        _consoleScene.ClearEntitySessionStats();
+    }
+
+    public bool EntityAutoRefresh
+    {
+        get => _consoleScene.EntityAutoRefresh;
+        set => _consoleScene.EntityAutoRefresh = value;
+    }
+
+    public float EntityRefreshInterval
+    {
+        get => _consoleScene.EntityRefreshInterval;
+        set => _consoleScene.EntityRefreshInterval = value;
+    }
+
+    public float EntityHighlightDuration
+    {
+        get => _consoleScene.EntityHighlightDuration;
+        set => _consoleScene.EntityHighlightDuration = value;
+    }
+
+    public IEnumerable<int> GetNewEntityIds()
+    {
+        return _consoleScene.GetNewEntityIds();
+    }
+
+    public string ExportEntitiesToText(bool includeComponents = true, bool includeProperties = true)
+    {
+        return _consoleScene.ExportEntitiesToText(includeComponents, includeProperties);
+    }
+
+    public string ExportEntitiesToCsv()
+    {
+        return _consoleScene.ExportEntitiesToCsv();
+    }
+
+    public string? ExportSelectedEntity()
+    {
+        return _consoleScene.ExportSelectedEntity();
+    }
+
+    public void CopyEntitiesToClipboard(bool asCsv = false)
+    {
+        _consoleScene.CopyEntitiesToClipboard(asCsv);
+    }
+
+    public int? SelectedEntityId => _consoleScene.SelectedEntityId;
 }
 

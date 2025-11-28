@@ -44,6 +44,9 @@ public abstract class UIComponent
     /// <summary>Cached layout rectangle</summary>
     private LayoutRect _cachedRect;
 
+    /// <summary>Last parent rect used for layout - to detect resize</summary>
+    private LayoutRect _lastParentRect;
+
     /// <summary>The UI context this component is rendered in</summary>
     protected UIContext? Context { get; private set; }
 
@@ -60,10 +63,13 @@ public abstract class UIComponent
         try
         {
             // Resolve layout (with caching)
-            if (_layoutDirty || Constraint.IsDirty)
+            var parentRect = context.CurrentContainer.ContentRect;
+
+            // Invalidate if parent rect changed (window resize) or constraint changed
+            if (_layoutDirty || Constraint.IsDirty || parentRect != _lastParentRect)
             {
-                var parentRect = context.CurrentContainer.ContentRect;
                 _cachedRect = LayoutResolver.Resolve(Constraint, parentRect, GetContentSize());
+                _lastParentRect = parentRect;
                 _layoutDirty = false;
                 Constraint.ClearDirty();
             }

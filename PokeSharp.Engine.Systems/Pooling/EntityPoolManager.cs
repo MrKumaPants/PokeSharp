@@ -46,11 +46,17 @@ public class EntityPoolManager
     /// <param name="initialSize">Initial pool size</param>
     /// <param name="maxSize">Maximum pool size</param>
     /// <param name="warmup">Whether to pre-warm the pool</param>
+    /// <param name="autoResize">Whether to auto-resize when exhausted</param>
+    /// <param name="growthFactor">Growth factor when auto-resizing</param>
+    /// <param name="absoluteMaxSize">Maximum size even with auto-resize</param>
     public void RegisterPool(
         string poolName,
         int initialSize = 100,
         int maxSize = 1000,
-        bool warmup = true
+        bool warmup = true,
+        bool autoResize = true,
+        float growthFactor = 1.5f,
+        int absoluteMaxSize = 10000
     )
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(poolName);
@@ -60,7 +66,12 @@ public class EntityPoolManager
             if (_pools.ContainsKey(poolName))
                 throw new ArgumentException($"Pool '{poolName}' already registered");
 
-            var pool = new EntityPool(_world, poolName, initialSize, maxSize);
+            var pool = new EntityPool(_world, poolName, initialSize, maxSize)
+            {
+                AutoResize = autoResize,
+                GrowthFactor = growthFactor,
+                AbsoluteMaxSize = absoluteMaxSize
+            };
 
             if (warmup)
                 pool.Warmup(initialSize);

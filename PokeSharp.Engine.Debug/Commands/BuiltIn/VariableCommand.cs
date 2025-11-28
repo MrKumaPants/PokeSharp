@@ -36,7 +36,7 @@ Examples:
         if (args.Length == 0)
         {
             // Show stats
-            var (variables, globals, pinned, expanded) = context.GetVariableStatistics();
+            var (variables, globals, pinned, expanded) = context.Variables.GetStatistics();
 
             context.WriteLine($"Variables: {variables} defined", theme.Info);
             context.WriteLine($"  Globals: {globals}", theme.TextSecondary);
@@ -64,12 +64,12 @@ Examples:
                     return Task.CompletedTask;
                 }
                 var searchText = string.Join(" ", args.Skip(1));
-                context.SetVariableSearchFilter(searchText);
+                context.Variables.SetSearchFilter(searchText);
                 context.WriteLine($"Filtering variables by: \"{searchText}\"", theme.Success);
                 break;
 
             case "clear-search":
-                context.ClearVariableSearchFilter();
+                context.Variables.ClearSearchFilter();
                 context.WriteLine("Search filter cleared", theme.Success);
                 break;
 
@@ -79,10 +79,8 @@ Examples:
                     context.WriteLine("Usage: var expand <name>", theme.Warning);
                     return Task.CompletedTask;
                 }
-                if (context.ExpandVariable(args[1]))
+                context.Variables.Expand(args[1]);
                     context.WriteLine($"Expanded: {args[1]}", theme.Success);
-                else
-                    context.WriteLine($"Cannot expand: {args[1]}", theme.Warning);
                 break;
 
             case "collapse":
@@ -91,17 +89,17 @@ Examples:
                     context.WriteLine("Usage: var collapse <name>", theme.Warning);
                     return Task.CompletedTask;
                 }
-                context.CollapseVariable(args[1]);
+                context.Variables.Collapse(args[1]);
                 context.WriteLine($"Collapsed: {args[1]}", theme.Success);
                 break;
 
             case "expand-all":
-                context.ExpandAllVariables();
+                context.Variables.ExpandAll();
                 context.WriteLine("All variables expanded", theme.Success);
                 break;
 
             case "collapse-all":
-                context.CollapseAllVariables();
+                context.Variables.CollapseAll();
                 context.WriteLine("All variables collapsed", theme.Success);
                 break;
 
@@ -111,7 +109,7 @@ Examples:
                     context.WriteLine("Usage: var pin <name>", theme.Warning);
                     return Task.CompletedTask;
                 }
-                context.PinVariable(args[1]);
+                context.Variables.Pin(args[1]);
                 context.WriteLine($"Pinned: {args[1]}", theme.Success);
                 break;
 
@@ -121,12 +119,12 @@ Examples:
                     context.WriteLine("Usage: var unpin <name>", theme.Warning);
                     return Task.CompletedTask;
                 }
-                context.UnpinVariable(args[1]);
+                context.Variables.Unpin(args[1]);
                 context.WriteLine($"Unpinned: {args[1]}", theme.Success);
                 break;
 
             case "clear":
-                context.ClearVariables();
+                context.Variables.Clear();
                 context.WriteLine("All user-defined variables cleared", theme.Success);
                 break;
 
@@ -142,7 +140,7 @@ Examples:
     private void ListVariables(IConsoleContext context)
     {
         var theme = context.Theme;
-        var names = context.GetVariableNames().ToList();
+        var names = context.Variables.GetNames().ToList();
 
         if (names.Count == 0)
         {
@@ -154,7 +152,7 @@ Examples:
         context.WriteLine($"Variables ({names.Count}):", theme.Info);
         foreach (var name in names.OrderBy(n => n))
         {
-            var value = context.GetVariableValue(name);
+            var value = context.Variables.GetValue(name);
             var valueStr = value?.ToString() ?? "null";
             if (valueStr.Length > 40)
                 valueStr = valueStr.Substring(0, 37) + "...";

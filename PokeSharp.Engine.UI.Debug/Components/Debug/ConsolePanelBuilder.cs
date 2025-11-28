@@ -154,7 +154,7 @@ public class ConsolePanelBuilder
     {
         return new TextBuffer("console_output")
         {
-            BackgroundColor = UITheme.Dark.ConsoleOutputBackground,
+            // BackgroundColor uses theme fallback - don't set explicitly
             AutoScroll = true,
             MaxLines = _maxOutputLines,
             Constraint = new LayoutConstraint
@@ -170,14 +170,14 @@ public class ConsolePanelBuilder
         return new TextEditor("console_input")
         {
             Prompt = "> ",
-            BackgroundColor = UITheme.Dark.ConsoleInputBackground,
+            // BackgroundColor uses theme fallback - don't set explicitly
             MinVisibleLines = 1,
             MaxVisibleLines = 10,
             Constraint = new LayoutConstraint
             {
                 Anchor = Anchor.StretchBottom,
                 OffsetY = 0,
-                Height = UITheme.Dark.MinInputHeight
+                Height = 30 // Fixed height
             }
         };
     }
@@ -190,8 +190,8 @@ public class ConsolePanelBuilder
             Constraint = new LayoutConstraint
             {
                 Anchor = Anchor.BottomLeft,
-                OffsetX = UITheme.Dark.ComponentGap,
-                OffsetY = -(UITheme.Dark.MinInputHeight + UITheme.Dark.ComponentGap),
+                OffsetX = ThemeManager.Current.ComponentGap,
+                OffsetY = -(ThemeManager.Current.MinInputHeight + ThemeManager.Current.ComponentGap),
                 WidthPercent = 0.5f,
                 MinWidth = 400f,
                 MaxWidth = 800f,
@@ -204,7 +204,7 @@ public class ConsolePanelBuilder
     {
         return new HintBar("console_hints")
         {
-            TextColor = UITheme.Dark.ConsoleHintText,
+            // TextColor uses theme fallback - don't set explicitly
             Constraint = new LayoutConstraint
             {
                 Anchor = Anchor.StretchBottom,
@@ -218,14 +218,13 @@ public class ConsolePanelBuilder
     {
         return new SearchBar("console_search")
         {
-            BackgroundColor = UITheme.Dark.ConsoleSearchBackground,
-            BorderColor = Color.Transparent,
+            // BackgroundColor uses theme fallback - don't set explicitly
             BorderThickness = 0,
             Constraint = new LayoutConstraint
             {
                 Anchor = Anchor.StretchBottom,
                 OffsetY = 0,
-                Height = UITheme.Dark.MinInputHeight
+                Height = 30 // Fixed height
             }
         };
     }
@@ -234,7 +233,7 @@ public class ConsolePanelBuilder
     {
         return new HintBar("search_hints")
         {
-            TextColor = UITheme.Dark.ConsoleHintText,
+            // TextColor uses theme fallback - don't set explicitly
             Constraint = new LayoutConstraint
             {
                 Anchor = Anchor.StretchBottom,
@@ -267,8 +266,8 @@ public class ConsolePanelBuilder
             Constraint = new LayoutConstraint
             {
                 Anchor = Anchor.TopRight,
-                OffsetX = -UITheme.Dark.PanelEdgeGap,
-                OffsetY = UITheme.Dark.PanelEdgeGap,
+                OffsetX = -ThemeManager.Current.PanelEdgeGap,
+                OffsetY = ThemeManager.Current.PanelEdgeGap,
                 WidthPercent = 0.35f,
                 MinWidth = 400f,
                 MaxWidth = 600f,

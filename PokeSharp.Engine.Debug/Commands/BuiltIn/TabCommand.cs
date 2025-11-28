@@ -1,4 +1,5 @@
 using PokeSharp.Engine.UI.Debug.Core;
+using Tabs = PokeSharp.Engine.UI.Debug.Core.ConsoleTabs;
 
 namespace PokeSharp.Engine.Debug.Commands.BuiltIn;
 
@@ -10,44 +11,25 @@ public class TabCommand : IConsoleCommand
 {
     public string Name => "tab";
     public string Description => "Switch between console tabs";
-    public string Usage => @"tab [name|index]
+    public string Usage => $@"tab [name|index]
 
 Switches to the specified tab by name or index.
 
 Arguments:
-  name    Tab name: console, watch, logs, variables
-  index   Tab index: 0-3
+  name    Tab name: {string.Join(", ", Tabs.All.Select(t => t.Name.ToLowerInvariant()))}
+  index   Tab index: 0-{Tabs.Count - 1}
 
 Examples:
   tab console     Switch to Console tab
   tab watch       Switch to Watch tab
   tab logs        Switch to Logs tab
   tab variables   Switch to Variables tab
+  tab entities    Switch to Entities tab
   tab 0           Switch to Console tab (by index)
-  tab 1           Switch to Watch tab (by index)
-  tab             Show current tab and list all tabs";
+  tab             Show current tab and list all tabs
 
-    // Tab name mappings
-    private static readonly Dictionary<string, int> TabNameToIndex = new(StringComparer.OrdinalIgnoreCase)
-    {
-        { "console", 0 },
-        { "con", 0 },
-        { "0", 0 },
-        { "watch", 1 },
-        { "w", 1 },
-        { "1", 1 },
-        { "logs", 2 },
-        { "log", 2 },
-        { "l", 2 },
-        { "2", 2 },
-        { "variables", 3 },
-        { "vars", 3 },
-        { "var", 3 },
-        { "v", 3 },
-        { "3", 3 },
-    };
-
-    private static readonly string[] TabNames = { "Console", "Watch", "Logs", "Variables" };
+Keyboard Shortcuts:
+  Ctrl+1-{Tabs.Count}      Switch tabs directly (Ctrl+1 = Console, etc.)";
 
     public Task ExecuteAsync(IConsoleContext context, string[] args)
     {
@@ -60,12 +42,14 @@ Examples:
             context.WriteLine("Console Tabs:", theme.Info);
             context.WriteLine("─────────────────────────────", theme.BorderPrimary);
 
-            for (int i = 0; i < TabNames.Length; i++)
+            foreach (var tabDef in Tabs.All)
             {
-                var indicator = i == currentTab ? " → " : "   ";
-                var status = i == currentTab ? "(active)" : "";
-                var color = i == currentTab ? theme.Success : theme.TextSecondary;
-                context.WriteLine($"{indicator}{i}. {TabNames[i]} {status}", color);
+                var isActive = tabDef.Index == currentTab;
+                var indicator = isActive ? " → " : "   ";
+                var status = isActive ? "(active)" : "";
+                var shortcut = tabDef.Shortcut.HasValue ? $"[Ctrl+{tabDef.Index + 1}]" : "";
+                var color = isActive ? theme.Success : theme.TextSecondary;
+                context.WriteLine($"{indicator}{tabDef.Index}. {tabDef.Name} {status} {shortcut}", color);
             }
 
             context.WriteLine("", theme.TextPrimary);
@@ -75,15 +59,16 @@ Examples:
 
         var target = args[0];
 
-        if (TabNameToIndex.TryGetValue(target, out var tabIndex))
+        if (Tabs.TryGet(target, out var matchedTab) && matchedTab != null)
         {
-            context.SwitchToTab(tabIndex);
-            context.WriteLine($"Switched to {TabNames[tabIndex]} tab", theme.Success);
+            context.SwitchToTab(matchedTab.Index);
+            context.WriteLine($"Switched to {matchedTab.Name} tab", theme.Success);
         }
         else
         {
             context.WriteLine($"Unknown tab: '{target}'", theme.Error);
-            context.WriteLine("Valid tabs: console, watch, logs, variables (or 0-3)", theme.TextDim);
+            var validNames = string.Join(", ", Tabs.All.Select(t => t.Name.ToLowerInvariant()));
+            context.WriteLine($"Valid tabs: {validNames} (or 0-{Tabs.Count - 1})", theme.TextDim);
         }
 
         return Task.CompletedTask;

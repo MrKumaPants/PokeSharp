@@ -29,7 +29,8 @@ public class VariablesPanelBuilder
     public VariablesPanel Build()
     {
         return new VariablesPanel(
-            _variablesBuffer ?? CreateDefaultVariablesBuffer()
+            _variablesBuffer ?? CreateDefaultVariablesBuffer(),
+            CreateDefaultStatusBar()
         );
     }
 
@@ -37,14 +38,24 @@ public class VariablesPanelBuilder
     {
         return new TextBuffer("variables_buffer")
         {
-            BackgroundColor = UITheme.Dark.ConsoleOutputBackground,
+            // BackgroundColor uses theme fallback - don't set explicitly
             AutoScroll = false,
             MaxLines = _maxLines,
             Constraint = new LayoutConstraint
             {
-                Anchor = Anchor.Fill
+                Anchor = Anchor.StretchTop
+            }
+        };
+    }
+
+    private static StatusBar CreateDefaultStatusBar()
+    {
+        return new StatusBar("variables_status")
+        {
+            Constraint = new LayoutConstraint
+            {
+                Anchor = Anchor.StretchBottom
             }
         };
     }
 }
-

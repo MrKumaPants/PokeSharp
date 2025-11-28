@@ -37,15 +37,15 @@ public class ExportCommand : IConsoleCommand
                 var useLogCsv = args.Length > 1 && args[1].Equals("csv", StringComparison.OrdinalIgnoreCase);
                 if (useLogCsv)
                 {
-                    var csv = context.ExportLogsToCsv();
+                    var csv = context.Logs.ExportToCsv();
                     var lineCount = csv.Split('\n').Length - 1;
                     PokeSharp.Engine.UI.Debug.Utilities.ClipboardManager.SetText(csv);
                     context.WriteLine($"Exported {lineCount} logs to clipboard (CSV format)", theme.Success);
                 }
                 else
                 {
-                    context.CopyLogsToClipboard();
-                    var (total, filtered, _, _, _, _) = context.GetLogStatistics();
+                    context.Logs.CopyToClipboard();
+                    var (total, filtered, _, _, _, _) = context.Logs.GetStatistics();
                     context.WriteLine($"Exported {filtered} logs to clipboard", theme.Success);
                 }
                 break;
@@ -53,8 +53,8 @@ public class ExportCommand : IConsoleCommand
             case "watch":
             case "watches":
                 var useWatchCsv = args.Length > 1 && args[1].Equals("csv", StringComparison.OrdinalIgnoreCase);
-                var (watchTotal, watchPinned, watchErrors, _, watchGroups) = context.GetWatchStatistics();
-                context.CopyWatchesToClipboard(useWatchCsv);
+                var (watchTotal, watchPinned, watchErrors, _, watchGroups) = context.Watches.GetStatistics();
+                context.Watches.CopyToClipboard(useWatchCsv);
                 var format = useWatchCsv ? "CSV" : "text";
                 context.WriteLine($"Exported {watchTotal} watches to clipboard ({format} format)", theme.Success);
                 if (watchPinned > 0 || watchGroups > 0)

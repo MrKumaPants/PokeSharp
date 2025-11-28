@@ -9,7 +9,9 @@ using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Components.Debug;
 using PokeSharp.Engine.UI.Debug.Core;
 using PokeSharp.Engine.UI.Debug.Input;
+using PokeSharp.Engine.UI.Debug.Interfaces;
 using PokeSharp.Engine.UI.Debug.Layout;
+using PokeSharp.Engine.UI.Debug.Models;
 
 namespace PokeSharp.Engine.UI.Debug.Scenes;
 
@@ -17,7 +19,7 @@ namespace PokeSharp.Engine.UI.Debug.Scenes;
 /// Console scene using the new UI framework.
 /// This is the modern replacement for the old QuakeConsole.
 /// </summary>
-public class NewConsoleScene : SceneBase
+public class ConsoleScene : SceneBase
 {
     private UIContext? _uiContext;
     private InputState _inputState = new();
@@ -26,6 +28,7 @@ public class NewConsoleScene : SceneBase
     private WatchPanel? _watchPanel;
     private LogsPanel? _logsPanel;
     private VariablesPanel? _variablesPanel;
+    private EntitiesPanel? _entitiesPanel;
 
     // Events for integration with ConsoleSystem
     public event Action<string>? OnCommandSubmitted;
@@ -35,13 +38,23 @@ public class NewConsoleScene : SceneBase
     public event Action? OnCloseRequested;
     public event Action? OnReady; // Fired after LoadContent completes and LogsPanel exists
 
+    // Panel interface accessors for command system
+    /// <summary>Gets the entity operations interface, or null if panel not loaded.</summary>
+    public IEntityOperations? EntityOperations => _entitiesPanel;
+    /// <summary>Gets the watch operations interface, or null if panel not loaded.</summary>
+    public IWatchOperations? WatchOperations => _watchPanel;
+    /// <summary>Gets the variable operations interface, or null if panel not loaded.</summary>
+    public IVariableOperations? VariableOperations => _variablesPanel;
+    /// <summary>Gets the log operations interface, or null if panel not loaded.</summary>
+    public ILogOperations? LogOperations => _logsPanel;
+
     // Configuration
     private float _consoleHeightPercent = 0.5f; // 50% of screen height by default
 
-    public NewConsoleScene(
+    public ConsoleScene(
         GraphicsDevice graphicsDevice,
         IServiceProvider services,
-        ILogger<NewConsoleScene> logger
+        ILogger<ConsoleScene> logger
     ) : base(graphicsDevice, services, logger)
     {
         // Console should block input to scenes below
@@ -83,6 +96,14 @@ public class NewConsoleScene : SceneBase
     public void ClearOutput()
     {
         _consolePanel?.ClearOutput();
+    }
+
+    /// <summary>
+    /// Sets the input prompt (e.g., "> " for normal, "... " for multi-line mode).
+    /// </summary>
+    public void SetPrompt(string prompt)
+    {
+        _consolePanel?.SetPrompt(prompt);
     }
 
     /// <summary>
@@ -273,10 +294,8 @@ public class NewConsoleScene : SceneBase
     /// </summary>
     public bool ExpandVariable(string path)
     {
-        if (_variablesPanel == null)
-            return false;
-        _variablesPanel.ExpandVariable(path);
-        return true;
+        _variablesPanel?.ExpandVariable(path);
+        return _variablesPanel != null;
     }
 
     /// <summary>
@@ -333,6 +352,278 @@ public class NewConsoleScene : SceneBase
     public void SetScriptVariable(string name, string typeName, Func<object?> valueGetter)
     {
         _variablesPanel?.SetVariable(name, typeName, valueGetter);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Entities Tab Methods
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Sets the entity provider function for the Entities panel.
+    /// </summary>
+    public void SetEntityProvider(Func<IEnumerable<EntityInfo>>? provider)
+    {
+        _entitiesPanel?.SetEntityProvider(provider);
+    }
+
+    /// <summary>
+    /// Refreshes the entity list.
+    /// </summary>
+    public void RefreshEntities()
+    {
+        _entitiesPanel?.RefreshEntities();
+    }
+
+    /// <summary>
+    /// Sets entities directly (alternative to using a provider).
+    /// </summary>
+    public void SetEntities(IEnumerable<EntityInfo> entities)
+    {
+        _entitiesPanel?.SetEntities(entities);
+    }
+
+    /// <summary>
+    /// Sets the entity tag filter.
+    /// </summary>
+    public void SetEntityTagFilter(string tag)
+    {
+        _entitiesPanel?.SetTagFilter(tag);
+    }
+
+    /// <summary>
+    /// Sets the entity search filter.
+    /// </summary>
+    public void SetEntitySearchFilter(string search)
+    {
+        _entitiesPanel?.SetSearchFilter(search);
+    }
+
+    /// <summary>
+    /// Sets the entity component filter.
+    /// </summary>
+    public void SetEntityComponentFilter(string componentName)
+    {
+        _entitiesPanel?.SetComponentFilter(componentName);
+    }
+
+    /// <summary>
+    /// Clears all entity filters.
+    /// </summary>
+    public void ClearEntityFilters()
+    {
+        _entitiesPanel?.ClearFilters();
+    }
+
+    /// <summary>
+    /// Gets the current entity filters.
+    /// </summary>
+    public (string Tag, string Search, string Component) GetEntityFilters()
+    {
+        return _entitiesPanel?.GetFilters() ?? ("", "", "");
+    }
+
+    /// <summary>
+    /// Selects an entity by ID.
+    /// </summary>
+    public void SelectEntity(int entityId)
+    {
+        _entitiesPanel?.SelectEntity(entityId);
+    }
+
+    /// <summary>
+    /// Expands an entity to show its components.
+    /// </summary>
+    public void ExpandEntity(int entityId)
+    {
+        _entitiesPanel?.ExpandEntity(entityId);
+    }
+
+    /// <summary>
+    /// Collapses an entity.
+    /// </summary>
+    public void CollapseEntity(int entityId)
+    {
+        _entitiesPanel?.CollapseEntity(entityId);
+    }
+
+    /// <summary>
+    /// Toggles entity expansion.
+    /// </summary>
+    public bool ToggleEntity(int entityId)
+    {
+        return _entitiesPanel?.ToggleEntity(entityId) ?? false;
+    }
+
+    /// <summary>
+    /// Expands all entities.
+    /// </summary>
+    public void ExpandAllEntities()
+    {
+        _entitiesPanel?.ExpandAll();
+    }
+
+    /// <summary>
+    /// Collapses all entities.
+    /// </summary>
+    public void CollapseAllEntities()
+    {
+        _entitiesPanel?.CollapseAll();
+    }
+
+    /// <summary>
+    /// Pins an entity to the top.
+    /// </summary>
+    public void PinEntity(int entityId)
+    {
+        _entitiesPanel?.PinEntity(entityId);
+    }
+
+    /// <summary>
+    /// Unpins an entity.
+    /// </summary>
+    public void UnpinEntity(int entityId)
+    {
+        _entitiesPanel?.UnpinEntity(entityId);
+    }
+
+    /// <summary>
+    /// Gets entity statistics.
+    /// </summary>
+    public (int Total, int Filtered, int Pinned, int Expanded) GetEntityStatistics()
+    {
+        return _entitiesPanel?.GetStatistics() ?? (0, 0, 0, 0);
+    }
+
+    /// <summary>
+    /// Gets entity session statistics.
+    /// </summary>
+    public (int Spawned, int Removed, int CurrentlyHighlighted) GetEntitySessionStats()
+    {
+        return _entitiesPanel?.GetSessionStats() ?? (0, 0, 0);
+    }
+
+    /// <summary>
+    /// Clears entity session statistics.
+    /// </summary>
+    public void ClearEntitySessionStats()
+    {
+        _entitiesPanel?.ClearSessionStats();
+    }
+
+    /// <summary>
+    /// Gets or sets entity auto-refresh enabled.
+    /// </summary>
+    public bool EntityAutoRefresh
+    {
+        get => _entitiesPanel?.AutoRefresh ?? true;
+        set { if (_entitiesPanel != null) _entitiesPanel.AutoRefresh = value; }
+    }
+
+    /// <summary>
+    /// Gets or sets entity refresh interval in seconds.
+    /// </summary>
+    public float EntityRefreshInterval
+    {
+        get => _entitiesPanel?.RefreshInterval ?? 1.0f;
+        set { if (_entitiesPanel != null) _entitiesPanel.RefreshInterval = value; }
+    }
+
+    /// <summary>
+    /// Gets or sets entity highlight duration in seconds.
+    /// </summary>
+    public float EntityHighlightDuration
+    {
+        get => _entitiesPanel?.HighlightDuration ?? 3.0f;
+        set { if (_entitiesPanel != null) _entitiesPanel.HighlightDuration = value; }
+    }
+
+    /// <summary>
+    /// Gets the IDs of newly spawned entities.
+    /// </summary>
+    public IEnumerable<int> GetNewEntityIds()
+    {
+        return _entitiesPanel?.GetNewEntityIds() ?? Enumerable.Empty<int>();
+    }
+
+    /// <summary>
+    /// Exports entity list to text format.
+    /// </summary>
+    public string ExportEntitiesToText(bool includeComponents = true, bool includeProperties = true)
+    {
+        return _entitiesPanel?.ExportToText(includeComponents, includeProperties) ?? "";
+    }
+
+    /// <summary>
+    /// Exports entity list to CSV format.
+    /// </summary>
+    public string ExportEntitiesToCsv()
+    {
+        return _entitiesPanel?.ExportToCsv() ?? "";
+    }
+
+    /// <summary>
+    /// Exports the selected entity to text.
+    /// </summary>
+    public string? ExportSelectedEntity()
+    {
+        return _entitiesPanel?.ExportSelectedEntity();
+    }
+
+    /// <summary>
+    /// Copies entities to clipboard.
+    /// </summary>
+    public void CopyEntitiesToClipboard(bool asCsv = false)
+    {
+        var content = asCsv ? ExportEntitiesToCsv() : ExportEntitiesToText();
+        if (!string.IsNullOrEmpty(content))
+        {
+            TextCopy.ClipboardService.SetText(content);
+        }
+    }
+
+    /// <summary>
+    /// Gets the currently selected entity ID.
+    /// </summary>
+    public int? SelectedEntityId => _entitiesPanel?.SelectedEntityId;
+
+    /// <summary>
+    /// Gets entity tag counts.
+    /// </summary>
+    public Dictionary<string, int> GetEntityTagCounts()
+    {
+        return _entitiesPanel?.GetTagCounts() ?? new Dictionary<string, int>();
+    }
+
+    /// <summary>
+    /// Gets all unique component names from entities.
+    /// </summary>
+    public IEnumerable<string> GetEntityComponentNames()
+    {
+        return _entitiesPanel?.GetAllComponentNames() ?? Enumerable.Empty<string>();
+    }
+
+    /// <summary>
+    /// Gets all unique entity tags.
+    /// </summary>
+    public IEnumerable<string> GetEntityTags()
+    {
+        return _entitiesPanel?.GetAllTags() ?? Enumerable.Empty<string>();
+    }
+
+    /// <summary>
+    /// Finds an entity by ID.
+    /// </summary>
+    public EntityInfo? FindEntity(int entityId)
+    {
+        return _entitiesPanel?.FindEntity(entityId);
+    }
+
+    /// <summary>
+    /// Finds entities by name.
+    /// </summary>
+    public IEnumerable<EntityInfo> FindEntitiesByName(string name)
+    {
+        return _entitiesPanel?.FindEntitiesByName(name) ?? Enumerable.Empty<EntityInfo>();
     }
 
     /// <summary>
@@ -506,7 +797,7 @@ public class NewConsoleScene : SceneBase
     {
         // Log the alert to console output
         var thresholdStr = threshold != null ? $" (threshold: {threshold})" : "";
-        AppendOutput($"⚠ WATCH ALERT: '{watchName}' = {value}{thresholdStr}", UITheme.Dark.Error);
+        AppendOutput($"⚠ WATCH ALERT: '{watchName}' = {value}{thresholdStr}", ThemeManager.Current.Error);
     }
 
     /// <summary>
@@ -648,10 +939,7 @@ public class NewConsoleScene : SceneBase
             double UpdateInterval,
             bool AutoUpdateEnabled)? ExportWatchConfiguration()
     {
-        if (_watchPanel == null)
-            return null;
-
-        return _watchPanel.ExportConfiguration();
+        return _watchPanel?.ExportConfiguration();
     }
 
     /// <summary>
@@ -711,7 +999,7 @@ public class NewConsoleScene : SceneBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to initialize NewConsoleScene UI context");
+            Logger.LogError(ex, "Failed to initialize ConsoleScene UI context");
             throw;
         }
     }
@@ -736,8 +1024,7 @@ public class NewConsoleScene : SceneBase
             _tabContainer = new TabContainer
             {
                 Id = "debug_tab_container",
-                BackgroundColor = UITheme.Dark.ConsoleBackground,
-                BorderColor = UITheme.Dark.BorderPrimary,
+                // Colors set dynamically by TabContainer.OnRenderContainer for theme switching
                 BorderThickness = 1,
                 Constraint = new LayoutConstraint
                 {
@@ -814,11 +1101,22 @@ public class NewConsoleScene : SceneBase
                 }
             });
 
+            // Create entities panel
+            _entitiesPanel = EntitiesPanelBuilder.Create()
+                .WithAutoRefresh(true)
+                .WithRefreshInterval(1.0f)
+                .Build();
+            _entitiesPanel.BackgroundColor = Color.Transparent;
+            _entitiesPanel.BorderColor = Color.Transparent;
+            _entitiesPanel.BorderThickness = 0;
+            _entitiesPanel.Constraint = new LayoutConstraint { Anchor = Anchor.Fill, Padding = 0 };
+
             // Add tabs to container
             _tabContainer.AddTab("Console", _consolePanel);
             _tabContainer.AddTab("Watch", _watchPanel);
             _tabContainer.AddTab("Logs", _logsPanel);
             _tabContainer.AddTab("Variables", _variablesPanel);
+            _tabContainer.AddTab("Entities", _entitiesPanel);
             _tabContainer.SetActiveTab(0);
 
             // Show the console
@@ -829,7 +1127,7 @@ public class NewConsoleScene : SceneBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Failed to load NewConsoleScene content");
+            Logger.LogError(ex, "Failed to load ConsoleScene content");
             throw;
         }
     }
@@ -880,39 +1178,29 @@ public class NewConsoleScene : SceneBase
         if (!_inputState.IsCtrlDown())
             return;
 
-        // Tab switching: Ctrl+1-4
-        if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.D1))
+        // Tab switching: Check for tab shortcuts using centralized definitions
+        foreach (var tab in ConsoleTabs.All)
         {
-            _tabContainer.SetActiveTab(0); // Console
-            Logger.LogDebug("Switched to Console tab (Ctrl+1)");
+            if (tab.Shortcut.HasValue && _inputState.IsKeyPressed(tab.Shortcut.Value))
+            {
+                _tabContainer.SetActiveTab(tab.Index);
+                Logger.LogDebug("Switched to {TabName} tab (Ctrl+{KeyNum})", tab.Name, tab.Index + 1);
+                return;
+            }
         }
-        else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.D2))
-        {
-            _tabContainer.SetActiveTab(1); // Watch
-            Logger.LogDebug("Switched to Watch tab (Ctrl+2)");
-        }
-        else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.D3))
-        {
-            _tabContainer.SetActiveTab(2); // Logs
-            Logger.LogDebug("Switched to Logs tab (Ctrl+3)");
-        }
-        else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.D4))
-        {
-            _tabContainer.SetActiveTab(3); // Variables
-            Logger.LogDebug("Switched to Variables tab (Ctrl+4)");
-        }
+
         // Font size controls: Ctrl+Plus, Ctrl+Minus, Ctrl+0
-        else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.OemPlus) ||
-                 _inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Add))
+        if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.OemPlus) ||
+            _inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Add))
         {
             _uiContext?.Renderer.IncreaseFontSize();
-            Logger.LogDebug($"Font size increased to {_uiContext?.Renderer.FontSize}");
+            Logger.LogDebug("Font size increased to {FontSize}", _uiContext?.Renderer.FontSize);
         }
         else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.OemMinus) ||
                  _inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Subtract))
         {
             _uiContext?.Renderer.DecreaseFontSize();
-            Logger.LogDebug($"Font size decreased to {_uiContext?.Renderer.FontSize}");
+            Logger.LogDebug("Font size decreased to {FontSize}", _uiContext?.Renderer.FontSize);
         }
         else if (_inputState.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.D0))
         {

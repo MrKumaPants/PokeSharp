@@ -23,8 +23,7 @@ public class EntityInspector : Panel
 
     public EntityInspector()
     {
-        BackgroundColor = UITheme.Dark.BackgroundSecondary;
-        BorderColor = UITheme.Dark.BorderPrimary;
+        // Colors set dynamically in OnRenderContainer for theme switching
         BorderThickness = 1;
 
         InitializeComponents();
@@ -81,6 +80,10 @@ public class EntityInspector : Panel
 
     protected override void OnRenderContainer(UIContext context)
     {
+        // Set theme colors dynamically for theme switching
+        BackgroundColor = ThemeManager.Current.BackgroundSecondary;
+        BorderColor = ThemeManager.Current.BorderPrimary;
+
         base.OnRenderContainer(context);
 
         if (_propertiesScrollView == null)
@@ -93,7 +96,7 @@ public class EntityInspector : Panel
         {
             // Add property labels
             float yOffset = 0;
-            float lineHeight = 25;
+            float lineHeight = ThemeManager.Current.PanelRowHeight;
 
             foreach (var property in SelectedEntity.Properties)
             {

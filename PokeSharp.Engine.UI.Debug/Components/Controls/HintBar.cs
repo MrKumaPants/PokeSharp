@@ -13,11 +13,14 @@ public class HintBar : UIComponent
 {
     private string _text = string.Empty;
 
-    // Visual properties
-    public Color TextColor { get; set; } = UITheme.Dark.Success; // Dim green for helpful hints
-    public Color BackgroundColor { get; set; } = Color.Transparent;
+    // Visual properties - nullable for theme fallback
+    private Color? _textColor;
+    private Color? _backgroundColor;
+
+    public Color TextColor { get => _textColor ?? ThemeManager.Current.TextDim; set => _textColor = value; }
+    public Color BackgroundColor { get => _backgroundColor ?? Color.Transparent; set => _backgroundColor = value; }
     public float FontSize { get; set; } = 1.0f; // Scale factor
-    public float Padding { get; set; } = UITheme.Dark.PaddingSmall;
+    public float Padding { get; set; } = 4f;
 
     public HintBar(string id)
     {

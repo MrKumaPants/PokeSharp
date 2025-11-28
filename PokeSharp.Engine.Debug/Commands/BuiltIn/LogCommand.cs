@@ -28,8 +28,8 @@ Use 'tab logs' to switch to the Logs tab.";
         if (args.Length == 0)
         {
             // Show log count and stats summary
-            var logCount = context.GetLogCount();
-            var (total, filtered, errors, warnings, lastMinute, categories) = context.GetLogStatistics();
+            var logCount = context.Logs.Count;
+            var (total, filtered, errors, warnings, lastMinute, categories) = context.Logs.GetStatistics();
 
             context.WriteLine($"Logs: {logCount} total", theme.Info);
             if (errors > 0)
@@ -43,7 +43,7 @@ Use 'tab logs' to switch to the Logs tab.";
         }
         else if (args[0].Equals("clear", StringComparison.OrdinalIgnoreCase))
         {
-            context.ClearLogs();
+            context.Logs.Clear();
             context.WriteLine("All logs cleared", theme.Success);
         }
         else if (args[0].Equals("level", StringComparison.OrdinalIgnoreCase) ||
@@ -60,7 +60,7 @@ Use 'tab logs' to switch to the Logs tab.";
             var levelStr = args[1];
             if (Enum.TryParse<LogLevel>(levelStr, ignoreCase: true, out var level))
             {
-                context.SetLogFilter(level);
+                context.Logs.SetFilterLevel(level);
                 context.WriteLine($"Log level filter set to: {level}", theme.Success);
                 context.WriteLine("Switch to Logs tab (Ctrl+3) to view filtered logs", theme.TextSecondary);
             }
@@ -82,13 +82,13 @@ Use 'tab logs' to switch to the Logs tab.";
 
             if (args[1].Equals("all", StringComparison.OrdinalIgnoreCase))
             {
-                context.ClearLogCategoryFilter();
+                context.Logs.ClearCategoryFilter();
                 context.WriteLine("Category filter cleared (showing all)", theme.Success);
             }
             else
             {
                 var categories = args.Skip(1).ToArray();
-                context.SetLogCategoryFilter(categories);
+                context.Logs.SetCategoryFilter(categories);
                 context.WriteLine($"Filtering by categories: {string.Join(", ", categories)}", theme.Success);
                 context.WriteLine("Switch to Logs tab (Ctrl+3) to view filtered logs", theme.TextSecondary);
             }
@@ -96,7 +96,7 @@ Use 'tab logs' to switch to the Logs tab.";
         else if (args[0].Equals("categories", StringComparison.OrdinalIgnoreCase))
         {
             // List available categories
-            var counts = context.GetLogCategoryCounts();
+            var counts = context.Logs.GetCategoryCounts();
             if (counts.Count == 0)
             {
                 context.WriteLine("No categories found (no logs yet)", theme.TextSecondary);
@@ -117,13 +117,13 @@ Use 'tab logs' to switch to the Logs tab.";
             if (args.Length < 2)
             {
                 // Clear search
-                context.SetLogSearch(null);
+                context.Logs.SetSearch(null);
                 context.WriteLine("Log search filter cleared", theme.Success);
             }
             else
             {
                 var searchText = string.Join(" ", args.Skip(1));
-                context.SetLogSearch(searchText);
+                context.Logs.SetSearch(searchText);
                 context.WriteLine($"Log search filter set to: '{searchText}'", theme.Success);
                 context.WriteLine("Switch to Logs tab (Ctrl+3) to view filtered logs", theme.TextSecondary);
             }
@@ -131,8 +131,8 @@ Use 'tab logs' to switch to the Logs tab.";
         else if (args[0].Equals("stats", StringComparison.OrdinalIgnoreCase))
         {
             // Show log statistics
-            var (total, filtered, errors, warnings, lastMinute, categories) = context.GetLogStatistics();
-            var levelCounts = context.GetLogLevelCounts();
+            var (total, filtered, errors, warnings, lastMinute, categories) = context.Logs.GetStatistics();
+            var levelCounts = context.Logs.GetLevelCounts();
 
             context.WriteLine("═══════════════════════════════════════", theme.Info);
             context.WriteLine("          LOG STATISTICS", theme.Info);
@@ -166,15 +166,15 @@ Use 'tab logs' to switch to the Logs tab.";
 
             if (useCsv)
             {
-                var csv = context.ExportLogsToCsv();
+                var csv = context.Logs.ExportToCsv();
                 var lineCount = csv.Split('\n').Length - 1; // Minus header
                 PokeSharp.Engine.UI.Debug.Utilities.ClipboardManager.SetText(csv);
                 context.WriteLine($"Exported {lineCount} logs to clipboard (CSV format)", theme.Success);
             }
             else
             {
-                context.CopyLogsToClipboard();
-                var (total, filtered, _, _, _, _) = context.GetLogStatistics();
+                context.Logs.CopyToClipboard();
+                var (total, filtered, _, _, _, _) = context.Logs.GetStatistics();
                 context.WriteLine($"Exported {filtered} logs to clipboard (text format)", theme.Success);
             }
         }

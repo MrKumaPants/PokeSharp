@@ -6,7 +6,7 @@ namespace PokeSharp.Engine.UI.Debug.Layout;
 /// Represents a resolved layout rectangle with absolute screen coordinates.
 /// This is the result of constraint resolution.
 /// </summary>
-public readonly struct LayoutRect
+public readonly struct LayoutRect : IEquatable<LayoutRect>
 {
     /// <summary>X position in absolute coordinates</summary>
     public float X { get; init; }
@@ -123,6 +123,40 @@ public readonly struct LayoutRect
     {
         return $"LayoutRect({X:F1}, {Y:F1}, {Width:F1}x{Height:F1})";
     }
+
+    /// <summary>
+    /// Checks equality with another LayoutRect.
+    /// </summary>
+    public bool Equals(LayoutRect other)
+    {
+        return X == other.X && Y == other.Y && Width == other.Width && Height == other.Height;
+    }
+
+    /// <summary>
+    /// Checks equality with another object.
+    /// </summary>
+    public override bool Equals(object? obj)
+    {
+        return obj is LayoutRect other && Equals(other);
+    }
+
+    /// <summary>
+    /// Gets the hash code for this LayoutRect.
+    /// </summary>
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(X, Y, Width, Height);
+    }
+
+    /// <summary>
+    /// Equality operator.
+    /// </summary>
+    public static bool operator ==(LayoutRect left, LayoutRect right) => left.Equals(right);
+
+    /// <summary>
+    /// Inequality operator.
+    /// </summary>
+    public static bool operator !=(LayoutRect left, LayoutRect right) => !left.Equals(right);
 }
 
 

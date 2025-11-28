@@ -168,7 +168,7 @@ public Color TextColor { get; set; } = UITheme.Dark.InputText;
 public Color CursorColor { get; set; } = UITheme.Dark.InputCursor;
 ```
 
-3. **NewConsoleScene.cs**
+3. **ConsoleScene.cs**
 ```csharp
 // Line 189 (if still exists)
 AppendOutput("=== PokeSharp Debug Console ===", new Color(100, 200, 255));  // HARDCODED!
@@ -194,7 +194,7 @@ protected override void OnRender(UIContext context)
 **Files to Update:**
 - `ConsolePanel.cs` - 3 instances
 - `CommandInput.cs` - 6 property defaults
-- `NewConsoleScene.cs` - 1 instance
+- `ConsoleScene.cs` - 1 instance
 - `ConsoleSystem.cs` - All `AppendOutput` calls with hardcoded colors
 
 **Estimated Effort:** 2-3 hours

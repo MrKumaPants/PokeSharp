@@ -55,9 +55,9 @@ Examples:
         if (args.Length == 0 || args[0].Equals("list", StringComparison.OrdinalIgnoreCase))
         {
             // Show watch count and summary
-            var watchCount = context.GetWatchCount();
-            var groups = context.GetWatchGroups().ToList();
-            var (total, pinned, errors, alertsTriggered, groupCount) = context.GetWatchStatistics();
+            var watchCount = context.Watches.Count;
+            var groups = context.Watches.GetGroups().ToList();
+            var (total, pinned, errors, alertsTriggered, groupCount) = context.Watches.GetStatistics();
 
             context.WriteLine($"Watches: {watchCount} total", theme.Info);
             if (pinned > 0)
@@ -136,7 +136,7 @@ Examples:
             }
 
             var name = args[1];
-            if (context.RemoveWatch(name))
+            if (context.Watches.Remove(name))
             {
                 context.WriteLine($"Watch '{name}' removed", theme.Success);
             }
@@ -147,12 +147,12 @@ Examples:
         }
         else if (args[0].Equals("clear", StringComparison.OrdinalIgnoreCase))
         {
-            context.ClearWatches();
+            context.Watches.Clear();
             context.WriteLine("All watches cleared", theme.Success);
         }
         else if (args[0].Equals("toggle", StringComparison.OrdinalIgnoreCase))
         {
-            var autoUpdate = context.ToggleWatchAutoUpdate();
+            var autoUpdate = context.Watches.AutoUpdate = !context.Watches.AutoUpdate;
             var status = autoUpdate ? "enabled" : "disabled";
             context.WriteLine($"Watch auto-update {status}", theme.Success);
         }
@@ -166,7 +166,7 @@ Examples:
             }
 
             var name = args[1];
-            if (context.PinWatch(name))
+            if (context.Watches.Pin(name))
             {
                 context.WriteLine($"Watch '{name}' pinned to top", theme.Success);
             }
@@ -185,7 +185,7 @@ Examples:
             }
 
             var name = args[1];
-            if (context.UnpinWatch(name))
+            if (context.Watches.Unpin(name))
             {
                 context.WriteLine($"Watch '{name}' unpinned", theme.Success);
             }
@@ -207,8 +207,9 @@ Examples:
             if (double.TryParse(args[1], out var milliseconds))
             {
                 var seconds = milliseconds / 1000.0;
-                if (context.SetWatchInterval(seconds))
+                if (seconds >= 0.1 && seconds <= 60.0)
                 {
+                    context.Watches.UpdateInterval = seconds;
                     var display = seconds < 1.0 ? $"{milliseconds:F0}ms" : $"{seconds:F1}s";
                     context.WriteLine($"Watch update interval set to {display}", theme.Success);
                 }
@@ -234,7 +235,7 @@ Examples:
             var subCommand = args[1].ToLower();
             if (subCommand == "list")
             {
-                var groups = context.GetWatchGroups().ToList();
+                var groups = context.Watches.GetGroups().ToList();
                 context.WriteLine("══════════════════════════════════════════════════════════════════", theme.Success);
                 context.WriteLine($"  WATCH GROUPS ({groups.Count} total)", theme.Success);
                 context.WriteLine("══════════════════════════════════════════════════════════════════", theme.Success);
@@ -256,7 +257,7 @@ Examples:
             else if (subCommand == "collapse" && args.Length > 2)
             {
                 var groupName = args[2];
-                if (context.CollapseWatchGroup(groupName))
+                if (context.Watches.CollapseGroup(groupName))
                 {
                     context.WriteLine($"Group '{groupName}' collapsed", theme.Success);
                 }
@@ -268,7 +269,7 @@ Examples:
             else if (subCommand == "expand" && args.Length > 2)
             {
                 var groupName = args[2];
-                if (context.ExpandWatchGroup(groupName))
+                if (context.Watches.ExpandGroup(groupName))
                 {
                     context.WriteLine($"Group '{groupName}' expanded", theme.Success);
                 }
@@ -280,7 +281,7 @@ Examples:
             else if (subCommand == "toggle" && args.Length > 2)
             {
                 var groupName = args[2];
-                if (context.ToggleWatchGroup(groupName))
+                if (context.Watches.ToggleGroup(groupName))
                 {
                     context.WriteLine($"Group '{groupName}' toggled", theme.Success);
                 }
@@ -306,7 +307,7 @@ Examples:
             var subCommand = args[1].ToLower();
             if (subCommand == "list")
             {
-                var alertWatches = context.GetWatchesWithAlerts().ToList();
+                var alertWatches = context.Watches.GetWatchesWithAlerts().ToList();
                 context.WriteLine("══════════════════════════════════════════════════════════════════", theme.Success);
                 context.WriteLine($"  WATCH ALERTS ({alertWatches.Count} total)", theme.Success);
                 context.WriteLine("══════════════════════════════════════════════════════════════════", theme.Success);
@@ -364,7 +365,7 @@ Examples:
                     }
                 }
 
-                if (context.SetWatchAlert(name, alertType, threshold))
+                if (context.Watches.SetAlert(name, alertType, threshold))
                 {
                     var thresholdInfo = threshold != null ? $" (threshold: {threshold})" : "";
                     context.WriteLine($"Alert set on '{name}': {alertType}{thresholdInfo}", theme.Success);
@@ -377,7 +378,7 @@ Examples:
             else if (subCommand == "remove" && args.Length > 2)
             {
                 var name = args[2];
-                if (context.RemoveWatchAlert(name))
+                if (context.Watches.RemoveAlert(name))
                 {
                     context.WriteLine($"Alert removed from '{name}'", theme.Success);
                 }
@@ -389,7 +390,7 @@ Examples:
             else if (subCommand == "clear" && args.Length > 2)
             {
                 var name = args[2];
-                if (context.ClearWatchAlertStatus(name))
+                if (context.Watches.ClearAlertStatus(name))
                 {
                     context.WriteLine($"Alert status cleared for '{name}'", theme.Success);
                 }
@@ -415,7 +416,7 @@ Examples:
             var subCommand = args[1].ToLower();
             if (subCommand == "list")
             {
-                var comparisons = context.GetWatchesWithComparisons().ToList();
+                var comparisons = context.Watches.GetWatchesWithComparisons().ToList();
                 context.WriteLine("══════════════════════════════════════════════════════════════════", theme.Success);
                 context.WriteLine($"  WATCH COMPARISONS ({comparisons.Count} total)", theme.Success);
                 context.WriteLine("══════════════════════════════════════════════════════════════════", theme.Success);
@@ -440,7 +441,7 @@ Examples:
                 var watch2 = args[3];
                 var label = args.Length > 4 ? args[4] : "Expected";
 
-                if (context.SetWatchComparison(watch1, watch2, label))
+                if (context.Watches.SetComparison(watch1, watch2, label))
                 {
                     context.WriteLine($"Comparison set: '{watch1}' compared to '{watch2}' ({label})", theme.Success);
                     context.WriteLine("Switch to Watch tab to see the difference calculation", theme.TextSecondary);
@@ -453,7 +454,7 @@ Examples:
             else if (subCommand == "remove" && args.Length > 2)
             {
                 var name = args[2];
-                if (context.RemoveWatchComparison(name))
+                if (context.Watches.RemoveComparison(name))
                 {
                     context.WriteLine($"Comparison removed from '{name}'", theme.Success);
                 }
@@ -509,7 +510,7 @@ Examples:
 
                 if (context.SaveWatchPreset(name, description))
                 {
-                    var watchCount = context.GetWatchCount();
+                    var watchCount = context.Watches.Count;
                     context.WriteLine($"Preset '{name}' saved ({watchCount} watches)", theme.Success);
                     context.WriteLine($"Load it later with: watch preset load {name}", theme.TextSecondary);
                 }

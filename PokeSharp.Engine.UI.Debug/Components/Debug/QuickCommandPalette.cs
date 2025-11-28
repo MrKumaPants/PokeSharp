@@ -32,8 +32,7 @@ public class QuickCommandPalette : Panel
 
     public QuickCommandPalette()
     {
-        BackgroundColor = UITheme.Dark.BackgroundElevated;
-        BorderColor = UITheme.Dark.BorderFocus;
+        // Colors set dynamically in OnRenderContainer for theme switching
         BorderThickness = 2;
 
         InitializeComponents();
@@ -96,6 +95,10 @@ public class QuickCommandPalette : Panel
 
     protected override void OnRenderContainer(UIContext context)
     {
+        // Set theme colors dynamically for theme switching
+        BackgroundColor = ThemeManager.Current.BackgroundElevated;
+        BorderColor = ThemeManager.Current.BorderFocus;
+
         base.OnRenderContainer(context);
 
         // Update command list

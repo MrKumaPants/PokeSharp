@@ -1,9 +1,11 @@
 using Arch.Core;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Engine.Scenes;
 using PokeSharp.Engine.Systems.Management;
+using PokeSharp.Engine.Systems.Pooling;
 using PokeSharp.Game.Infrastructure.Diagnostics;
 using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Input;
@@ -26,6 +28,7 @@ public class GameplayScene : SceneBase
     private readonly InputManager _inputManager;
     private readonly PerformanceMonitor _performanceMonitor;
     private readonly IGameTimeService _gameTime;
+    private readonly PerformanceOverlay _performanceOverlay;
 
     /// <summary>
     ///     Initializes a new instance of the GameplayScene class.
@@ -69,6 +72,17 @@ public class GameplayScene : SceneBase
         _inputManager = inputManager;
         _performanceMonitor = performanceMonitor;
         _gameTime = gameTime;
+
+        // Create performance overlay
+        var poolManager = services.GetService<EntityPoolManager>();
+        _performanceOverlay = new PerformanceOverlay(
+            graphicsDevice,
+            performanceMonitor,
+            world,
+            poolManager);
+
+        // Hook up F3 toggle
+        _inputManager.OnPerformanceOverlayToggled += () => _performanceOverlay.Toggle();
     }
 
     /// <inheritdoc />
@@ -105,6 +119,21 @@ public class GameplayScene : SceneBase
 
         // Render all systems (this includes the ElevationRenderSystem)
         _systemManager.Render(_world);
+
+        // Draw performance overlay on top (F3 to toggle)
+        _performanceOverlay.Draw();
+    }
+
+    /// <summary>
+    ///     Disposes scene resources.
+    /// </summary>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _performanceOverlay.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }
 

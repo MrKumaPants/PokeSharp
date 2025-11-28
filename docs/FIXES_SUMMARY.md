@@ -37,7 +37,7 @@ This document summarizes all the code quality improvements made to the PokeSharp
 - **Impact**: Better type safety, proper null handling
 
 ### 5. Interface Extraction ✅
-- **Files**: 
+- **Files**:
   - `PokeSharp.Game/Initialization/IGameInitializer.cs` (new)
   - `PokeSharp.Game/Initialization/IMapInitializer.cs` (new)
   - `PokeSharp.Game/Initialization/GameInitializer.cs`

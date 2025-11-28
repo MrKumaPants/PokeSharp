@@ -347,7 +347,7 @@ Benefits:
 | `StatsPanel`     | `StatsPanelBuilder`     |
 
 - All panels have internal constructors only
-- `NewConsoleScene.cs` updated to use all builders
+- `ConsoleScene.cs` updated to use all builders
 
 ---
 
@@ -743,14 +743,14 @@ _wasVisible = Visible;
 | 2024-11-25 | #14    | Preserve selection on filter change       | SuggestionsDropdown.cs                              |
 | 2024-11-25 | #15    | Dynamic shortcut hints                    | +ConsoleShortcuts.cs, ConsolePanel.cs               |
 | 2024-11-25 | -      | Fixed autocomplete stale filter bug       | SuggestionsDropdown.cs, ConsolePanel.cs             |
-| 2024-11-26 | #8     | Builder pattern for all debug panels      | +5 builder files, 5 panel files, NewConsoleScene.cs |
+| 2024-11-26 | #8     | Builder pattern for all debug panels      | +5 builder files, 5 panel files, ConsoleScene.cs |
 | 2024-11-26 | #9,#10 | Reviewed architecture - acceptable        | (no changes needed)                                 |
 | 2024-11-26 | #11    | Graceful stack imbalance recovery         | UIRenderer.cs, UIContext.cs                         |
 | 2024-11-26 | -      | Thread safety fix for SuggestionsDropdown | SuggestionsDropdown.cs (added locks)                |
 | 2024-11-26 | -      | Console output mouse support              | TextBuffer.cs (char-level selection, word select)   |
 | 2024-11-26 | -      | TextEditor triple-click to select all     | TextEditor.cs                                       |
 | 2024-11-26 | -      | Log category filtering                    | LogsPanel.cs                                        |
-| 2024-11-26 | -      | Font size controls (Ctrl+/-/0)            | UIRenderer.cs, NewConsoleScene.cs                   |
+| 2024-11-26 | -      | Font size controls (Ctrl+/-/0)            | UIRenderer.cs, ConsoleScene.cs                   |
 | 2024-11-26 | -      | Log commands (level/category/categories)  | LogCommand.cs, IConsoleContext.cs, ConsoleContext.cs|
 
 ---
@@ -783,7 +783,7 @@ _wasVisible = Visible;
 - `Input/HitTesting.cs`
 - `Utilities/SyntaxHighlighter.cs`
 - `Animation/Animator.cs`
-- `Scenes/NewConsoleScene.cs`
+- `Scenes/ConsoleScene.cs`
 
 ### PokeSharp.Engine.Debug
 
