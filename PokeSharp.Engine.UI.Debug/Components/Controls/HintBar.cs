@@ -26,11 +26,13 @@ public class HintBar : UIComponent
         get => _textColor ?? ThemeManager.Current.TextDim;
         set => _textColor = value;
     }
+
     public Color BackgroundColor
     {
         get => _backgroundColor ?? Color.Transparent;
         set => _backgroundColor = value;
     }
+
     public float FontSize { get; set; } = 1.0f; // Scale factor
     public float Padding { get; set; } = 4f;
 

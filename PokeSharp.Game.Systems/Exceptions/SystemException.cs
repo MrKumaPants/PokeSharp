@@ -206,6 +206,7 @@ public class NpcBehaviorException : SystemException
 
     public int NpcEntityId =>
         Context.TryGetValue("NpcEntityId", out object? id) && id is int i ? i : 0;
+
     public string ScriptName =>
         Context.TryGetValue("ScriptName", out object? name) ? name?.ToString() ?? "" : "";
 

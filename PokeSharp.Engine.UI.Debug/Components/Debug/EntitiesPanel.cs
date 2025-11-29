@@ -42,6 +42,10 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     // Callback for refreshing entity data
     private Func<IEnumerable<EntityInfo>>? _entityProvider;
     private float _highlightDuration = 3.0f; // How long to highlight new entities
+    private int _lastClickedEntityId = -1;
+
+    // Mouse click tracking for double-click detection
+    private DateTime _lastClickTime = DateTime.MinValue;
     private double _lastUpdateTime;
     private float _refreshInterval = 1.0f;
     private int _removedThisSession;
@@ -58,10 +62,6 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     private string _tagFilter = "";
     private float _timeSinceLastChange;
     private float _timeSinceRefresh;
-
-    // Mouse click tracking for double-click detection
-    private DateTime _lastClickTime = DateTime.MinValue;
-    private int _lastClickedEntityId = -1;
 
     /// <summary>
     ///     Creates an EntitiesPanel with the specified components.
@@ -246,11 +246,13 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
         get => AutoRefresh;
         set => AutoRefresh = value;
     }
+
     float IEntityOperations.RefreshInterval
     {
         get => RefreshInterval;
         set => RefreshInterval = value;
     }
+
     float IEntityOperations.HighlightDuration
     {
         get => HighlightDuration;
@@ -954,8 +956,9 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
             // Track double-click timing
             DateTime now = DateTime.Now;
             double timeSinceLastClick = (now - _lastClickTime).TotalSeconds;
-            bool isDoubleClick = timeSinceLastClick < ThemeManager.Current.DoubleClickThreshold
-                                 && _lastClickedEntityId == clickedEntityId.Value;
+            bool isDoubleClick =
+                timeSinceLastClick < ThemeManager.Current.DoubleClickThreshold
+                && _lastClickedEntityId == clickedEntityId.Value;
 
             _lastClickTime = now;
             _lastClickedEntityId = clickedEntityId.Value;
@@ -1315,6 +1318,7 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
             {
                 hints += " Click:Select  DblClick:Expand  RClick:Pin";
             }
+
             if (KeyboardNavEnabled)
             {
                 hints += " | ↑↓:Nav  Enter:Expand  P:Pin";

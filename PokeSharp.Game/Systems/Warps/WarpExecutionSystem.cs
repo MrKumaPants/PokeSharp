@@ -46,15 +46,15 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
 
     private readonly ILogger<WarpExecutionSystem>? _logger;
 
-    private QueryDescription _pendingWarpQuery;
+    // Track active warp task to prevent duplicate execution
+    private Task? _activeWarpTask;
+    private bool _isExecutingWarp;
 
     // Services set via SetServices (delayed initialization)
     private IMapInitializer? _mapInitializer;
     private MapLifecycleManager? _mapLifecycleManager;
 
-    // Track active warp task to prevent duplicate execution
-    private Task? _activeWarpTask;
-    private bool _isExecutingWarp;
+    private QueryDescription _pendingWarpQuery;
 
     /// <summary>
     ///     Creates a new WarpExecutionSystem with optional logger.
@@ -68,27 +68,18 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
     /// <inheritdoc />
     public override int Priority => ExecutionPriority;
 
-    /// <summary>
-    ///     Sets the required services for warp execution.
-    ///     Must be called after construction, before first Update.
-    /// </summary>
-    /// <param name="mapInitializer">Map initializer for loading maps.</param>
-    /// <param name="mapLifecycleManager">Lifecycle manager for unloading maps.</param>
-    public void SetServices(IMapInitializer mapInitializer, MapLifecycleManager mapLifecycleManager)
-    {
-        _mapInitializer = mapInitializer ?? throw new ArgumentNullException(nameof(mapInitializer));
-        _mapLifecycleManager = mapLifecycleManager ?? throw new ArgumentNullException(nameof(mapLifecycleManager));
-        _logger?.LogDebug("WarpExecutionSystem: Services configured");
-    }
-
     /// <inheritdoc />
     public override void Initialize(World world)
     {
         base.Initialize(world);
 
         // Query for players with pending warps
-        _pendingWarpQuery = new QueryDescription()
-            .WithAll<Player, Position, GridMovement, WarpState>();
+        _pendingWarpQuery = new QueryDescription().WithAll<
+            Player,
+            Position,
+            GridMovement,
+            WarpState
+        >();
 
         _logger?.LogDebug("WarpExecutionSystem initialized");
     }
@@ -112,7 +103,12 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
         // Check for pending warp requests
         world.Query(
             in _pendingWarpQuery,
-            (Entity playerEntity, ref Position position, ref GridMovement movement, ref WarpState warpState) =>
+            (
+                Entity playerEntity,
+                ref Position position,
+                ref GridMovement movement,
+                ref WarpState warpState
+            ) =>
             {
                 // Skip if no pending warp
                 if (!warpState.PendingWarp.HasValue)
@@ -122,7 +118,10 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
 
                 // Check for warp timeout
                 float currentTime = (float)DateTime.UtcNow.TimeOfDay.TotalSeconds;
-                if (warpState.IsWarping && currentTime - warpState.WarpStartTime > WarpTimeoutSeconds)
+                if (
+                    warpState.IsWarping
+                    && currentTime - warpState.WarpStartTime > WarpTimeoutSeconds
+                )
                 {
                     _logger?.LogWarning(
                         "Warp timed out after {Seconds}s, cancelling",
@@ -137,6 +136,20 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
                 ExecuteWarp(world, playerEntity, request);
             }
         );
+    }
+
+    /// <summary>
+    ///     Sets the required services for warp execution.
+    ///     Must be called after construction, before first Update.
+    /// </summary>
+    /// <param name="mapInitializer">Map initializer for loading maps.</param>
+    /// <param name="mapLifecycleManager">Lifecycle manager for unloading maps.</param>
+    public void SetServices(IMapInitializer mapInitializer, MapLifecycleManager mapLifecycleManager)
+    {
+        _mapInitializer = mapInitializer ?? throw new ArgumentNullException(nameof(mapInitializer));
+        _mapLifecycleManager =
+            mapLifecycleManager ?? throw new ArgumentNullException(nameof(mapLifecycleManager));
+        _logger?.LogDebug("WarpExecutionSystem: Services configured");
     }
 
     /// <summary>
@@ -181,7 +194,10 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
 
             if (mapEntity == null)
             {
-                _logger?.LogError("Failed to load warp target map {MapName}", request.TargetMap.Value);
+                _logger?.LogError(
+                    "Failed to load warp target map {MapName}",
+                    request.TargetMap.Value
+                );
                 ResetPlayerWarpState(playerEntity);
                 return;
             }
@@ -189,7 +205,11 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
             // Get the MapInfo to find the map's runtime ID
             MapInfo mapInfo = mapEntity.Value.Get<MapInfo>();
             MapRuntimeId targetMapId = mapInfo.MapId;
-            _logger?.LogDebug("Target map {MapName} loaded with ID {MapId}", request.TargetMap.Value, targetMapId.Value);
+            _logger?.LogDebug(
+                "Target map {MapName} loaded with ID {MapId}",
+                request.TargetMap.Value,
+                targetMapId.Value
+            );
 
             // Get tile size from target map
             int tileSize = mapInfo.TileSize;
@@ -228,7 +248,8 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
         Entity playerEntity,
         WarpRequest request,
         MapRuntimeId mapId,
-        int tileSize)
+        int tileSize
+    )
     {
         // Update Position component
         ref Position position = ref playerEntity.Get<Position>();
@@ -270,10 +291,7 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
             // Calculate camera position centered on player sprite
             // Player position is tile top-left, add half tile (8 pixels) for centering
             const float halfTile = 8f;
-            Vector2 cameraTarget = new(
-                position.PixelX + halfTile,
-                position.PixelY + halfTile
-            );
+            Vector2 cameraTarget = new(position.PixelX + halfTile, position.PixelY + halfTile);
 
             // Snap camera directly to target (bypass smoothing)
             camera.Position = cameraTarget;
@@ -317,7 +335,8 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
         World world,
         Entity playerEntity,
         ref WarpState warpState,
-        ref GridMovement movement)
+        ref GridMovement movement
+    )
     {
         warpState.PendingWarp = null;
         warpState.IsWarping = false;
@@ -327,4 +346,3 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
         _logger?.LogDebug("Warp cancelled, player movement restored");
     }
 }
-

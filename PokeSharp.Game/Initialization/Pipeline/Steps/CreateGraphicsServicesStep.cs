@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Engine.Rendering.Assets;
 using PokeSharp.Engine.Scenes;
 using PokeSharp.Game.Data.Factories;
+using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 
 namespace PokeSharp.Game.Initialization.Pipeline.Steps;
 
@@ -40,11 +42,11 @@ public class CreateGraphicsServicesStep : InitializationStepBase
         string assetRoot = context.PathResolver.AssetRoot;
 
         // Create AssetManager via factory
-        var assetManager = factory.CreateAssetManager(context.GraphicsDevice, assetRoot);
+        AssetManager assetManager = factory.CreateAssetManager(context.GraphicsDevice, assetRoot);
         context.AssetManager = assetManager;
 
         // Create MapLoader via factory (factory handles all processor creation)
-        var mapLoader = factory.CreateMapLoader(assetManager, context.EntityFactory);
+        MapLoader mapLoader = factory.CreateMapLoader(assetManager, context.EntityFactory);
         context.MapLoader = mapLoader;
 
         logger.LogInformation("Graphics services created successfully");

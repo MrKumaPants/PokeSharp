@@ -186,7 +186,11 @@ public class MapLifecycleManager(
             catch (Exception ex)
             {
                 // If release fails, destroy the entity instead
-                logger?.LogWarning(ex, "Failed to release entity {EntityId} to pool, destroying", entity.Id);
+                logger?.LogWarning(
+                    ex,
+                    "Failed to release entity {EntityId} to pool, destroying",
+                    entity.Id
+                );
                 world.Destroy(entity);
             }
         }
@@ -225,34 +229,48 @@ public class MapLifecycleManager(
         // Elevation prevents pooled tiles from being rendered at stale positions.
         // Without this, pooled tiles with old MapIds render at (0,0) causing visual overlap.
         if (entity.Has<Elevation>())
+        {
             world.Remove<Elevation>(entity);
+        }
 
         // CRITICAL: Remove AnimatedTile - this component contains tileset-specific
         // data (FrameSourceRects, TilesetFirstGid) that becomes invalid when reused
         // for a different map. Failure to remove this causes rendering corruption.
         if (entity.Has<AnimatedTile>())
+        {
             world.Remove<AnimatedTile>(entity);
+        }
 
         // CRITICAL: Remove BelongsToMap relationship - it will be re-added with new map entity
         if (entity.Has<BelongsToMap>())
+        {
             world.Remove<BelongsToMap>(entity);
+        }
 
         // Remove optional tile components that may have been added
         // Keep TilePosition, TileSprite - they'll be overwritten on reuse
         // Remove variable components that may not be present on next use
 
         if (entity.Has<LayerOffset>())
+        {
             world.Remove<LayerOffset>(entity);
+        }
 
         if (entity.Has<TerrainType>())
+        {
             world.Remove<TerrainType>(entity);
+        }
 
         if (entity.Has<TileScript>())
+        {
             world.Remove<TileScript>(entity);
+        }
 
         // Remove collision component if present (added via property mappers)
         if (entity.Has<Collision>())
+        {
             world.Remove<Collision>(entity);
+        }
     }
 
     /// <summary>
@@ -353,7 +371,10 @@ public class MapLifecycleManager(
         // Clear sprite cache
         spriteTextureLoader.ClearCache();
 
-        logger?.LogInformation("All map entities destroyed ({Count} entities), spatial hash invalidated", totalDestroyed);
+        logger?.LogInformation(
+            "All map entities destroyed ({Count} entities), spatial hash invalidated",
+            totalDestroyed
+        );
     }
 
     /// <summary>
@@ -394,7 +415,10 @@ public class MapLifecycleManager(
             }
         }
 
-        logger?.LogDebug("Destroyed {Count} map entities during full cleanup", entitiesToDestroy.Count);
+        logger?.LogDebug(
+            "Destroyed {Count} map entities during full cleanup",
+            entitiesToDestroy.Count
+        );
         return entitiesToDestroy.Count;
     }
 

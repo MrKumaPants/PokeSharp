@@ -12,6 +12,7 @@ public class ThemeCommand : IConsoleCommand
 {
     public string Name => "theme";
     public string Description => "List or switch UI themes";
+
     public string Usage =>
         "theme [onedark|monokai|dracula|gruvbox|nord|solarized|solarized-light|pokeball]";
 

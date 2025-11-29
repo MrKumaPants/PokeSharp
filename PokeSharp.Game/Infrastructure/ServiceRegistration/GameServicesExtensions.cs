@@ -34,15 +34,14 @@ public static class GameServicesExtensions
             EntityPoolManager poolManager = sp.GetRequiredService<EntityPoolManager>();
 
             // PropertyMapperRegistry is created lazily when needed
-            ILogger<PropertyMapperRegistry> mapperLogger =
-                sp.GetRequiredService<ILogger<PropertyMapperRegistry>>();
+            ILogger<PropertyMapperRegistry> mapperLogger = sp.GetRequiredService<
+                ILogger<PropertyMapperRegistry>
+            >();
             PropertyMapperRegistry propertyMapperRegistry =
                 PropertyMapperServiceExtensions.CreatePropertyMapperRegistry(mapperLogger);
 
-            NpcDefinitionService? npcDefinitionService =
-                sp.GetService<NpcDefinitionService>();
-            MapDefinitionService? mapDefinitionService =
-                sp.GetService<MapDefinitionService>();
+            NpcDefinitionService? npcDefinitionService = sp.GetService<NpcDefinitionService>();
+            MapDefinitionService? mapDefinitionService = sp.GetService<MapDefinitionService>();
 
             return new GraphicsServiceFactory(
                 loggerFactory,

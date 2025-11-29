@@ -18,6 +18,7 @@ public class ParameterHintProvider
         @"(\w+)\.(\w+)\($",
         RegexOptions.Compiled
     );
+
     private readonly ILogger? _logger;
     private object? _globalsInstance;
     private List<string>? _importedNamespaces;

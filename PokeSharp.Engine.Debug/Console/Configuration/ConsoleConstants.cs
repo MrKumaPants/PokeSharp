@@ -264,6 +264,7 @@ public static class ConsoleConstants
     public static class AutoComplete
     {
         public const char MemberAccessChar = '.';
+
         public static readonly char[] WordSeparators =
         {
             ' ',

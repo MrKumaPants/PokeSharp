@@ -13,12 +13,12 @@ namespace PokeSharp.Game.Initialization.Initializers;
 /// </summary>
 public class TemplateCacheInitializer
 {
-    private readonly IAssetPathResolver _pathResolver;
     private readonly JsonTemplateLoader _jsonLoader;
     private readonly ILogger<TemplateCacheInitializer>? _logger;
     private readonly ModLoader _modLoader;
     private readonly PatchApplicator _patchApplicator;
     private readonly PatchFileLoader _patchFileLoader;
+    private readonly IAssetPathResolver _pathResolver;
     private readonly TemplateCache _templateCache;
 
     public TemplateCacheInitializer(

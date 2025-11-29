@@ -139,11 +139,13 @@ public class WatchPanel : DebugPanelBase, IDisposable, IWatchOperations
     }
 
     int IWatchOperations.Count => Count;
+
     bool IWatchOperations.AutoUpdate
     {
         get => AutoUpdate;
         set => AutoUpdate = value;
     }
+
     double IWatchOperations.UpdateInterval
     {
         get => UpdateInterval;

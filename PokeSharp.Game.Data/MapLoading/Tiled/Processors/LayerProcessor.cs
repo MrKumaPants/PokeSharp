@@ -23,10 +23,10 @@ namespace PokeSharp.Game.Data.MapLoading.Tiled.Processors;
 /// </summary>
 public class LayerProcessor : ILayerProcessor
 {
-    private readonly ILogger<LayerProcessor>? _logger;
-    private readonly PropertyMapperRegistry? _propertyMapperRegistry;
-    private readonly EntityPoolManager? _poolManager;
     private const string TilePoolName = "tile";
+    private readonly ILogger<LayerProcessor>? _logger;
+    private readonly EntityPoolManager? _poolManager;
+    private readonly PropertyMapperRegistry? _propertyMapperRegistry;
 
     public LayerProcessor(
         PropertyMapperRegistry? propertyMapperRegistry = null,
@@ -218,7 +218,13 @@ public class LayerProcessor : ILayerProcessor
                 {
                     TileData data = tileDataList[i];
                     LoadedTileset tileset = tilesets[data.TilesetIndex];
-                    return CreateTileSprite(data.TileGid, tileset, data.FlipH, data.FlipV, data.FlipD);
+                    return CreateTileSprite(
+                        data.TileGid,
+                        tileset,
+                        data.FlipH,
+                        data.FlipV,
+                        data.FlipD
+                    );
                 }
             );
         }
@@ -320,7 +326,13 @@ public class LayerProcessor : ILayerProcessor
 
             // Set TileSprite component
             LoadedTileset tileset = tilesets[data.TilesetIndex];
-            var tileSprite = CreateTileSprite(data.TileGid, tileset, data.FlipH, data.FlipV, data.FlipD);
+            TileSprite tileSprite = CreateTileSprite(
+                data.TileGid,
+                tileset,
+                data.FlipH,
+                data.FlipV,
+                data.FlipD
+            );
             if (entity.Has<TileSprite>())
             {
                 entity.Set(tileSprite);

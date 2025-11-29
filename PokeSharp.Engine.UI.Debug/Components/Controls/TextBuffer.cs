@@ -996,7 +996,10 @@ public class TextBuffer : UIComponent, ITextDisplay
                     DateTime now = DateTime.Now;
                     double timeSinceLastClick = (now - _lastClickTime).TotalSeconds;
 
-                    if (timeSinceLastClick < ThemeManager.Current.DoubleClickThreshold && clickedLine == _lastClickLine)
+                    if (
+                        timeSinceLastClick < ThemeManager.Current.DoubleClickThreshold
+                        && clickedLine == _lastClickLine
+                    )
                     {
                         _clickCount++;
                     }

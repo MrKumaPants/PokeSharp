@@ -1306,7 +1306,7 @@ public class ConsoleSystem : IUpdateSystem
             stats.ArchetypeCount = _world.Archetypes.Count;
 
             // System stats
-            var systemMetrics = _systemManager.GetMetrics();
+            IReadOnlyDictionary<string, SystemMetrics>? systemMetrics = _systemManager.GetMetrics();
             stats.SystemCount = systemMetrics?.Count ?? 0;
 
             if (systemMetrics != null && systemMetrics.Count > 0)
@@ -1315,7 +1315,7 @@ public class ConsoleSystem : IUpdateSystem
                 string? slowestName = null;
                 double slowestTime = 0;
 
-                foreach (var kvp in systemMetrics)
+                foreach (KeyValuePair<string, SystemMetrics> kvp in systemMetrics)
                 {
                     totalTime += kvp.Value.LastUpdateMs;
                     if (kvp.Value.LastUpdateMs > slowestTime)
@@ -1388,9 +1388,15 @@ public class ConsoleSystem : IUpdateSystem
 
             // Get fields from AggregatePoolStatistics struct
             Type statsType = aggregateStats.GetType();
-            stats.PoolCount = (int)(statsType.GetField("TotalPools")?.GetValue(aggregateStats) ?? 0);
-            stats.PooledActive = (int)(statsType.GetField("TotalActive")?.GetValue(aggregateStats) ?? 0);
-            stats.PooledAvailable = (int)(statsType.GetField("TotalAvailable")?.GetValue(aggregateStats) ?? 0);
+            stats.PoolCount = (int)(
+                statsType.GetField("TotalPools")?.GetValue(aggregateStats) ?? 0
+            );
+            stats.PooledActive = (int)(
+                statsType.GetField("TotalActive")?.GetValue(aggregateStats) ?? 0
+            );
+            stats.PooledAvailable = (int)(
+                statsType.GetField("TotalAvailable")?.GetValue(aggregateStats) ?? 0
+            );
 
             // Calculate reuse rate
             PropertyInfo? reuseRateProp = statsType.GetProperty("OverallReuseRate");

@@ -66,4 +66,3 @@ public readonly struct WarpDestination
         return $"WarpDestination(Map:{MapId.Value} @ {X},{Y})";
     }
 }
-

@@ -40,12 +40,12 @@ public class WarpSystem : SystemBase, IUpdateSystem
 
     private readonly ILogger<WarpSystem>? _logger;
 
+    // Per-frame cache of map warp lookups
+    private readonly Dictionary<MapRuntimeId, MapWarps> _mapWarpCache = new(4);
+
     // Cached queries
     private QueryDescription _mapQuery;
     private QueryDescription _playerQuery;
-
-    // Per-frame cache of map warp lookups
-    private readonly Dictionary<MapRuntimeId, MapWarps> _mapWarpCache = new(4);
 
     /// <summary>
     ///     Creates a new WarpSystem with optional logger.
@@ -71,12 +71,10 @@ public class WarpSystem : SystemBase, IUpdateSystem
         base.Initialize(world);
 
         // Query for player with position, movement, and warp state
-        _playerQuery = new QueryDescription()
-            .WithAll<Player, Position, GridMovement, WarpState>();
+        _playerQuery = new QueryDescription().WithAll<Player, Position, GridMovement, WarpState>();
 
         // Query for map entities with warp spatial index
-        _mapQuery = new QueryDescription()
-            .WithAll<MapInfo, MapWarps>();
+        _mapQuery = new QueryDescription().WithAll<MapInfo, MapWarps>();
 
         _logger?.LogDebug("WarpSystem initialized (pure ECS mode)");
     }
@@ -97,7 +95,12 @@ public class WarpSystem : SystemBase, IUpdateSystem
         // Process each player
         world.Query(
             in _playerQuery,
-            (Entity playerEntity, ref Position position, ref GridMovement movement, ref WarpState warpState) =>
+            (
+                Entity playerEntity,
+                ref Position position,
+                ref GridMovement movement,
+                ref WarpState warpState
+            ) =>
             {
                 ProcessPlayerWarp(playerEntity, ref position, ref movement, ref warpState);
             }
@@ -128,7 +131,8 @@ public class WarpSystem : SystemBase, IUpdateSystem
         Entity playerEntity,
         ref Position position,
         ref GridMovement movement,
-        ref WarpState warpState)
+        ref WarpState warpState
+    )
     {
         // Skip if already warping
         if (warpState.IsWarping)
@@ -222,10 +226,7 @@ public class WarpSystem : SystemBase, IUpdateSystem
         // Get the WarpPoint component
         if (!warpEntity.Has<WarpPoint>())
         {
-            _logger?.LogWarning(
-                "Warp entity at ({X}, {Y}) missing WarpPoint component",
-                x, y
-            );
+            _logger?.LogWarning("Warp entity at ({X}, {Y}) missing WarpPoint component", x, y);
             return false;
         }
 

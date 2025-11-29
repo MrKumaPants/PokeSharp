@@ -14,8 +14,8 @@ namespace PokeSharp.Game.Infrastructure.Services;
 /// </summary>
 public class SpriteLoader
 {
-    private readonly IAssetPathResolver _pathResolver;
     private readonly ILogger<SpriteLoader> _logger;
+    private readonly IAssetPathResolver _pathResolver;
     private readonly List<string> _spritesBasePaths;
 
     private List<SpriteManifest>? _allSprites;
@@ -26,7 +26,7 @@ public class SpriteLoader
     private Dictionary<string, string>? _spritePathLookup; // Maps "category/spriteId" -> full directory path
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="SpriteLoader"/> class.
+    ///     Initializes a new instance of the <see cref="SpriteLoader" /> class.
     /// </summary>
     /// <param name="pathResolver">Path resolver for locating sprite directories.</param>
     /// <param name="logger">Logger instance.</param>

@@ -78,11 +78,15 @@ public class InitializeBehaviorSystemsStep : InitializationStepBase
                 context.MapInitializer,
                 context.GameInitializer.MapLifecycleManager
             );
-            logger.LogInformation("WarpExecutionSystem wired to MapInitializer and MapLifecycleManager");
+            logger.LogInformation(
+                "WarpExecutionSystem wired to MapInitializer and MapLifecycleManager"
+            );
         }
         else
         {
-            logger.LogWarning("MapInitializer or MapLifecycleManager not available - WarpExecutionSystem will not function");
+            logger.LogWarning(
+                "MapInitializer or MapLifecycleManager not available - WarpExecutionSystem will not function"
+            );
         }
 
         logger.LogInformation("Behavior systems initialized successfully");

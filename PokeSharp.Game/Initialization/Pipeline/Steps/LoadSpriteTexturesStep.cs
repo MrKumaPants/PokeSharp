@@ -43,7 +43,7 @@ public class LoadSpriteTexturesStep : InitializationStepBase
             context.SpriteLoader,
             context.GameInitializer.RenderSystem.AssetManager,
             context.GraphicsDevice,
-            logger: spriteTextureLogger
+            spriteTextureLogger
         );
         context.SpriteTextureLoader = spriteTextureLoader;
 

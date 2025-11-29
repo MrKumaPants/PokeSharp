@@ -162,6 +162,5 @@ public class InitializationContext
     ///     Gets the asset path resolver for resolving asset paths.
     ///     Lazily resolved from the service provider.
     /// </summary>
-    public IAssetPathResolver PathResolver =>
-        Services.GetRequiredService<IAssetPathResolver>();
+    public IAssetPathResolver PathResolver => Services.GetRequiredService<IAssetPathResolver>();
 }

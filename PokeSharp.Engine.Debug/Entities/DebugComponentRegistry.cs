@@ -1,6 +1,9 @@
 using System.Reflection;
 using Arch.Core;
-using Arch.Core.Extensions; // For Has<T> and Get<T> extension methods
+using Arch.Core.Extensions;
+using EntityExtensions = Arch.Core.Extensions.EntityExtensions;
+
+// For Has<T> and Get<T> extension methods
 
 namespace PokeSharp.Engine.Debug.Entities;
 
@@ -11,13 +14,12 @@ namespace PokeSharp.Engine.Debug.Entities;
 /// </summary>
 public class DebugComponentRegistry
 {
-    private readonly List<ComponentDescriptor> _descriptors = new();
-    private readonly Dictionary<Type, ComponentDescriptor> _typeToDescriptor = new();
-
     // Cache for Has<T> method lookups
     private static readonly Dictionary<Type, MethodInfo> _hasMethodCache = new();
     private static readonly Dictionary<Type, MethodInfo> _getMethodCache = new();
-    private static readonly Type _entityExtensionsType = typeof(Arch.Core.Extensions.EntityExtensions);
+    private static readonly Type _entityExtensionsType = typeof(EntityExtensions);
+    private readonly List<ComponentDescriptor> _descriptors = new();
+    private readonly Dictionary<Type, ComponentDescriptor> _typeToDescriptor = new();
 
     /// <summary>
     ///     Registers a component type with the given display name.
@@ -121,7 +123,9 @@ public class DebugComponentRegistry
                 // Get the generic Has<T> method
                 MethodInfo genericHas = _entityExtensionsType
                     .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                    .First(m => m.Name == "Has" && m.GetParameters().Length == 1 && m.IsGenericMethod);
+                    .First(m =>
+                        m.Name == "Has" && m.GetParameters().Length == 1 && m.IsGenericMethod
+                    );
 
                 hasMethod = genericHas.MakeGenericMethod(componentType);
                 _hasMethodCache[componentType] = hasMethod;
@@ -139,7 +143,10 @@ public class DebugComponentRegistry
     ///     Gets component properties using reflection.
     ///     Extracts public properties and fields from the component.
     /// </summary>
-    private static Dictionary<string, string> GetPropertiesDynamic(Entity entity, Type componentType)
+    private static Dictionary<string, string> GetPropertiesDynamic(
+        Entity entity,
+        Type componentType
+    )
     {
         var properties = new Dictionary<string, string>();
 
@@ -155,7 +162,12 @@ public class DebugComponentRegistry
             {
                 MethodInfo genericGet = _entityExtensionsType
                     .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                    .First(m => m.Name == "Get" && m.GetParameters().Length == 1 && m.IsGenericMethod && !m.ReturnType.IsByRef);
+                    .First(m =>
+                        m.Name == "Get"
+                        && m.GetParameters().Length == 1
+                        && m.IsGenericMethod
+                        && !m.ReturnType.IsByRef
+                    );
 
                 getMethod = genericGet.MakeGenericMethod(componentType);
                 _getMethodCache[componentType] = getMethod;
@@ -168,7 +180,11 @@ public class DebugComponentRegistry
             }
 
             // Extract public properties
-            foreach (PropertyInfo prop in componentType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            foreach (
+                PropertyInfo prop in componentType.GetProperties(
+                    BindingFlags.Public | BindingFlags.Instance
+                )
+            )
             {
                 try
                 {
@@ -182,7 +198,11 @@ public class DebugComponentRegistry
             }
 
             // Extract public fields
-            foreach (FieldInfo field in componentType.GetFields(BindingFlags.Public | BindingFlags.Instance))
+            foreach (
+                FieldInfo field in componentType.GetFields(
+                    BindingFlags.Public | BindingFlags.Instance
+                )
+            )
             {
                 try
                 {
@@ -220,7 +240,7 @@ public class DebugComponentRegistry
             double d => d.ToString("F2"),
             bool b => b.ToString().ToLower(),
             Enum e => e.ToString(),
-            _ => value.ToString() ?? "?"
+            _ => value.ToString() ?? "?",
         };
     }
 

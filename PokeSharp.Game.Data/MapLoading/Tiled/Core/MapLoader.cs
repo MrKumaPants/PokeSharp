@@ -73,12 +73,6 @@ public class MapLoader(
     private readonly MapDefinitionService? _mapDefinitionService = mapDefinitionService;
 
     // Initialize MapIdService
-    private readonly MapIdService _mapIdService = new();
-
-    /// <summary>
-    ///     Gets the MapIdService for resolving map names to runtime IDs.
-    /// </summary>
-    public MapIdService MapIdService => _mapIdService;
 
     // Initialize MapLoadLogger
     private readonly MapLoadLogger _mapLoadLogger = new(logger);
@@ -113,6 +107,11 @@ public class MapLoader(
     private readonly TilesetLoader _tilesetLoader = new(
         assetManager ?? throw new ArgumentNullException(nameof(assetManager))
     );
+
+    /// <summary>
+    ///     Gets the MapIdService for resolving map names to runtime IDs.
+    /// </summary>
+    public MapIdService MapIdService { get; } = new();
 
     /// <summary>
     ///     Loads a map from EF Core definition (NEW: Definition-based loading).
@@ -334,7 +333,7 @@ public class MapLoader(
         Vector2? worldOffset = null
     )
     {
-        MapRuntimeId mapId = _mapIdService.GetMapIdFromIdentifier(mapDef.MapId);
+        MapRuntimeId mapId = MapIdService.GetMapIdFromIdentifier(mapDef.MapId);
         // Use MapId.Value (identifier like "oldale_town") NOT DisplayName ("Oldale Town")
         // MapStreamingSystem compares MapInfo.MapName against MapIdentifier.Value
         string mapName = mapDef.MapId.Value;
@@ -369,7 +368,7 @@ public class MapLoader(
     private Entity LoadMapEntitiesInternal(World world, string mapPath)
     {
         TmxDocument tmxDoc = TiledMapLoader.Load(mapPath);
-        MapRuntimeId mapId = _mapIdService.GetMapId(mapPath);
+        MapRuntimeId mapId = MapIdService.GetMapId(mapPath);
         string mapName = Path.GetFileNameWithoutExtension(mapPath);
 
         var context = new MapLoadContext
@@ -425,7 +424,13 @@ public class MapLoader(
         // Pass mapInfoEntity so tiles can have BelongsToMap relationship
         int tilesCreated =
             loadedTilesets.Count > 0
-                ? _layerProcessor.ProcessLayers(world, tmxDoc, mapInfoEntity, context.MapId, loadedTilesets)
+                ? _layerProcessor.ProcessLayers(
+                    world,
+                    tmxDoc,
+                    mapInfoEntity,
+                    context.MapId,
+                    loadedTilesets
+                )
                 : 0;
 
         // Setup animations (only if tilesets exist)
@@ -622,7 +627,7 @@ public class MapLoader(
     /// <returns>Map runtime ID if the map has been loaded, null otherwise.</returns>
     public MapRuntimeId? GetMapIdByName(string mapName)
     {
-        return _mapIdService.GetMapIdByName(mapName);
+        return MapIdService.GetMapIdByName(mapName);
     }
 
     /// <summary>

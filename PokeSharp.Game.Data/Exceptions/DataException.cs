@@ -62,6 +62,7 @@ public class MapNotFoundException : DataException
     }
 
     public string MapId => Context.TryGetValue("MapId", out object? id) ? id?.ToString() ?? "" : "";
+
     public string ExpectedPath =>
         Context.TryGetValue("ExpectedPath", out object? path) ? path?.ToString() ?? "" : "";
 
@@ -197,6 +198,7 @@ public class DataValidationException : DataException
 
     public string EntityType =>
         Context.TryGetValue("EntityType", out object? type) ? type?.ToString() ?? "" : "";
+
     public string EntityId =>
         Context.TryGetValue("EntityId", out object? id) ? id?.ToString() ?? "" : "";
 

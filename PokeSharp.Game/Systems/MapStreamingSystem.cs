@@ -9,7 +9,6 @@ using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.Player;
 using PokeSharp.Game.Components.Relationships;
-using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Data.Entities;
 using PokeSharp.Game.Data.MapLoading.Tiled.Core;
 using PokeSharp.Game.Data.Services;
@@ -156,7 +155,9 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
         // Skip streaming if no maps are loaded (we're in a warp transition)
         if (_mapInfoCache.Count == 0)
         {
-            _logger?.LogDebug("Skipping map streaming - no maps loaded (likely mid-warp transition)");
+            _logger?.LogDebug(
+                "Skipping map streaming - no maps loaded (likely mid-warp transition)"
+            );
             return;
         }
 

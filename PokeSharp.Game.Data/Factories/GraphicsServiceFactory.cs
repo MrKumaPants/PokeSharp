@@ -21,8 +21,8 @@ public class GraphicsServiceFactory : IGraphicsServiceFactory
     private readonly ILoggerFactory _loggerFactory;
     private readonly MapDefinitionService? _mapDefinitionService;
     private readonly NpcDefinitionService? _npcDefinitionService;
-    private readonly PropertyMapperRegistry? _propertyMapperRegistry;
     private readonly EntityPoolManager? _poolManager;
+    private readonly PropertyMapperRegistry? _propertyMapperRegistry;
     private readonly SystemManager _systemManager;
 
     /// <summary>

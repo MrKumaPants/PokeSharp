@@ -1,5 +1,3 @@
-using PokeSharp.Engine.Core.Types;
-
 namespace PokeSharp.Game.Components.Warps;
 
 /// <summary>
@@ -51,13 +49,14 @@ public struct WarpState
     /// <summary>
     ///     Creates a default WarpState with no active warp.
     /// </summary>
-    public static WarpState Default => new()
-    {
-        PendingWarp = null,
-        LastDestination = null,
-        IsWarping = false,
-        WarpStartTime = 0f
-    };
+    public static WarpState Default =>
+        new()
+        {
+            PendingWarp = null,
+            LastDestination = null,
+            IsWarping = false,
+            WarpStartTime = 0f,
+        };
 
     /// <summary>
     ///     Clears the warp state, resetting all tracking.
@@ -84,10 +83,15 @@ public struct WarpState
     public override readonly string ToString()
     {
         if (IsWarping && PendingWarp.HasValue)
+        {
             return $"WarpState(Warping to {PendingWarp.Value.TargetMap})";
+        }
+
         if (LastDestination.HasValue)
+        {
             return $"WarpState(At destination {LastDestination.Value})";
+        }
+
         return "WarpState(Idle)";
     }
 }
-

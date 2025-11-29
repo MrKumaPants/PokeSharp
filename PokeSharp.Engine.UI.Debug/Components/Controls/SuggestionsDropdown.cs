@@ -63,11 +63,13 @@ public class SuggestionsDropdown : UIComponent
         get => _selectedColor ?? ThemeManager.Current.Info;
         set => _selectedColor = value;
     }
+
     public Color HoverColor
     {
         get => _hoverColor ?? ThemeManager.Current.ButtonHover;
         set => _hoverColor = value;
     }
+
     public Color TextColor
     {
         get => _textColor ?? ThemeManager.Current.TextPrimary;
@@ -85,11 +87,13 @@ public class SuggestionsDropdown : UIComponent
         get => _categoryColor ?? ThemeManager.Current.TextDim;
         set => _categoryColor = value;
     }
+
     public Color BorderColor
     {
         get => _borderColor ?? ThemeManager.Current.BorderFocus;
         set => _borderColor = value;
     }
+
     public float BorderThickness { get; set; } = 2;
     public float ItemHeight { get; set; } = 30;
     public float Padding { get; set; } = 8f;

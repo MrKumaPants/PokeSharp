@@ -24,10 +24,12 @@ public class ConsoleAutoComplete
 
     // Compiled regex patterns for better performance
     private static readonly Regex MemberAccessRegex = new(@"(\w+)\.$", RegexOptions.Compiled);
+
     private static readonly Regex PartialMemberAccessRegex = new(
         @"(\w+)\.(\w*)$",
         RegexOptions.Compiled
     );
+
     private readonly ILogger? _logger;
 
     // Cache for reflection results to avoid repeated lookups

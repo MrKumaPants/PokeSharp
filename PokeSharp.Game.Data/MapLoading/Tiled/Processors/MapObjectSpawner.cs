@@ -99,6 +99,7 @@ public class MapObjectSpawner
                 {
                     _logger?.LogResourceNotFound("Template", $"{templateId} for '{obj.Name}'");
                 }
+
                 continue;
             }
 
@@ -422,10 +423,7 @@ public class MapObjectSpawner
         // Get the warp property (nested class object)
         if (!obj.Properties.TryGetValue("warp", out object? warpProp))
         {
-            _logger?.LogWarning(
-                "warp_event '{Name}' missing 'warp' property, skipping",
-                obj.Name
-            );
+            _logger?.LogWarning("warp_event '{Name}' missing 'warp' property, skipping", obj.Name);
             return false;
         }
 
@@ -453,12 +451,10 @@ public class MapObjectSpawner
             return false;
         }
 
-        int targetX = warpData.TryGetValue("x", out object? xVal) && xVal != null
-            ? Convert.ToInt32(xVal)
-            : 0;
-        int targetY = warpData.TryGetValue("y", out object? yVal) && yVal != null
-            ? Convert.ToInt32(yVal)
-            : 0;
+        int targetX =
+            warpData.TryGetValue("x", out object? xVal) && xVal != null ? Convert.ToInt32(xVal) : 0;
+        int targetY =
+            warpData.TryGetValue("y", out object? yVal) && yVal != null ? Convert.ToInt32(yVal) : 0;
 
         // Always use default ground elevation (3) - don't read from map data
         // Pokemon Emerald elevation values in map files are often incorrect
@@ -473,7 +469,7 @@ public class MapObjectSpawner
             // Create warp entity with Position, WarpPoint, and BelongsToMap components
             Entity warpEntity = world.Create(
                 new Position(tileX, tileY, mapId, tileHeight),
-                new WarpPoint(targetMap, targetX, targetY, targetElevation),
+                new WarpPoint(targetMap, targetX, targetY),
                 new BelongsToMap(mapInfoEntity, mapId)
             );
 

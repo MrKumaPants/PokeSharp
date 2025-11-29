@@ -3,7 +3,6 @@ using Microsoft.Xna.Framework.Input;
 using PokeSharp.Engine.UI.Debug.Components.Base;
 using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Core;
-using PokeSharp.Engine.UI.Debug.Input;
 using PokeSharp.Engine.UI.Debug.Layout;
 
 namespace PokeSharp.Engine.UI.Debug.Components.Debug;
@@ -19,9 +18,9 @@ public class StatsContent : UIComponent
     private const float FpsExcellent = 60f;
     private const float FpsGood = 55f;
     private const float FpsFair = 30f;
-    private const float FrameTimeGood = 16.67f;  // 60 FPS target
+    private const float FrameTimeGood = 16.67f; // 60 FPS target
     private const float FrameTimeWarning = 25f;
-    private const float FrameTimeMax = 33.33f;   // 30 FPS minimum
+    private const float FrameTimeMax = 33.33f; // 30 FPS minimum
     private const double MemoryGood = 256;
     private const double MemoryWarning = 512;
     private const double MemoryMax = 768;
@@ -58,13 +57,13 @@ public class StatsContent : UIComponent
 
     // Refresh timing (time-based for frame rate independence)
     private double _lastUpdateTime;
+    private float _lastVisibleHeight;
     private double _refreshIntervalSeconds = 0.033; // ~30fps updates by default
-    private Func<StatsData>? _statsProvider;
 
     // Scrolling support
     private float _scrollOffset;
+    private Func<StatsData>? _statsProvider;
     private float _totalContentHeight;
-    private float _lastVisibleHeight;
 
     public StatsContent(string id)
     {
@@ -137,7 +136,8 @@ public class StatsContent : UIComponent
 
     public (string indicator, Color color, bool isHealthy) GetOverallHealth(UITheme theme)
     {
-        bool isHealthy = _cachedStats.Fps >= FpsGood && _cachedStats.MemoryMB < MemoryWarning && _gen2Delta < 1;
+        bool isHealthy =
+            _cachedStats.Fps >= FpsGood && _cachedStats.MemoryMB < MemoryWarning && _gen2Delta < 1;
         bool isWarning = _cachedStats.Fps >= FpsFair && _cachedStats.MemoryMB < MemoryMax;
 
         if (isHealthy)
@@ -209,11 +209,11 @@ public class StatsContent : UIComponent
             // Keyboard scrolling
             if (context.Input.IsKeyPressedWithRepeat(Keys.PageUp))
             {
-                _scrollOffset = Math.Max(0, _scrollOffset - visibleHeight * 0.8f);
+                _scrollOffset = Math.Max(0, _scrollOffset - (visibleHeight * 0.8f));
             }
             else if (context.Input.IsKeyPressedWithRepeat(Keys.PageDown))
             {
-                _scrollOffset = Math.Min(maxScroll, _scrollOffset + visibleHeight * 0.8f);
+                _scrollOffset = Math.Min(maxScroll, _scrollOffset + (visibleHeight * 0.8f));
             }
             else if (context.Input.IsKeyPressed(Keys.Home))
             {
@@ -235,7 +235,7 @@ public class StatsContent : UIComponent
             renderer.DrawText("Stats provider not configured.", contentX, y, theme.TextDim);
             y += lineHeight;
             renderer.DrawText("Waiting for stats data...", contentX, y, theme.TextDim);
-            _totalContentHeight = (y - baseY + _scrollOffset) + linePadding;
+            _totalContentHeight = y - baseY + _scrollOffset + linePadding;
             return;
         }
 
@@ -254,7 +254,12 @@ public class StatsContent : UIComponent
         }
 
         // Push clip rect to prevent drawing outside visible area
-        var clipRect = new LayoutRect(Rect.X, Rect.Y, Rect.Width - (needsScrollbar ? scrollbarWidth : 0), Rect.Height);
+        var clipRect = new LayoutRect(
+            Rect.X,
+            Rect.Y,
+            Rect.Width - (needsScrollbar ? scrollbarWidth : 0),
+            Rect.Height
+        );
         renderer.PushClip(clipRect);
 
         // Layout constants from PanelConstants
@@ -324,7 +329,13 @@ public class StatsContent : UIComponent
         // === SPARKLINE ===
         renderer.DrawText("History:", contentX, y, theme.TextSecondary);
         // Draw sparkline inline
-        _frameTimeSparkline.Draw(renderer, valueX, y, contentWidth - labelWidth - SectionSpacing, lineHeight);
+        _frameTimeSparkline.Draw(
+            renderer,
+            valueX,
+            y,
+            contentWidth - labelWidth - SectionSpacing,
+            lineHeight
+        );
         y += rowHeight + SectionSpacing;
 
         // Separator
@@ -386,26 +397,38 @@ public class StatsContent : UIComponent
         // Right-align archetypes info
         string archetypesText = $"Archetypes: {_cachedStats.ArchetypeCount}";
         float archetypesWidth = renderer.MeasureText(archetypesText).X;
-        renderer.DrawText(archetypesText, contentX + contentWidth - archetypesWidth, y, theme.TextSecondary);
+        renderer.DrawText(
+            archetypesText,
+            contentX + contentWidth - archetypesWidth,
+            y,
+            theme.TextSecondary
+        );
         y += rowHeight;
 
         // === SYSTEMS ROW ===
         renderer.DrawText("Systems:", contentX, y, theme.TextSecondary);
         renderer.DrawText($"{_cachedStats.SystemCount}", valueX, y, theme.TextPrimary);
         // Right-align total time
-        Color systemTimeColor = _cachedStats.TotalSystemTimeMs <= TotalSystemTimeGood ? theme.Success
+        Color systemTimeColor =
+            _cachedStats.TotalSystemTimeMs <= TotalSystemTimeGood ? theme.Success
             : _cachedStats.TotalSystemTimeMs <= TotalSystemTimeWarning ? theme.Warning
             : theme.Error;
         string totalTimeText = $"Total: {_cachedStats.TotalSystemTimeMs:F2}ms";
         float totalTimeWidth = renderer.MeasureText(totalTimeText).X;
-        renderer.DrawText(totalTimeText, contentX + contentWidth - totalTimeWidth, y, systemTimeColor);
+        renderer.DrawText(
+            totalTimeText,
+            contentX + contentWidth - totalTimeWidth,
+            y,
+            systemTimeColor
+        );
         y += rowHeight;
 
         // === SLOWEST SYSTEM ROW ===
         if (!string.IsNullOrEmpty(_cachedStats.SlowestSystemName))
         {
             renderer.DrawText("Slowest:", contentX, y, theme.TextSecondary);
-            Color slowestColor = _cachedStats.SlowestSystemTimeMs <= SystemTimeGood ? theme.Success
+            Color slowestColor =
+                _cachedStats.SlowestSystemTimeMs <= SystemTimeGood ? theme.Success
                 : _cachedStats.SlowestSystemTimeMs <= SystemTimeWarning ? theme.Warning
                 : theme.Error;
             // Show system name (truncate if needed)
@@ -416,11 +439,17 @@ public class StatsContent : UIComponent
             {
                 systemName = systemName.Substring(0, TruncatedNameLength) + "...";
             }
+
             renderer.DrawText(systemName, valueX, y, theme.TextPrimary);
             // Right-align slowest time
             string slowestTime = $"{_cachedStats.SlowestSystemTimeMs:F2}ms";
             float slowestTimeWidth = renderer.MeasureText(slowestTime).X;
-            renderer.DrawText(slowestTime, contentX + contentWidth - slowestTimeWidth, y, slowestColor);
+            renderer.DrawText(
+                slowestTime,
+                contentX + contentWidth - slowestTimeWidth,
+                y,
+                slowestColor
+            );
             y += rowHeight;
         }
 
@@ -450,7 +479,7 @@ public class StatsContent : UIComponent
         renderer.PopClip();
 
         // Calculate total content height (from base to final y, plus padding)
-        _totalContentHeight = (y - baseY + _scrollOffset) + linePadding;
+        _totalContentHeight = y - baseY + _scrollOffset + linePadding;
 
         // Draw scrollbar if content exceeds visible area
         if (needsScrollbar)
@@ -475,7 +504,10 @@ public class StatsContent : UIComponent
 
         // Calculate thumb size and position (minimum thumb height for usability)
         const float MinThumbHeight = 20f;
-        float thumbHeight = Math.Max(MinThumbHeight, (visibleHeight / _totalContentHeight) * trackHeight);
+        float thumbHeight = Math.Max(
+            MinThumbHeight,
+            visibleHeight / _totalContentHeight * trackHeight
+        );
         float maxScroll = _totalContentHeight - visibleHeight;
         float scrollRatio = maxScroll > 0 ? _scrollOffset / maxScroll : 0;
         float thumbY = trackY + (scrollRatio * (trackHeight - thumbHeight));

@@ -128,6 +128,7 @@ public class TextEditor : UIComponent, ITextInput
         get => _textColor ?? ThemeManager.Current.InputText;
         set => _textColor = value;
     }
+
     public Color CursorColor
     {
         get => _cursorColor ?? ThemeManager.Current.InputCursor;
@@ -180,6 +181,7 @@ public class TextEditor : UIComponent, ITextInput
     public bool SnippetsEnabled { get; set; } = true;
     public string IndentString { get; set; } = "    "; // 4 spaces
     public string Prompt { get; set; } = NerdFontIcons.Prompt;
+
     public Color PromptColor
     {
         get => _promptColor ?? ThemeManager.Current.Prompt;
@@ -1971,7 +1973,7 @@ public class TextEditor : UIComponent, ITextInput
 
         for (int i = _scrollOffsetY; i < endLine; i++)
         {
-            string lineNum = (i + 1) + ":";
+            string lineNum = i + 1 + ":";
             Color color = i == _cursorLine ? currentLineColor : dimColor;
             float lineY = textStartY + ((i - _scrollOffsetY) * lineHeight);
 

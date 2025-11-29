@@ -63,9 +63,7 @@ public struct WarpPoint
     /// <param name="targetY">Target Y tile coordinate.</param>
     /// <param name="targetElevation">Target elevation (default: 3).</param>
     public WarpPoint(string targetMapName, int targetX, int targetY, byte targetElevation = 3)
-        : this(new MapIdentifier(targetMapName), targetX, targetY, targetElevation)
-    {
-    }
+        : this(new MapIdentifier(targetMapName), targetX, targetY, targetElevation) { }
 
     /// <inheritdoc />
     public override readonly string ToString()

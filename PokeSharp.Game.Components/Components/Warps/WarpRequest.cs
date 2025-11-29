@@ -53,4 +53,3 @@ public readonly struct WarpRequest
         return $"WarpRequest(→ {TargetMap.Value} @ {TargetX},{TargetY} elev:{TargetElevation})";
     }
 }
-

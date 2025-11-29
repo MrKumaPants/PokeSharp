@@ -1,3 +1,4 @@
+using Arch.Core;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Scenes;
 
@@ -36,7 +37,7 @@ public class LoadInitialMapStep : InitializationStepBase
             context.LoggerFactory.CreateLogger<LoadInitialMapStep>();
 
         string mapId = context.Configuration.Initialization.InitialMap;
-        var mapEntity = await context.MapInitializer.LoadMap(mapId);
+        Entity? mapEntity = await context.MapInitializer.LoadMap(mapId);
 
         // Log appropriately based on whether the map was actually loaded
         if (mapEntity.HasValue)

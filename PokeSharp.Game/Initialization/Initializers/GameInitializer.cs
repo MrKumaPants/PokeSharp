@@ -112,7 +112,7 @@ public class GameInitializer(
 
         // InputSystem with Pokemon-style input buffering
         // Pass inputBlocker so InputSystem can skip processing when console/menus have exclusive input
-        var inputConfig = GameplayConfig.CreateDefault().InputBuffer;
+        InputBufferConfig inputConfig = GameplayConfig.CreateDefault().InputBuffer;
         ILogger<InputSystem> inputLogger = loggerFactory.CreateLogger<InputSystem>();
         var inputSystem = new InputSystem(
             inputConfig.MaxBufferedInputs,
@@ -143,7 +143,8 @@ public class GameInitializer(
         systemManager.RegisterUpdateSystem(WarpSystem);
 
         // Register WarpExecutionSystem (Priority: 115, processes pending warp requests)
-        ILogger<WarpExecutionSystem> warpExecLogger = loggerFactory.CreateLogger<WarpExecutionSystem>();
+        ILogger<WarpExecutionSystem> warpExecLogger =
+            loggerFactory.CreateLogger<WarpExecutionSystem>();
         WarpExecutionSystem = new WarpExecutionSystem(warpExecLogger);
         systemManager.RegisterUpdateSystem(WarpExecutionSystem);
 
@@ -224,7 +225,9 @@ public class GameInitializer(
             poolManager,
             mapLifecycleLogger
         );
-        logger.LogInformation("MapLifecycleManager initialized with sprite texture, spatial hash, and pooling support");
+        logger.LogInformation(
+            "MapLifecycleManager initialized with sprite texture, spatial hash, and pooling support"
+        );
 
         // Wire up MapLifecycleManager to MapStreamingSystem for proper entity cleanup during unloading
         if (_mapStreamingSystem != null)

@@ -43,6 +43,7 @@ public class AssetLoadException : RenderingException
 
     public string AssetId =>
         Context.TryGetValue("AssetId", out object? id) ? id?.ToString() ?? "" : "";
+
     public string AssetType =>
         Context.TryGetValue("AssetType", out object? type) ? type?.ToString() ?? "" : "";
 
@@ -78,6 +79,7 @@ public class TextureLoadException : RenderingException
 
     public string TextureId =>
         Context.TryGetValue("TextureId", out object? id) ? id?.ToString() ?? "" : "";
+
     public string FilePath =>
         Context.TryGetValue("FilePath", out object? path) ? path?.ToString() ?? "" : "";
 

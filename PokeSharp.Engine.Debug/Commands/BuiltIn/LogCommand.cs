@@ -105,7 +105,7 @@ public class LogCommand : IConsoleCommand
             }
 
             string levelStr = args[1];
-            if (Enum.TryParse<LogLevel>(levelStr, true, out LogLevel level))
+            if (Enum.TryParse(levelStr, true, out LogLevel level))
             {
                 context.SetMinimumLogLevel(level);
                 context.WriteLine($"Minimum log level set to: {level}", theme.Success);
@@ -141,7 +141,7 @@ public class LogCommand : IConsoleCommand
             }
 
             string levelStr = args[1];
-            if (Enum.TryParse<LogLevel>(levelStr, true, out LogLevel level))
+            if (Enum.TryParse(levelStr, true, out LogLevel level))
             {
                 context.Logs.SetFilterLevel(level);
                 context.WriteLine($"Log level filter set to: {level}", theme.Success);

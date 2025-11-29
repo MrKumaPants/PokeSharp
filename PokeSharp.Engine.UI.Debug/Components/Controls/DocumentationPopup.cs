@@ -62,6 +62,7 @@ public class DocumentationPopup : UIComponent
         get => _borderColor ?? ThemeManager.Current.BorderPrimary;
         set => _borderColor = value;
     }
+
     public Color TitleColor
     {
         get => _titleColor ?? ThemeManager.Current.SyntaxMethod;

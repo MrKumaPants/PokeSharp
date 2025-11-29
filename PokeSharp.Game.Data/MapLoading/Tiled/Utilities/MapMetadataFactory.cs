@@ -1,5 +1,4 @@
 using Arch.Core;
-using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Tiles;

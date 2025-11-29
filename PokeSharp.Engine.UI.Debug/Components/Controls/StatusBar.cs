@@ -29,6 +29,7 @@ public class StatusBar : UIComponent
         get => _statsColor ?? ThemeManager.Current.Success;
         set => _statsColor = value;
     }
+
     public Color HintsColor
     {
         get => _hintsColor ?? ThemeManager.Current.TextDim;

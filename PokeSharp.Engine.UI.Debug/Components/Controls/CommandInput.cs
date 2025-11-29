@@ -58,6 +58,7 @@ public class CommandInput : UIComponent, ITextInput
         get => _textColor ?? ThemeManager.Current.InputText;
         set => _textColor = value;
     }
+
     public Color CursorColor
     {
         get => _cursorColor ?? ThemeManager.Current.InputCursor;
@@ -87,11 +88,13 @@ public class CommandInput : UIComponent, ITextInput
 
     // Prompt string (e.g., " ")
     public string Prompt { get; set; } = NerdFontIcons.Prompt;
+
     public Color PromptColor
     {
         get => _promptColor ?? ThemeManager.Current.Prompt;
         set => _promptColor = value;
     }
+
     public bool IsMultiLine { get; set; }
 
     private int SelectionStart => Math.Min(_selectionStart, _selectionEnd);

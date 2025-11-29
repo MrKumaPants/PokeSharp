@@ -51,10 +51,7 @@ public struct MapWarps
     /// </summary>
     public static MapWarps Create()
     {
-        return new MapWarps
-        {
-            WarpGrid = new Dictionary<(int X, int Y), Entity>()
-        };
+        return new MapWarps { WarpGrid = new Dictionary<(int X, int Y), Entity>() };
     }
 
     /// <summary>
@@ -124,4 +121,3 @@ public struct MapWarps
         return $"MapWarps(Count:{Count})";
     }
 }
-

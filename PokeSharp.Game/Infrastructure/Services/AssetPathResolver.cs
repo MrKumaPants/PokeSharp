@@ -49,7 +49,7 @@ public interface IAssetPathResolver
 }
 
 /// <summary>
-///     Default implementation of <see cref="IAssetPathResolver"/> that uses AppContext.BaseDirectory.
+///     Default implementation of <see cref="IAssetPathResolver" /> that uses AppContext.BaseDirectory.
 /// </summary>
 public class AssetPathResolver : IAssetPathResolver
 {
@@ -57,7 +57,7 @@ public class AssetPathResolver : IAssetPathResolver
     private readonly GameInitializationConfig _config;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="AssetPathResolver"/> class.
+    ///     Initializes a new instance of the <see cref="AssetPathResolver" /> class.
     /// </summary>
     /// <param name="options">Game configuration options.</param>
     public AssetPathResolver(IOptions<GameConfiguration> options)
@@ -123,4 +123,3 @@ public class AssetPathResolver : IAssetPathResolver
         return File.Exists(Resolve(relativePath));
     }
 }
-

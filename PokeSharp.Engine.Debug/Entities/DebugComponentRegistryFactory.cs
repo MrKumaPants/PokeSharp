@@ -1,6 +1,4 @@
 using System.Reflection;
-using Arch.Core;
-using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace PokeSharp.Engine.Debug.Entities;
@@ -74,7 +72,11 @@ public static class DebugComponentRegistryFactory
             }
             catch (Exception ex)
             {
-                logger?.LogWarning(ex, "Error scanning assembly {Assembly} for components", assembly.GetName().Name);
+                logger?.LogWarning(
+                    ex,
+                    "Error scanning assembly {Assembly} for components",
+                    assembly.GetName().Name
+                );
             }
         }
 
@@ -86,8 +88,8 @@ public static class DebugComponentRegistryFactory
     /// </summary>
     private static bool IsComponentNamespace(string ns)
     {
-        return ns.StartsWith("PokeSharp.Game.Components") ||
-               ns.StartsWith("PokeSharp.Engine.Core.Types");
+        return ns.StartsWith("PokeSharp.Game.Components")
+            || ns.StartsWith("PokeSharp.Engine.Core.Types");
     }
 
     /// <summary>
@@ -132,7 +134,7 @@ public static class DebugComponentRegistryFactory
             "BelongsToMap" => 5,
             "Collision" => 4,
             "Pooled" => 1,
-            _ => 0
+            _ => 0,
         };
     }
 }

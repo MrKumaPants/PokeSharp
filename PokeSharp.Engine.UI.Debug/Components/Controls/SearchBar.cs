@@ -42,11 +42,13 @@ public class SearchBar : UIComponent
         get => _textColor ?? ThemeManager.Current.InputText;
         set => _textColor = value;
     }
+
     public Color CursorColor
     {
         get => _cursorColor ?? ThemeManager.Current.InputCursor;
         set => _cursorColor = value;
     }
+
     public Color BorderColor
     {
         get => _borderColor ?? ThemeManager.Current.BorderPrimary;
@@ -64,6 +66,7 @@ public class SearchBar : UIComponent
         get => _infoColor ?? ThemeManager.Current.TextSecondary;
         set => _infoColor = value;
     }
+
     public float Padding { get; set; } = 8f;
     public float BorderThickness { get; set; } = 1f;
 

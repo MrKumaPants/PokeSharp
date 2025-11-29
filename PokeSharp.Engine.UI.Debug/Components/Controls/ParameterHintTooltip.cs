@@ -92,11 +92,13 @@ public class ParameterHintTooltip : UIComponent
         get => _typeColor ?? ThemeManager.Current.SyntaxType;
         set => _typeColor = value;
     }
+
     public Color CounterColor
     {
         get => _counterColor ?? ThemeManager.Current.TextDim;
         set => _counterColor = value;
     }
+
     public float Padding { get; set; } = 8f;
     public float BorderThickness { get; set; } = 1f;
 

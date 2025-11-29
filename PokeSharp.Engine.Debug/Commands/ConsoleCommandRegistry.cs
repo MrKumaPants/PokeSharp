@@ -11,6 +11,7 @@ public class ConsoleCommandRegistry
     private readonly Dictionary<string, IConsoleCommand> _commands = new(
         StringComparer.OrdinalIgnoreCase
     );
+
     private readonly ILogger _logger;
 
     public ConsoleCommandRegistry(ILogger logger)

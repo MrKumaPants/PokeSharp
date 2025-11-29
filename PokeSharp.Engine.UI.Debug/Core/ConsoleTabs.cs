@@ -12,24 +12,28 @@ public static class ConsoleTabs
     public static readonly TabDefinition Console = new(0, "Console", ["console", "con"], Keys.D1);
     public static readonly TabDefinition Watch = new(1, "Watch", ["watch", "w"], Keys.D2);
     public static readonly TabDefinition Logs = new(2, "Logs", ["logs", "log", "l"], Keys.D3);
+
     public static readonly TabDefinition Variables = new(
         3,
         "Variables",
         ["variables", "vars", "var", "v"],
         Keys.D4
     );
+
     public static readonly TabDefinition Entities = new(
         4,
         "Entities",
         ["entities", "entity", "e"],
         Keys.D5
     );
+
     public static readonly TabDefinition Profiler = new(
         5,
         "Profiler",
         ["profiler", "perf", "p"],
         Keys.D6
     );
+
     public static readonly TabDefinition Stats = new(
         6,
         "Stats",

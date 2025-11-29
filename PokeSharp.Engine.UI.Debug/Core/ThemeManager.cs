@@ -15,9 +15,11 @@ public static class ThemeManager
 
     // Use lazy initialization to avoid circular dependency issues
     private static UITheme? _currentTheme;
+
     private static readonly Dictionary<string, UITheme> _themes = new(
         StringComparer.OrdinalIgnoreCase
     );
+
     private static bool _initialized;
     private static string _defaultTheme = "pokeball";
 
