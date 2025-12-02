@@ -211,13 +211,23 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
             return null;
         }
 
-        MapDefinition? mapDef = _mapDefinitionService.GetMap(mapId);
-        if (mapDef == null)
-        {
-            return null;
-        }
+        // Find the map entity by its map name
+        Entity? foundEntity = null;
+        var query = new QueryDescription().WithAll<MapInfo>();
+        World.Query(
+            in query,
+            (Entity entity, ref MapInfo info) =>
+            {
+                if (info.MapName == mapId.Value)
+                {
+                    foundEntity = entity;
+                }
+            }
+        );
 
-        return new MapLoadContext(mapDef, mapData.Info, mapData.WorldPos);
+        return foundEntity.HasValue
+            ? new MapLoadContext(foundEntity.Value, mapData.Info, mapData.WorldPos)
+            : null;
     }
 
     /// <summary>
@@ -605,36 +615,50 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
         // Create local copy to avoid ref struct capture
         MapIdentifier currentMapId = streaming.CurrentMapId;
 
-        // Get current map definition to check connections
-        MapDefinition? currentMapDef = _mapDefinitionService.GetMap(currentMapId);
-        if (currentMapDef == null)
+        // Find the current map entity using ECS query
+        Entity? currentMapEntity = null;
+        var query = new QueryDescription().WithAll<MapInfo>();
+        world.Query(
+            in query,
+            (Entity entity, ref MapInfo mapInfo) =>
+            {
+                if (mapInfo.MapName == currentMapId.Value)
+                {
+                    currentMapEntity = entity;
+                }
+            }
+        );
+
+        if (!currentMapEntity.HasValue)
         {
             return;
         }
 
+        Entity mapEntity = currentMapEntity.Value;
+
         // Build set of maps that should stay loaded:
         // 1. Current map
-        // 2. All maps directly connected to current map
+        // 2. All maps directly connected to current map (using connection components)
         var mapsToKeep = new HashSet<string> { currentMapId.Value };
 
-        if (currentMapDef.NorthMapId != null)
+        if (mapEntity.Has<NorthConnection>())
         {
-            mapsToKeep.Add(currentMapDef.NorthMapId.Value.Value);
+            mapsToKeep.Add(mapEntity.Get<NorthConnection>().MapId.Value);
         }
 
-        if (currentMapDef.SouthMapId != null)
+        if (mapEntity.Has<SouthConnection>())
         {
-            mapsToKeep.Add(currentMapDef.SouthMapId.Value.Value);
+            mapsToKeep.Add(mapEntity.Get<SouthConnection>().MapId.Value);
         }
 
-        if (currentMapDef.EastMapId != null)
+        if (mapEntity.Has<EastConnection>())
         {
-            mapsToKeep.Add(currentMapDef.EastMapId.Value.Value);
+            mapsToKeep.Add(mapEntity.Get<EastConnection>().MapId.Value);
         }
 
-        if (currentMapDef.WestMapId != null)
+        if (mapEntity.Has<WestConnection>())
         {
-            mapsToKeep.Add(currentMapDef.WestMapId.Value.Value);
+            mapsToKeep.Add(mapEntity.Get<WestConnection>().MapId.Value);
         }
 
         var mapsToUnload = new List<MapIdentifier>();

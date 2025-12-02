@@ -69,10 +69,36 @@ public class MapDefinition
     public bool CanFly { get; set; } = false;
 
     /// <summary>
-    ///     Background image for parallax scrolling (optional).
+    ///     Requires Flash HM to see properly (dark caves).
     /// </summary>
-    [MaxLength(200)]
-    public string? BackgroundImage { get; set; }
+    public bool RequiresFlash { get; set; } = false;
+
+    /// <summary>
+    ///     Allow player to run (hold B button).
+    /// </summary>
+    public bool AllowRunning { get; set; } = true;
+
+    /// <summary>
+    ///     Allow player to use bicycle.
+    /// </summary>
+    public bool AllowCycling { get; set; } = true;
+
+    /// <summary>
+    ///     Allow player to use Escape Rope or Dig to leave.
+    /// </summary>
+    public bool AllowEscaping { get; set; } = false;
+
+    /// <summary>
+    ///     Battle scene/background for wild encounters (e.g., "MAP_BATTLE_SCENE_NORMAL").
+    /// </summary>
+    [MaxLength(50)]
+    public string BattleScene { get; set; } = "MAP_BATTLE_SCENE_NORMAL";
+
+    /// <summary>
+    ///     Region map section for Town Map highlighting (e.g., "MAPSEC_LITTLEROOT_TOWN").
+    /// </summary>
+    [MaxLength(100)]
+    public string? RegionMapSection { get; set; }
 
     /// <summary>
     ///     Map connected to the north.

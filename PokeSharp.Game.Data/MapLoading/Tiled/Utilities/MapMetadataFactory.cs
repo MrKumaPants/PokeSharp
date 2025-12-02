@@ -1,4 +1,5 @@
 using Arch.Core;
+using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Tiles;
@@ -97,7 +98,90 @@ public class MapMetadataFactory
             tmxDoc.Height,
             tmxDoc.TileWidth
         );
-        Entity mapInfoEntity = world.Create(mapInfo, MapWarps.Create());
+
+        // Create map property components from MapDefinition
+        var displayName = new DisplayName(mapDef.DisplayName);
+        var region = new Region(mapDef.Region);
+        var weather = new Weather(mapDef.Weather);
+        var battleScene = new BattleScene(mapDef.BattleScene);
+
+        // Create entity with core components
+        Entity mapInfoEntity = world.Create(
+            mapInfo,
+            MapWarps.Create(),
+            displayName,
+            region,
+            weather,
+            battleScene
+        );
+
+        // Add optional string components
+        if (!string.IsNullOrEmpty(mapDef.MusicId))
+        {
+            mapInfoEntity.Add<Music>(new Music(mapDef.MusicId));
+        }
+
+        if (!string.IsNullOrEmpty(mapDef.MapType))
+        {
+            mapInfoEntity.Add<MapType>(new MapType(mapDef.MapType));
+        }
+
+        if (!string.IsNullOrEmpty(mapDef.RegionMapSection))
+        {
+            mapInfoEntity.Add<RegionSection>(new RegionSection(mapDef.RegionMapSection));
+        }
+
+        // Add flag components based on bool properties
+        if (mapDef.ShowMapName)
+        {
+            mapInfoEntity.Add<ShowMapNameOnEntry>(new ShowMapNameOnEntry());
+        }
+
+        if (mapDef.CanFly)
+        {
+            mapInfoEntity.Add<CanFlyToMap>(new CanFlyToMap());
+        }
+
+        if (mapDef.RequiresFlash)
+        {
+            mapInfoEntity.Add<RequiresFlash>(new RequiresFlash());
+        }
+
+        if (mapDef.AllowRunning)
+        {
+            mapInfoEntity.Add<AllowRunning>(new AllowRunning());
+        }
+
+        if (mapDef.AllowCycling)
+        {
+            mapInfoEntity.Add<AllowCycling>(new AllowCycling());
+        }
+
+        if (mapDef.AllowEscaping)
+        {
+            mapInfoEntity.Add<AllowEscaping>(new AllowEscaping());
+        }
+
+        // Add map connection components
+        if (mapDef.NorthMapId != null)
+        {
+            mapInfoEntity.Add<NorthConnection>(new NorthConnection(mapDef.NorthMapId.Value, mapDef.NorthConnectionOffset));
+        }
+
+        if (mapDef.SouthMapId != null)
+        {
+            mapInfoEntity.Add<SouthConnection>(new SouthConnection(mapDef.SouthMapId.Value, mapDef.SouthConnectionOffset));
+        }
+
+        if (mapDef.EastMapId != null)
+        {
+            mapInfoEntity.Add<EastConnection>(new EastConnection(mapDef.EastMapId.Value, mapDef.EastConnectionOffset));
+        }
+
+        if (mapDef.WestMapId != null)
+        {
+            mapInfoEntity.Add<WestConnection>(new WestConnection(mapDef.WestMapId.Value, mapDef.WestConnectionOffset));
+        }
 
         // Create TilesetInfo if map has tilesets
         foreach (LoadedTileset loadedTileset in tilesets)
