@@ -1,5 +1,6 @@
 using Arch.Core;
 using Microsoft.Xna.Framework;
+using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Scripting.Runtime;
 
@@ -7,82 +8,96 @@ using PokeSharp.Game.Scripting.Runtime;
 /// Guard behavior - NPC stays at position, scans for threats.
 /// Uses GuardState component for per-entity state.
 /// </summary>
-public class GuardBehavior : TypeScriptBase
+public class GuardBehavior : ScriptBase
 {
-    public override void OnActivated(ScriptContext ctx)
+    public override void Initialize(ScriptContext ctx)
     {
-        ref var position = ref ctx.Position;
+        base.Initialize(ctx); // CRITICAL: Set Context property for event subscriptions
 
-        ctx.World.Add(
-            ctx.Entity.Value,
-            new GuardState
-            {
-                GuardPosition = new Point(position.X, position.Y),
-                FacingDirection = Direction.South,
-                ScanTimer = 0f,
-                ScanInterval = 2.0f,
-            }
-        );
-
-        ctx.Logger.LogInformation("Guard activated at position ({X}, {Y})", position.X, position.Y);
+        // Note: Don't access entity components here - no entity attached yet during global init
+        // State initialization happens on first tick when entity is available
+        ctx.Logger.LogDebug("Guard behavior initialized (state will be created on first tick)");
     }
 
-    public override void OnTick(ScriptContext ctx, float deltaTime)
+    public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        ref var state = ref ctx.GetState<GuardState>();
-        ref var position = ref ctx.Position;
-
-        // Return to guard position if moved
-        if (position.X != state.GuardPosition.X || position.Y != state.GuardPosition.Y)
+        On<TickEvent>(evt =>
         {
-            var dir = ctx.Map.GetDirectionTo(
-                position.X,
-                position.Y,
-                state.GuardPosition.X,
-                state.GuardPosition.Y
-            );
+            // Initialize state on first tick (when entity is available)
+            if (!Context.HasState<GuardState>())
+            {
+                ref var initPos = ref Context.Position;
 
-            // Use component pooling: reuse existing component or add new one
-            if (ctx.World.Has<MovementRequest>(ctx.Entity.Value))
-            {
-                ref var request = ref ctx.World.Get<MovementRequest>(ctx.Entity.Value);
-                request.Direction = dir;
-                request.Active = true;
-            }
-            else
-            {
-                ctx.World.Add(ctx.Entity.Value, new MovementRequest(dir));
+                Context.World.Add(
+                    Context.Entity.Value,
+                    new GuardState
+                    {
+                        GuardPosition = new Point(initPos.X, initPos.Y),
+                        FacingDirection = Direction.South,
+                        ScanTimer = 0f,
+                        ScanInterval = 2.0f,
+                    }
+                );
+
+                Context.Logger.LogInformation("Guard activated at position ({X}, {Y})", initPos.X, initPos.Y);
+                return; // Skip first tick after initialization
             }
 
-            ctx.Logger.LogDebug(
-                "Guard returning to post from ({X}, {Y}) to ({GuardX}, {GuardY})",
-                position.X,
-                position.Y,
-                state.GuardPosition.X,
-                state.GuardPosition.Y
-            );
-            return;
-        }
+            ref var state = ref Context.GetState<GuardState>();
+            ref var position = ref Context.Position;
 
-        // Rotate scan direction periodically
-        state.ScanTimer -= deltaTime;
-        if (state.ScanTimer <= 0)
-        {
-            state.FacingDirection = RotateDirection(state.FacingDirection);
-            state.ScanTimer = state.ScanInterval;
+            // Return to guard position if moved
+            if (position.X != state.GuardPosition.X || position.Y != state.GuardPosition.Y)
+            {
+                var dir = Context.Map.GetDirectionTo(
+                    position.X,
+                    position.Y,
+                    state.GuardPosition.X,
+                    state.GuardPosition.Y
+                );
 
-            // Update NPC facing direction (if we had that component)
-            ctx.Logger.LogTrace("Guard facing {Direction}", state.FacingDirection);
-        }
+                // Use component pooling: reuse existing component or add new one
+                if (Context.World.Has<MovementRequest>(Context.Entity.Value))
+                {
+                    ref var request = ref Context.World.Get<MovementRequest>(Context.Entity.Value);
+                    request.Direction = dir;
+                    request.Active = true;
+                }
+                else
+                {
+                    Context.World.Add(Context.Entity.Value, new MovementRequest(dir));
+                }
+
+                Context.Logger.LogDebug(
+                    "Guard returning to post from ({X}, {Y}) to ({GuardX}, {GuardY})",
+                    position.X,
+                    position.Y,
+                    state.GuardPosition.X,
+                    state.GuardPosition.Y
+                );
+                return;
+            }
+
+            // Rotate scan direction periodically
+            state.ScanTimer -= evt.DeltaTime;
+            if (state.ScanTimer <= 0)
+            {
+                state.FacingDirection = RotateDirection(state.FacingDirection);
+                state.ScanTimer = state.ScanInterval;
+
+                // Update NPC facing direction (if we had that component)
+                Context.Logger.LogTrace("Guard facing {Direction}", state.FacingDirection);
+            }
+        });
     }
 
-    public override void OnDeactivated(ScriptContext ctx)
+    public override void OnUnload()
     {
-        ctx.Logger.LogInformation("Guard deactivated");
+        Context.Logger.LogInformation("Guard deactivated");
         // Remove guard state component when script is deactivated
-        if (ctx.World.Has<GuardState>(ctx.Entity.Value))
+        if (Context.World.Has<GuardState>(Context.Entity.Value))
         {
-            ctx.World.Remove<GuardState>(ctx.Entity.Value);
+            Context.World.Remove<GuardState>(Context.Entity.Value);
         }
     }
 

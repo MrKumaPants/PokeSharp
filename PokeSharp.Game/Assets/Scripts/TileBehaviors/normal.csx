@@ -4,9 +4,12 @@ using PokeSharp.Game.Scripting.Runtime;
 ///     Normal walkable tile behavior.
 ///     Default behavior that allows all movement.
 /// </summary>
-public class NormalBehavior : TileBehaviorScriptBase
+public class NormalBehavior : ScriptBase
 {
-    // All methods use default implementations (allow all movement)
+    public override void RegisterEventHandlers(ScriptContext ctx)
+    {
+        // Walkable tile, no restrictions
+    }
 }
 
 return new NormalBehavior();

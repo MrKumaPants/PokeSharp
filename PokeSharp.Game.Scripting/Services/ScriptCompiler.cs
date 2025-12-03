@@ -111,10 +111,10 @@ public class ScriptCompiler
                 return null;
             }
 
-            if (instance is not TypeScriptBase)
+            if (instance is not ScriptBase)
             {
                 _logger.LogError(
-                    "Script {Path} returned {Type}, expected TypeScriptBase",
+                    "Script {Path} returned {Type}, expected ScriptBase",
                     scriptPath,
                     instance.GetType().Name
                 );

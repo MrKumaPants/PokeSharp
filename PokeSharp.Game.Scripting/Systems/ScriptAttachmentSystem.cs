@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Configuration;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;
+using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Game.Components.Scripting;
 using PokeSharp.Game.Scripting.Api;
@@ -109,11 +110,11 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
                         }
                     }
 
-                    // Cast script instance to TypeScriptBase
-                    if (attachment.ScriptInstance is not TypeScriptBase script)
+                    // Cast script instance to ScriptBase
+                    if (attachment.ScriptInstance is not ScriptBase script)
                     {
                         _logger.LogError(
-                            "Script instance for '{ScriptPath}' is not TypeScriptBase",
+                            "Script instance for '{ScriptPath}' is not ScriptBase",
                             attachment.ScriptPath
                         );
                         attachment.IsActive = false;
@@ -193,7 +194,7 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
             var loadTask = _scriptService.LoadScriptAsync(attachment.ScriptPath);
             loadTask.Wait();
 
-            if (loadTask.IsCompletedSuccessfully && loadTask.Result is TypeScriptBase scriptInstance)
+            if (loadTask.IsCompletedSuccessfully && loadTask.Result is ScriptBase scriptInstance)
             {
                 attachment.ScriptInstance = scriptInstance;
                 _logger.LogInformation(
@@ -243,7 +244,7 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
     private bool InitializeScript(
         World world,
         Entity entity,
-        TypeScriptBase script,
+        ScriptBase script,
         ref ScriptAttachment attachment
     )
     {
@@ -255,7 +256,7 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
             var context = new ScriptContext(world, entity, scriptLogger, _apis, _eventBus);
 
             // Call initialization lifecycle methods
-            script.OnInitialize(context);
+            script.Initialize(context);
             script.RegisterEventHandlers(context);
 
             _logger.LogDebug(
@@ -285,15 +286,16 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
     /// <param name="entity">Entity the script is attached to</param>
     /// <param name="script">Script instance to execute</param>
     /// <param name="deltaTime">Time since last frame</param>
-    private void ExecuteScriptTick(World world, Entity entity, TypeScriptBase script, float deltaTime)
+    private void ExecuteScriptTick(World world, Entity entity, ScriptBase script, float deltaTime)
     {
         try
         {
-            string loggerKey = $"{script.GetType().Name}.{entity.Id}";
-            ILogger scriptLogger = GetOrCreateLogger(loggerKey);
-            var context = new ScriptContext(world, entity, scriptLogger, _apis, _eventBus);
-
-            script.OnTick(context, deltaTime);
+            // ScriptBase uses event-driven architecture - publish TickEvent for scripts to react to
+            _eventBus.Publish(new TickEvent
+            {
+                DeltaTime = deltaTime,
+                TotalTime = 0f // TODO: Track total elapsed time if needed
+            });
         }
         catch (Exception ex)
         {
@@ -349,7 +351,7 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
                 if (e == entity && attachment.ScriptPath == scriptPath)
                 {
                     // Call OnUnload for cleanup
-                    if (attachment.ScriptInstance is TypeScriptBase script)
+                    if (attachment.ScriptInstance is ScriptBase script)
                     {
                         script.OnUnload();
                     }

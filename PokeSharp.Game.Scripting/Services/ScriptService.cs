@@ -19,7 +19,7 @@ namespace PokeSharp.Game.Scripting.Services;
 public class ScriptService : IAsyncDisposable
 {
     /// <summary>
-    ///     Static cache for OnInitialize MethodInfo to avoid expensive reflection lookups.
+    ///     Static cache for Initialize MethodInfo to avoid expensive reflection lookups.
     ///     Thread-safe ConcurrentDictionary keyed by script type.
     /// </summary>
     private static readonly ConcurrentDictionary<Type, MethodInfo> _onInitializeMethodCache = new();
@@ -71,8 +71,8 @@ public class ScriptService : IAsyncDisposable
         {
             try
             {
-                // Call OnUnload for TypeScriptBase instances to cleanup event handlers
-                if (instance is TypeScriptBase scriptBase)
+                // Call OnUnload for ScriptBase instances to cleanup event handlers
+                if (instance is ScriptBase scriptBase)
                 {
                     scriptBase.OnUnload();
                 }
@@ -225,7 +225,7 @@ public class ScriptService : IAsyncDisposable
                 try
                 {
                     // Call OnUnload to cleanup event subscriptions
-                    if (oldInstance is TypeScriptBase oldScriptBase)
+                    if (oldInstance is ScriptBase oldScriptBase)
                     {
                         oldScriptBase.OnUnload();
                     }
@@ -287,7 +287,7 @@ public class ScriptService : IAsyncDisposable
     /// <param name="entity">The entity (optional).</param>
     /// <param name="logger">Logger instance for the script (optional).</param>
     /// <exception cref="ArgumentNullException">Thrown when scriptInstance or world is null.</exception>
-    /// <exception cref="ArgumentException">Thrown when scriptInstance is not a TypeScriptBase.</exception>
+    /// <exception cref="ArgumentException">Thrown when scriptInstance is not a ScriptBase.</exception>
     /// <exception cref="InvalidOperationException">Thrown when Initialize method cannot be found.</exception>
     public void InitializeScript(
         object scriptInstance,
@@ -311,10 +311,10 @@ public class ScriptService : IAsyncDisposable
         }
 
         // Validate script instance type
-        if (scriptInstance is not TypeScriptBase scriptBase)
+        if (scriptInstance is not ScriptBase scriptBase)
         {
             throw new ArgumentException(
-                $"Script instance must be of type TypeScriptBase, but was {scriptInstance.GetType().FullName}",
+                $"Script instance must be of type ScriptBase, but was {scriptInstance.GetType().FullName}",
                 nameof(scriptInstance)
             );
         }
@@ -325,14 +325,14 @@ public class ScriptService : IAsyncDisposable
             ILogger effectiveLogger = logger ?? NullLogger.Instance;
             var context = new ScriptContext(world, entity, effectiveLogger, _apis, _eventBus);
 
-            // Call OnInitialize (sets up initial state)
+            // Call Initialize (sets up initial state)
             Type scriptType = scriptBase.GetType();
             MethodInfo initMethod = _onInitializeMethodCache.GetOrAdd(
                 scriptType,
                 type =>
                 {
                     MethodInfo? method = type.GetMethod(
-                        "OnInitialize",
+                        "Initialize",
                         BindingFlags.NonPublic
                             | BindingFlags.Public
                             | BindingFlags.Instance
@@ -342,7 +342,7 @@ public class ScriptService : IAsyncDisposable
                     if (method == null)
                     {
                         throw new InvalidOperationException(
-                            $"OnInitialize method not found on {type.FullName}"
+                            $"Initialize method not found on {type.FullName}"
                         );
                     }
 
@@ -363,7 +363,7 @@ public class ScriptService : IAsyncDisposable
         {
             _logger.LogError(
                 ex.InnerException ?? ex,
-                "Error invoking OnInitialize method on script instance of type {Type}",
+                "Error invoking Initialize method on script instance of type {Type}",
                 scriptBase.GetType().FullName
             );
             throw new InvalidOperationException(

@@ -1,3 +1,4 @@
+using PokeSharp.Engine.Core.Events.Collision;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Scripting.Runtime;
 
@@ -5,28 +6,18 @@ using PokeSharp.Game.Scripting.Runtime;
 ///     Impassable north behavior.
 ///     Blocks movement from north.
 /// </summary>
-public class ImpassableNorthBehavior : TileBehaviorScriptBase
+public class ImpassableNorthBehavior : ScriptBase
 {
-    public override bool IsBlockedFrom(
-        ScriptContext ctx,
-        Direction fromDirection,
-        Direction toDirection
-    )
+    public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        // Block if moving from north
-        if (fromDirection == Direction.North)
-            return true;
-
-        return false;
-    }
-
-    public override bool IsBlockedTo(ScriptContext ctx, Direction toDirection)
-    {
-        // Block if trying to enter from north
-        if (toDirection == Direction.North)
-            return true;
-
-        return false;
+        On<CollisionCheckEvent>(evt =>
+        {
+            // Block if moving from north (Direction.North = 3)
+            if (evt.FromDirection == 3)
+            {
+                evt.PreventDefault("Cannot pass from north");
+            }
+        });
     }
 }
 

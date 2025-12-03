@@ -56,10 +56,8 @@ public class NPCBehaviorInitializer(
 
                     if (scriptInstance != null)
                     {
-                        // Initialize script with world
-                        scriptService.InitializeScript(scriptInstance, world);
-
-                        // Register script instance in the registry
+                        // Register script template in the registry (used to create per-entity instances)
+                        // NOTE: Do NOT initialize the template - per-entity instances are initialized separately
                         behaviorRegistry.RegisterScript(typeId, scriptInstance);
 
                         logger.LogWorkflowStatus(
@@ -86,6 +84,7 @@ public class NPCBehaviorInitializer(
                 npcBehaviorLogger,
                 loggerFactory,
                 apiProvider,
+                scriptService,
                 eventBus
             );
             npcBehaviorSystem.SetBehaviorRegistry(behaviorRegistry);

@@ -15,8 +15,8 @@ namespace PokeSharp.Engine.Core.Types;
 ///     Supports async JSON loading and Roslyn script compilation for IScriptedType implementations.
 ///     Thread-safe for use in multi-threaded game engines.
 ///     SCRIPT PATTERN:
-///     Scripts are stored as object instances (TypeScriptBase) and cached as singletons.
-///     Cast to TypeScriptBase in the consuming system (e.g., NpcBehaviorSystem).
+///     Scripts are stored as object instances (ScriptBase) and cached as singletons.
+///     Cast to ScriptBase in the consuming system (e.g., NpcBehaviorSystem).
 /// </remarks>
 public class TypeRegistry<T>(string dataPath, ILogger logger) : IAsyncDisposable
     where T : ITypeDefinition
@@ -73,7 +73,7 @@ public class TypeRegistry<T>(string dataPath, ILogger logger) : IAsyncDisposable
     ///     Called externally after script compilation.
     /// </summary>
     /// <param name="typeId">The type identifier.</param>
-    /// <param name="scriptInstance">The compiled script instance (should be TypeScriptBase).</param>
+    /// <param name="scriptInstance">The compiled script instance (should be ScriptBase).</param>
     public void RegisterScript(string typeId, object scriptInstance)
     {
         if (string.IsNullOrWhiteSpace(typeId))
@@ -205,10 +205,10 @@ public class TypeRegistry<T>(string dataPath, ILogger logger) : IAsyncDisposable
 
     /// <summary>
     ///     Get the script instance for a type. Returns null if no script.
-    ///     Cast to TypeScriptBase in the consuming system.
+    ///     Cast to ScriptBase in the consuming system.
     /// </summary>
     /// <param name="typeId">The type identifier.</param>
-    /// <returns>The cached script instance (should be TypeScriptBase), or null.</returns>
+    /// <returns>The cached script instance (should be ScriptBase), or null.</returns>
     public object? GetScript(string typeId)
     {
         if (string.IsNullOrWhiteSpace(typeId))

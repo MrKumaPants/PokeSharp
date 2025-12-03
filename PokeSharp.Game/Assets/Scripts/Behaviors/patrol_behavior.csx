@@ -1,6 +1,7 @@
 using System.Linq;
 using Arch.Core;
 using Microsoft.Xna.Framework;
+using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.NPCs;
 using PokeSharp.Game.Scripting.Runtime;
@@ -9,129 +10,137 @@ using PokeSharp.Game.Scripting.Runtime;
 /// Patrol behavior using ScriptContext pattern.
 /// State stored in per-entity PatrolState component (not instance fields).
 /// </summary>
-public class PatrolBehavior : TypeScriptBase
+public class PatrolBehavior : ScriptBase
 {
     // NO INSTANCE FIELDS! All state in components.
 
-    public override void OnActivated(ScriptContext ctx)
+    public override void Initialize(ScriptContext ctx)
     {
-        // Initialize per-entity state component
-        if (!ctx.HasState<PatrolState>())
-        {
-            ref var path = ref ctx.World.Get<MovementRoute>(ctx.Entity.Value);
+        base.Initialize(ctx); // CRITICAL: Set Context property for event subscriptions
 
-            // Log all waypoints for debugging
-            var waypointStr = string.Join(", ", path.Waypoints.Select(p => $"({p.X},{p.Y})"));
-            ctx.Logger.LogInformation(
-                "Patrol initialized | waypoints: {Count}, loop: {Loop}, path: {Path}",
-                path.Waypoints.Length,
-                path.Loop,
-                waypointStr
-            );
-
-            ctx.World.Add(
-                ctx.Entity.Value,
-                new PatrolState
-                {
-                    CurrentWaypoint = 0,
-                    WaitTimer = 0f,
-                    WaitDuration = path.WaypointWaitTime,
-                    Speed = 4.0f,
-                    IsWaiting = false,
-                }
-            );
-        }
-
-        ctx.Logger.LogDebug("Patrol behavior activated");
+        // Note: Don't access entity components here - no entity attached yet during global init
+        // State initialization happens on first tick when entity is available
+        ctx.Logger.LogDebug("Patrol behavior initialized (state will be created on first tick)");
     }
 
-    public override void OnTick(ScriptContext ctx, float deltaTime)
+    public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        // Get per-entity state (each NPC has its own)
-        ref var state = ref ctx.GetState<PatrolState>();
-        ref var path = ref ctx.World.Get<MovementRoute>(ctx.Entity.Value);
-        ref var position = ref ctx.Position;
-
-        // Check path validity
-        if (path.Waypoints == null || path.Waypoints.Length == 0)
+        On<TickEvent>(evt =>
         {
-            ctx.Logger.LogWarning("Path has no waypoints");
-            return;
-        }
-
-        // Wait at waypoint
-        if (state.WaitTimer > 0)
-        {
-            state.WaitTimer -= deltaTime;
-            state.IsWaiting = true;
-            return;
-        }
-
-        state.IsWaiting = false;
-
-        var target = path.Waypoints[state.CurrentWaypoint];
-
-        // Reached waypoint? Check BOTH grid position AND movement completion
-        var isMoving = ctx.World.Get<GridMovement>(ctx.Entity.Value).IsMoving;
-        if (position.X == target.X && position.Y == target.Y && !isMoving)
-        {
-            ctx.Logger.LogInformation(
-                "Reached waypoint {Index}/{Total}: ({X},{Y}) | wait={Wait}s",
-                state.CurrentWaypoint,
-                path.Waypoints.Length - 1,
-                target.X,
-                target.Y,
-                state.WaitDuration
-            );
-
-            state.CurrentWaypoint++;
-            if (state.CurrentWaypoint >= path.Waypoints.Length)
+            // Initialize state on first tick (when entity is available)
+            if (!Context.HasState<PatrolState>())
             {
-                ctx.Logger.LogInformation(
-                    "End of path reached, Loop={Loop}, resetting to {Index}",
-                    path.Loop,
-                    path.Loop ? 0 : path.Waypoints.Length - 1
+                ref var initPath = ref Context.World.Get<MovementRoute>(Context.Entity.Value);
+
+                // Log all waypoints for debugging
+                var waypointStr = string.Join(", ", initPath.Waypoints.Select(p => $"({p.X},{p.Y})"));
+                Context.Logger.LogInformation(
+                    "Patrol initialized | waypoints: {Count}, loop: {Loop}, path: {Path}",
+                    initPath.Waypoints.Length,
+                    initPath.Loop,
+                    waypointStr
                 );
-                state.CurrentWaypoint = path.Loop ? 0 : path.Waypoints.Length - 1;
+
+                Context.World.Add(
+                    Context.Entity.Value,
+                    new PatrolState
+                    {
+                        CurrentWaypoint = 0,
+                        WaitTimer = 0f,
+                        WaitDuration = initPath.WaypointWaitTime,
+                        Speed = 4.0f,
+                        IsWaiting = false,
+                    }
+                );
+                return; // Skip first tick after initialization
             }
 
-            state.WaitTimer = state.WaitDuration;
+            // Get per-entity state (each NPC has its own)
+            ref var state = ref Context.GetState<PatrolState>();
+            ref var path = ref Context.World.Get<MovementRoute>(Context.Entity.Value);
+            ref var position = ref Context.Position;
 
-            // Deactivate any existing MovementRequest when reaching waypoint
-            if (ctx.World.Has<MovementRequest>(ctx.Entity.Value))
+            // Check path validity
+            if (path.Waypoints == null || path.Waypoints.Length == 0)
             {
-                ref var request = ref ctx.World.Get<MovementRequest>(ctx.Entity.Value);
-                request.Active = false;
+                Context.Logger.LogWarning("Path has no waypoints");
+                return;
             }
 
-            return;
-        }
+            // Wait at waypoint
+            if (state.WaitTimer > 0)
+            {
+                state.WaitTimer -= evt.DeltaTime;
+                state.IsWaiting = true;
+                return;
+            }
 
-        // Move toward waypoint
-        var direction = ctx.Map.GetDirectionTo(position.X, position.Y, target.X, target.Y);
+            state.IsWaiting = false;
 
-        // Use component pooling: reuse existing component or add new one
-        if (ctx.World.Has<MovementRequest>(ctx.Entity.Value))
-        {
-            ref var request = ref ctx.World.Get<MovementRequest>(ctx.Entity.Value);
-            request.Direction = direction;
-            request.Active = true;
-        }
-        else
-        {
-            ctx.World.Add(ctx.Entity.Value, new MovementRequest(direction));
-        }
+            var target = path.Waypoints[state.CurrentWaypoint];
+
+            // Reached waypoint? Check BOTH grid position AND movement completion
+            var isMoving = Context.World.Get<GridMovement>(Context.Entity.Value).IsMoving;
+            if (position.X == target.X && position.Y == target.Y && !isMoving)
+            {
+                Context.Logger.LogInformation(
+                    "Reached waypoint {Index}/{Total}: ({X},{Y}) | wait={Wait}s",
+                    state.CurrentWaypoint,
+                    path.Waypoints.Length - 1,
+                    target.X,
+                    target.Y,
+                    state.WaitDuration
+                );
+
+                state.CurrentWaypoint++;
+                if (state.CurrentWaypoint >= path.Waypoints.Length)
+                {
+                    Context.Logger.LogInformation(
+                        "End of path reached, Loop={Loop}, resetting to {Index}",
+                        path.Loop,
+                        path.Loop ? 0 : path.Waypoints.Length - 1
+                    );
+                    state.CurrentWaypoint = path.Loop ? 0 : path.Waypoints.Length - 1;
+                }
+
+                state.WaitTimer = state.WaitDuration;
+
+                // Deactivate any existing MovementRequest when reaching waypoint
+                if (Context.World.Has<MovementRequest>(Context.Entity.Value))
+                {
+                    ref var request = ref Context.World.Get<MovementRequest>(Context.Entity.Value);
+                    request.Active = false;
+                }
+
+                return;
+            }
+
+            // Move toward waypoint
+            var direction = Context.Map.GetDirectionTo(position.X, position.Y, target.X, target.Y);
+
+            // Use component pooling: reuse existing component or add new one
+            if (Context.World.Has<MovementRequest>(Context.Entity.Value))
+            {
+                ref var request = ref Context.World.Get<MovementRequest>(Context.Entity.Value);
+                request.Direction = direction;
+                request.Active = true;
+            }
+            else
+            {
+                Context.World.Add(Context.Entity.Value, new MovementRequest(direction));
+            }
+        });
     }
 
-    public override void OnDeactivated(ScriptContext ctx)
+    public override void OnUnload()
     {
         // Cleanup per-entity state
-        if (ctx.HasState<PatrolState>())
+        if (Context.HasState<PatrolState>())
         {
-            ctx.RemoveState<PatrolState>();
+            Context.RemoveState<PatrolState>();
         }
 
-        ctx.Logger.LogDebug("Patrol behavior deactivated");
+        Context.Logger.LogDebug("Patrol behavior deactivated");
     }
 }
 

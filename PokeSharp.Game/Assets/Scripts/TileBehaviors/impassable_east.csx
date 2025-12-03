@@ -1,3 +1,4 @@
+using PokeSharp.Engine.Core.Events.Collision;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Scripting.Runtime;
 
@@ -5,28 +6,18 @@ using PokeSharp.Game.Scripting.Runtime;
 ///     Impassable east behavior.
 ///     Blocks movement from east.
 /// </summary>
-public class ImpassableEastBehavior : TileBehaviorScriptBase
+public class ImpassableEastBehavior : ScriptBase
 {
-    public override bool IsBlockedFrom(
-        ScriptContext ctx,
-        Direction fromDirection,
-        Direction toDirection
-    )
+    public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        // Block if moving from east
-        if (fromDirection == Direction.East)
-            return true;
-
-        return false;
-    }
-
-    public override bool IsBlockedTo(ScriptContext ctx, Direction toDirection)
-    {
-        // Block if trying to enter from east
-        if (toDirection == Direction.East)
-            return true;
-
-        return false;
+        On<CollisionCheckEvent>(evt =>
+        {
+            // Block if moving from east (Direction.East = 2)
+            if (evt.FromDirection == 2)
+            {
+                evt.PreventDefault("Cannot pass from east");
+            }
+        });
     }
 }
 

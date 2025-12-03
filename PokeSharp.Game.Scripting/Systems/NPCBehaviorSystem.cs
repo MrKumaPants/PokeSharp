@@ -4,24 +4,26 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Configuration;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;
+using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Core.Types;
 using PokeSharp.Game.Components.NPCs;
 using PokeSharp.Game.Scripting.Api;
 using PokeSharp.Game.Scripting.Runtime;
+using PokeSharp.Game.Scripting.Services;
 using EcsQueries = PokeSharp.Engine.Systems.Queries.Queries;
 
 namespace PokeSharp.Game.Scripting.Systems;
 
 /// <summary>
 ///     System responsible for executing NPC behavior scripts using the ScriptContext pattern.
-///     Queries entities with behavior data and executes their OnTick methods.
+///     Creates per-entity script instances to support event-driven architecture.
 /// </summary>
 /// <remarks>
-///     CLEAN ARCHITECTURE:
-///     This system uses the unified TypeScriptBase pattern with ScriptContext instances.
-///     Scripts are cached as singletons in TypeRegistry and executed with per-tick
-///     ScriptContext instances to prevent state corruption.
+///     ARCHITECTURE:
+///     Unlike tile behaviors which use singleton scripts with method parameters,
+///     NPC behaviors use per-entity script instances with event subscriptions.
+///     Each NPC gets its own script instance with its own Context and event handlers.
 /// </remarks>
 public class NPCBehaviorSystem : SystemBase, IUpdateSystem
 {
@@ -30,7 +32,9 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
     private readonly IEventBus? _eventBus;
     private readonly ILogger<NPCBehaviorSystem> _logger;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ScriptService _scriptService;
     private readonly ConcurrentDictionary<string, ILogger> _scriptLoggerCache = new();
+    private readonly ConcurrentDictionary<int, ScriptBase> _entityScriptCache = new();
     private TypeRegistry<BehaviorDefinition>? _behaviorRegistry;
     private int _lastBehaviorSummaryCount;
     private int _tickCounter;
@@ -39,6 +43,7 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
         ILogger<NPCBehaviorSystem> logger,
         ILoggerFactory loggerFactory,
         IScriptingApiProvider apis,
+        ScriptService scriptService,
         IEventBus? eventBus = null,
         PerformanceConfiguration? config = null
     )
@@ -46,6 +51,7 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _apis = apis ?? throw new ArgumentNullException(nameof(apis));
+        _scriptService = scriptService ?? throw new ArgumentNullException(nameof(scriptService));
         _eventBus = eventBus;
         _config = config ?? PerformanceConfiguration.Default;
     }
@@ -81,28 +87,11 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
         int behaviorCount = 0;
         int errorCount = 0;
 
-        // Debug: Log first tick to confirm system is running
-        if (_tickCounter == 0)
-        {
-            _logger.LogInformation("NPCBehaviorSystem: First update tick");
-        }
-
         // Use centralized query for NPCs with behavior
         world.Query(
             in EcsQueries.NpcsWithBehavior,
             (Entity entity, ref Npc npc, ref Behavior behavior) =>
             {
-                // Debug: Log first entity found
-                if (_tickCounter == 0)
-                {
-                    _logger.LogInformation(
-                        "Found NPC with behavior: npcId={NpcId}, behaviorTypeId={BehaviorTypeId}, isActive={IsActive}",
-                        npc.NpcId,
-                        behavior.BehaviorTypeId,
-                        behavior.IsActive
-                    );
-                }
-
                 try
                 {
                     // Skip if behavior is not active
@@ -111,70 +100,52 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
                         return;
                     }
 
-                    // Get script from registry
-                    object? scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
-                    if (scriptObj == null)
+                    // Get or create per-entity script instance
+                    ScriptBase? script = GetOrCreateEntityScript(entity, behavior.BehaviorTypeId);
+                    if (script == null)
                     {
                         _logger.LogEntityOperationInvalid(
                             $"NPC {npc.NpcId}",
                             "Behavior activation",
-                            $"script not found ({behavior.BehaviorTypeId})"
+                            $"failed to create script instance ({behavior.BehaviorTypeId})"
                         );
-                        // Deactivate behavior (with cleanup if needed)
-                        DeactivateBehavior(null, ref behavior, null, npc.NpcId, "script not found");
+                        DeactivateBehavior(world, entity, null, ref behavior, null, npc.NpcId, "script creation failed");
                         return;
                     }
 
-                    // Cast to TypeScriptBase
-                    if (scriptObj is not TypeScriptBase script)
-                    {
-                        _logger.LogEntityOperationInvalid(
-                            $"NPC {npc.NpcId}",
-                            "Behavior activation",
-                            $"script type mismatch ({scriptObj.GetType().Name})"
-                        );
-                        // Deactivate behavior (with cleanup if needed)
-                        DeactivateBehavior(
-                            null,
-                            ref behavior,
-                            null,
-                            npc.NpcId,
-                            "wrong script type"
-                        );
-                        return;
-                    }
-
-                    // Create ScriptContext for this entity (with cached logger and API services)
-                    string loggerKey = $"{behavior.BehaviorTypeId}.{npc.NpcId}";
-                    ILogger scriptLogger = GetOrCreateLogger(loggerKey);
-                    var context = new ScriptContext(
-                        world,
-                        entity,
-                        scriptLogger,
-                        _apis,
-                        _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
-                    );
-
-                    // Initialize on first tick
+                    // Initialize script instance on first use
                     if (!behavior.IsInitialized)
                     {
+                        string loggerKey = $"{behavior.BehaviorTypeId}.{npc.NpcId}";
+                        ILogger scriptLogger = GetOrCreateLogger(loggerKey);
+
+                        var context = new ScriptContext(
+                            world,
+                            entity,
+                            scriptLogger,
+                            _apis,
+                            _eventBus ?? throw new InvalidOperationException("EventBus is required")
+                        );
+
                         _logger.LogWorkflowStatus(
                             "Activating behavior",
                             ("npc", npc.NpcId),
                             ("behavior", behavior.BehaviorTypeId)
                         );
 
-                        script.OnActivated(context);
+                        script.Initialize(context);
+                        script.RegisterEventHandlers(context);
+
                         behavior.IsInitialized = true;
+
+                        // CRITICAL: Write component back to persist changes (structs passed by value in queries)
+                        world.Set<Behavior>(entity, behavior);
                     }
 
-                    // Execute tick
-                    script.OnTick(context, deltaTime);
                     behaviorCount++;
                 }
                 catch (Exception ex)
                 {
-                    // Isolate errors - one NPC's script error shouldn't crash all behaviors
                     _logger.LogExceptionWithContext(
                         ex,
                         "Behavior script error for NPC {NpcId}",
@@ -182,36 +153,22 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
                     );
                     errorCount++;
 
-                    // Deactivate behavior with cleanup
-                    object? scriptObj = _behaviorRegistry.GetScript(behavior.BehaviorTypeId);
-                    if (scriptObj is TypeScriptBase script)
-                    {
-                        string loggerKey = $"{behavior.BehaviorTypeId}.{npc.NpcId}";
-                        ILogger scriptLogger = GetOrCreateLogger(loggerKey);
-                        var context = new ScriptContext(
-                            world,
-                            entity,
-                            scriptLogger,
-                            _apis,
-                            _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
-                        );
-                        DeactivateBehavior(
-                            script,
-                            ref behavior,
-                            context,
-                            npc.NpcId,
-                            $"error: {ex.Message}"
-                        );
-                    }
-                    else
-                    {
-                        behavior.IsActive = false;
-                        // Still clean up logger even if script is wrong type
-                        RemoveLogger(behavior.BehaviorTypeId, npc.NpcId);
-                    }
+                    // Cleanup failed script
+                    _entityScriptCache.TryRemove(entity.Id, out _);
+                    DeactivateBehavior(world, entity, null, ref behavior, null, npc.NpcId, $"error: {ex.Message}");
                 }
             }
         );
+
+        // Publish TickEvent for all registered script event handlers to react
+        if (behaviorCount > 0 && _eventBus != null)
+        {
+            _eventBus.Publish(new TickEvent
+            {
+                DeltaTime = deltaTime,
+                TotalTime = 0f
+            });
+        }
 
         // Log performance metrics periodically
         _tickCounter++;
@@ -234,6 +191,42 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
         {
             _lastBehaviorSummaryCount = behaviorCount;
         }
+    }
+
+    /// <summary>
+    ///     Gets or creates a per-entity script instance by cloning the singleton from the registry.
+    /// </summary>
+    private ScriptBase? GetOrCreateEntityScript(Entity entity, string behaviorTypeId)
+    {
+        // Check cache first
+        if (_entityScriptCache.TryGetValue(entity.Id, out ScriptBase? cachedScript))
+        {
+            return cachedScript;
+        }
+
+        // Get singleton template from registry
+        object? templateObj = _behaviorRegistry?.GetScript(behaviorTypeId);
+        if (templateObj is not ScriptBase template)
+        {
+            return null;
+        }
+
+        // Create new instance using Activator
+        Type scriptType = template.GetType();
+        object? newInstance = Activator.CreateInstance(scriptType);
+        if (newInstance is not ScriptBase newScript)
+        {
+            _logger.LogError(
+                "Failed to create instance of {ScriptType} for entity {EntityId}",
+                scriptType.Name,
+                entity.Id
+            );
+            return null;
+        }
+
+        // Cache and return
+        _entityScriptCache[entity.Id] = newScript;
+        return newScript;
     }
 
     /// <summary>
@@ -283,27 +276,31 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
     }
 
     /// <summary>
-    ///     Safely deactivates a behavior by calling OnDeactivated and cleaning up state.
-    ///     Also removes the logger from cache to prevent memory leaks.
+    ///     Safely deactivates a behavior by calling OnUnload and cleaning up state.
+    ///     Removes script instance from cache and logger to prevent memory leaks.
     /// </summary>
+    /// <param name="world">ECS World for persisting component changes.</param>
+    /// <param name="entity">Entity to update.</param>
     /// <param name="script">The behavior script instance (null if not available).</param>
     /// <param name="behavior">Reference to the behavior component.</param>
     /// <param name="context">Script context for cleanup (null if not available).</param>
     /// <param name="npcId">NPC ID for logger cleanup.</param>
     /// <param name="reason">Reason for deactivation (for logging).</param>
     private void DeactivateBehavior(
-        TypeScriptBase? script,
+        World world,
+        Entity entity,
+        ScriptBase? script,
         ref Behavior behavior,
         ScriptContext? context,
         string npcId,
         string reason
     )
     {
-        if (behavior.IsInitialized && script != null && context != null)
+        if (behavior.IsInitialized && script != null)
         {
             try
             {
-                script.OnDeactivated(context);
+                script.OnUnload();
                 _logger.LogInformation(
                     "Deactivated behavior {TypeId} for NPC {NpcId}: {Reason}",
                     behavior.BehaviorTypeId,
@@ -315,7 +312,7 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
             {
                 _logger.LogError(
                     ex,
-                    "Error during OnDeactivated for {TypeId} on NPC {NpcId}: {Message}",
+                    "Error during OnUnload for {TypeId} on NPC {NpcId}: {Message}",
                     behavior.BehaviorTypeId,
                     npcId,
                     ex.Message
@@ -326,6 +323,12 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
         }
 
         behavior.IsActive = false;
+
+        // CRITICAL: Write component back to persist changes (structs passed by value)
+        world.Set<Behavior>(entity, behavior);
+
+        // Clean up entity script instance
+        _entityScriptCache.TryRemove(entity.Id, out _);
 
         // Clean up logger to prevent memory leak
         RemoveLogger(behavior.BehaviorTypeId, npcId);

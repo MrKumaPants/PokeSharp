@@ -1,3 +1,4 @@
+using PokeSharp.Engine.Core.Events.Collision;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Scripting.Runtime;
 
@@ -5,28 +6,18 @@ using PokeSharp.Game.Scripting.Runtime;
 ///     Impassable south behavior.
 ///     Blocks movement from south.
 /// </summary>
-public class ImpassableSouthBehavior : TileBehaviorScriptBase
+public class ImpassableSouthBehavior : ScriptBase
 {
-    public override bool IsBlockedFrom(
-        ScriptContext ctx,
-        Direction fromDirection,
-        Direction toDirection
-    )
+    public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        // Block if moving from south
-        if (fromDirection == Direction.South)
-            return true;
-
-        return false;
-    }
-
-    public override bool IsBlockedTo(ScriptContext ctx, Direction toDirection)
-    {
-        // Block if trying to enter from south
-        if (toDirection == Direction.South)
-            return true;
-
-        return false;
+        On<CollisionCheckEvent>(evt =>
+        {
+            // Block if moving from south (Direction.South = 0)
+            if (evt.FromDirection == 0)
+            {
+                evt.PreventDefault("Cannot pass from south");
+            }
+        });
     }
 }
 

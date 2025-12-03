@@ -19,12 +19,9 @@ public static class ScriptingServicesExtensions
     /// </summary>
     public static IServiceCollection AddScriptingServices(this IServiceCollection services)
     {
-        // Event Bus
-        services.AddSingleton<IEventBus>(sp =>
-        {
-            ILogger<EventBus> logger = sp.GetRequiredService<ILogger<EventBus>>();
-            return new EventBus(logger);
-        });
+        // Event Bus - REMOVED DUPLICATE: Using the EventBus registered in CoreServicesExtensions.cs
+        // Having two separate EventBus instances caused scripts to subscribe to a different instance
+        // than the one used by NPCBehaviorSystem for publishing events.
 
         // Property Mappers (for extensible Tiled property → ECS component mapping)
         services.AddPropertyMappers();

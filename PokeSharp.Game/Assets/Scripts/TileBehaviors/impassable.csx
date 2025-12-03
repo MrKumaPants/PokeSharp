@@ -1,24 +1,18 @@
-using PokeSharp.Game.Components.Movement;
+using PokeSharp.Engine.Core.Events.Collision;
 using PokeSharp.Game.Scripting.Runtime;
 
 /// <summary>
-///     Impassable east behavior.
-///     Blocks movement from east.
+///     Impassable tile behavior.
+///     Blocks all movement in any direction.
 /// </summary>
-public class ImpassableBehavior : TileBehaviorScriptBase
+public class ImpassableBehavior : ScriptBase
 {
-    public override bool IsBlockedFrom(
-        ScriptContext ctx,
-        Direction fromDirection,
-        Direction toDirection
-    )
+    public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        return true;
-    }
-
-    public override bool IsBlockedTo(ScriptContext ctx, Direction toDirection)
-    {
-        return true;
+        On<CollisionCheckEvent>(evt =>
+        {
+            evt.PreventDefault("Tile is impassable");
+        });
     }
 }
 
