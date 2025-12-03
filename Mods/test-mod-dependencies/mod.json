@@ -1,0 +1,13 @@
+{
+  "modId": "pokesharp.test.dependency",
+  "name": "Dependency Test Mod",
+  "author": "Test Suite",
+  "version": "1.0.0",
+  "description": "Tests dependency resolution - depends on basic test mod",
+  "dependencies": ["pokesharp.test.basic"],
+  "loadBefore": [],
+  "loadAfter": [],
+  "loadPriority": 150,
+  "patches": [],
+  "contentFolders": {}
+}

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Game.Scripting.Api;
+using PokeSharp.Game.Scripting.Modding;
 using PokeSharp.Game.Scripting.Runtime;
 
 namespace PokeSharp.Game.Scripting.Services;
@@ -30,6 +31,10 @@ public class ScriptService : IAsyncDisposable
     private readonly IEventBus _eventBus;
     private readonly ILogger<ScriptService> _logger;
     private readonly string _scriptsBasePath;
+    private readonly World _world;
+    private readonly ILoggerFactory _loggerFactory;
+
+    private ModLoader? _modLoader;
 
     /// <summary>
     ///     Initializes a new instance of the <see cref="ScriptService" /> class.
@@ -39,12 +44,14 @@ public class ScriptService : IAsyncDisposable
     /// <param name="loggerFactory">Logger factory for creating child loggers.</param>
     /// <param name="apis">Scripting API provider.</param>
     /// <param name="eventBus">Event bus for script event subscriptions.</param>
+    /// <param name="world">ECS world for mod initialization.</param>
     public ScriptService(
         string scriptsBasePath,
         ILogger<ScriptService> logger,
         ILoggerFactory loggerFactory,
         IScriptingApiProvider apis,
-        IEventBus eventBus
+        IEventBus eventBus,
+        World world
     )
     {
         _scriptsBasePath =
@@ -52,6 +59,8 @@ public class ScriptService : IAsyncDisposable
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _apis = apis ?? throw new ArgumentNullException(nameof(apis));
         _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+        _world = world ?? throw new ArgumentNullException(nameof(world));
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
 
         // Create dependencies
         ILogger<ScriptCompiler> compilerLogger = loggerFactory.CreateLogger<ScriptCompiler>();
@@ -390,4 +399,32 @@ public class ScriptService : IAsyncDisposable
         _cache.Clear();
         _logger.LogInformation("Cleared script cache");
     }
+
+    /// <summary>
+    ///     Load all mods from the /Mods/ directory.
+    ///     Must be called AFTER core scripts are loaded.
+    /// </summary>
+    /// <param name="gameBasePath">Base path to the game directory containing /Mods/.</param>
+    public async Task LoadModsAsync(string gameBasePath)
+    {
+        if (_modLoader == null)
+        {
+            ILogger<ModLoader> modLoaderLogger = _loggerFactory.CreateLogger<ModLoader>();
+            _modLoader = new ModLoader(
+                this,
+                modLoaderLogger,
+                _world,
+                _eventBus,
+                _apis,
+                gameBasePath
+            );
+        }
+
+        await _modLoader.LoadModsAsync();
+    }
+
+    /// <summary>
+    ///     Gets the ModLoader instance for advanced mod management.
+    /// </summary>
+    public ModLoader? GetModLoader() => _modLoader;
 }

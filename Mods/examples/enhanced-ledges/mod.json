@@ -1,0 +1,21 @@
+{
+  "name": "enhanced-ledges",
+  "version": "1.0.0",
+  "author": "PokeSharp Examples",
+  "description": "Enhanced ledge mechanics with crumbling tiles, jump boosts, and achievement tracking. Demonstrates tile behavior extension and custom event systems.",
+  "dependencies": {
+    "pokesharp-core": ">=1.0.0"
+  },
+  "scripts": [
+    "events/LedgeEvents.csx",
+    "ledge_crumble.csx",
+    "jump_boost_item.csx",
+    "ledge_jump_tracker.csx",
+    "visual_effects.csx"
+  ],
+  "metadata": {
+    "category": "gameplay",
+    "tags": ["ledges", "tiles", "movement", "achievements"],
+    "documentation": "README.md"
+  }
+}

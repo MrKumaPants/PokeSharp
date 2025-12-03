@@ -1,0 +1,13 @@
+{
+  "modId": "pokesharp.test.badversion",
+  "name": "Invalid Version Test",
+  "author": "Test Suite",
+  "version": "not-semantic",
+  "description": "This should fail validation - invalid version format",
+  "dependencies": [],
+  "loadBefore": [],
+  "loadAfter": [],
+  "loadPriority": 100,
+  "patches": [],
+  "contentFolders": {}
+}

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using PokeSharp.Engine.Core.Types.Events;
@@ -32,6 +33,13 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
     private readonly ILogger<EventBus> _logger = logger ?? NullLogger<EventBus>.Instance;
     private int _nextHandlerId;
 
+    /// <summary>
+    ///     Optional metrics collector for the Event Inspector debug tool.
+    ///     When set and enabled, this collects performance data about event operations.
+    ///     Has minimal performance impact when disabled.
+    /// </summary>
+    public IEventMetrics? Metrics { get; set; }
+
     /// <inheritdoc />
     public void Publish<TEvent>(TEvent eventData)
         where TEvent : class
@@ -42,6 +50,14 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         }
 
         Type eventType = typeof(TEvent);
+        string eventTypeName = eventType.Name;
+
+        // Start timing if metrics are enabled
+        Stopwatch? sw = null;
+        if (Metrics?.IsEnabled == true)
+        {
+            sw = Stopwatch.StartNew();
+        }
 
         if (
             _handlers.TryGetValue(eventType, out ConcurrentDictionary<int, Delegate>? handlers)
@@ -49,11 +65,31 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         )
         // Execute all handlers with error isolation
         {
-            foreach (Delegate handler in handlers.Values)
+            foreach (var kvp in handlers)
             {
+                int handlerId = kvp.Key;
+                Delegate handler = kvp.Value;
+
                 try
                 {
+                    // Time individual handler invocation if metrics enabled
+                    Stopwatch? handlerSw = null;
+                    if (Metrics?.IsEnabled == true)
+                    {
+                        handlerSw = Stopwatch.StartNew();
+                    }
+
                     ((Action<TEvent>)handler)(eventData);
+
+                    if (handlerSw != null)
+                    {
+                        handlerSw.Stop();
+                        Metrics?.RecordHandlerInvoke(
+                            eventTypeName,
+                            handlerId,
+                            handlerSw.ElapsedTicks * 1_000_000 / Stopwatch.Frequency
+                        );
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -66,6 +102,16 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
                     );
                 }
             }
+        }
+
+        // Record publish metrics
+        if (sw != null)
+        {
+            sw.Stop();
+            Metrics?.RecordPublish(
+                eventTypeName,
+                sw.ElapsedTicks * 1_000_000 / Stopwatch.Frequency
+            );
         }
     }
 
@@ -87,6 +133,9 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         // Generate unique handler ID using atomic increment
         int handlerId = Interlocked.Increment(ref _nextHandlerId);
         handlers[handlerId] = handler;
+
+        // Record subscription for metrics
+        Metrics?.RecordSubscription(eventType.Name, handlerId);
 
         // Return a disposable subscription with the handler ID
         return new Subscription(this, eventType, handlerId);
@@ -131,7 +180,32 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         // Atomic removal - always succeeds
         {
             handlers.TryRemove(handlerId, out _);
+
+            // Record unsubscription for metrics
+            Metrics?.RecordUnsubscription(eventType.Name, handlerId);
         }
+    }
+
+    /// <summary>
+    ///     Gets all registered event types for inspection.
+    ///     Used by the Event Inspector debug tool.
+    /// </summary>
+    public IReadOnlyCollection<Type> GetRegisteredEventTypes()
+    {
+        return _handlers.Keys.ToList();
+    }
+
+    /// <summary>
+    ///     Gets all handler IDs for a specific event type.
+    ///     Used by the Event Inspector debug tool.
+    /// </summary>
+    public IReadOnlyCollection<int> GetHandlerIds(Type eventType)
+    {
+        if (_handlers.TryGetValue(eventType, out var handlers))
+        {
+            return handlers.Keys.ToList();
+        }
+        return Array.Empty<int>();
     }
 }
 

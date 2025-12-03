@@ -1,0 +1,13 @@
+{
+  "modId": "pokesharp.test.version",
+  "name": "Version Test Mod",
+  "author": "Test Suite",
+  "version": "2.5.13",
+  "description": "Tests semantic versioning validation",
+  "dependencies": [],
+  "loadBefore": [],
+  "loadAfter": ["pokesharp.test.basic"],
+  "loadPriority": 50,
+  "patches": [],
+  "contentFolders": {}
+}
