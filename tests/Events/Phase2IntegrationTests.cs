@@ -3,17 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Arch.Core;
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Xna.Framework;
 using NUnit.Framework;
-using FluentAssertions;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Events.Tile;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Systems.Events;
-using PokeSharp.Game.Scripting.Runtime;
 using PokeSharp.Game.Scripting.HotReload.Cache;
+using PokeSharp.Game.Scripting.Runtime;
+using PokeSharp.Game.Systems.Events;
 
 namespace PokeSharp.Tests.Phase2Integration;
 
@@ -78,7 +78,7 @@ public class Phase2IntegrationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.North,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         // Act
@@ -110,15 +110,17 @@ public class Phase2IntegrationTests
         // Act - Publish multiple events
         for (int i = 0; i < 5; i++)
         {
-            _eventBus.Publish(new MovementStartedEvent
-            {
-                TypeId = "movement",
-                Timestamp = i * 0.1f,
-                Entity = entity,
-                TargetPosition = new Vector2(i, i),
-                Direction = (Direction)(i % 4),
-                StartPosition = Vector2.Zero
-            });
+            _eventBus.Publish(
+                new MovementStartedEvent
+                {
+                    TypeId = "movement",
+                    Timestamp = i * 0.1f,
+                    Entity = entity,
+                    TargetPosition = new Vector2(i, i),
+                    Direction = (Direction)(i % 4),
+                    StartPosition = Vector2.Zero,
+                }
+            );
         }
 
         // Assert
@@ -147,15 +149,17 @@ public class Phase2IntegrationTests
         var sub3 = _eventBus.Subscribe<MovementStartedEvent>(e => handler3Called = true);
 
         // Act
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
         // Assert
         handler1Called.Should().BeTrue("handler 1 should receive event");
@@ -195,15 +199,17 @@ public class Phase2IntegrationTests
         });
 
         // Act
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
         // Assert
         version1CallCount.Should().Be(0, "old handler should not receive events after disposal");
@@ -229,15 +235,17 @@ public class Phase2IntegrationTests
         var newSub = _eventBus.Subscribe<MovementStartedEvent>(e => newHandlerCalled = true);
 
         // Act
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
         // Assert
         oldHandlerCalled.Should().BeFalse("old handler should be unregistered");
@@ -261,15 +269,17 @@ public class Phase2IntegrationTests
         });
 
         // Publish event
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = new Vector2(5, 5),
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = new Vector2(5, 5),
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
         // Simulate hot-reload
         sub1.Dispose();
@@ -281,15 +291,17 @@ public class Phase2IntegrationTests
         });
 
         // Act - Publish after reload
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0.5f,
-            Entity = entity,
-            TargetPosition = new Vector2(10, 10),
-            Direction = Direction.East,
-            StartPosition = new Vector2(5, 5)
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0.5f,
+                Entity = entity,
+                TargetPosition = new Vector2(10, 10),
+                Direction = Direction.East,
+                StartPosition = new Vector2(5, 5),
+            }
+        );
 
         // Assert
         receivedPositions.Should().HaveCount(1, "only new handler should receive event");
@@ -347,34 +359,40 @@ public class Phase2IntegrationTests
         var sub3 = _eventBus.Subscribe<TileSteppedOnEvent>(e => tileSteppedOnCalled = true);
 
         // Act
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
-        _eventBus.Publish(new MovementCompletedEvent
-        {
-            TypeId = "movement_completed",
-            Timestamp = 0.25f,
-            Entity = entity,
-            OldPosition = (0, 0),
-            NewPosition = (0, 1),
-            Direction = Direction.North
-        });
+        _eventBus.Publish(
+            new MovementCompletedEvent
+            {
+                TypeId = "movement_completed",
+                Timestamp = 0.25f,
+                Entity = entity,
+                OldPosition = (0, 0),
+                NewPosition = (0, 1),
+                Direction = Direction.North,
+            }
+        );
 
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            TypeId = "tile_step",
-            Timestamp = 0.3f,
-            Entity = entity,
-            TilePosition = new PokeSharp.Game.Components.Tiles.TilePosition(0, 1),
-            TileType = "grass"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                TypeId = "tile_step",
+                Timestamp = 0.3f,
+                Entity = entity,
+                TilePosition = new PokeSharp.Game.Components.Tiles.TilePosition(0, 1),
+                TileType = "grass",
+            }
+        );
 
         // Assert
         movementStartedCalled.Should().BeTrue("MovementStartedEvent handler should be called");
@@ -399,34 +417,40 @@ public class Phase2IntegrationTests
         var sub3 = _eventBus.Subscribe<TileSteppedOnEvent>(e => eventSequence.Add("SteppedOn"));
 
         // Act - Publish in order
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            TypeId = "tile_step",
-            Timestamp = 0.1f,
-            Entity = entity,
-            TilePosition = new PokeSharp.Game.Components.Tiles.TilePosition(0, 1),
-            TileType = "grass"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                TypeId = "tile_step",
+                Timestamp = 0.1f,
+                Entity = entity,
+                TilePosition = new PokeSharp.Game.Components.Tiles.TilePosition(0, 1),
+                TileType = "grass",
+            }
+        );
 
-        _eventBus.Publish(new MovementCompletedEvent
-        {
-            TypeId = "movement_completed",
-            Timestamp = 0.25f,
-            Entity = entity,
-            OldPosition = (0, 0),
-            NewPosition = (0, 1),
-            Direction = Direction.North
-        });
+        _eventBus.Publish(
+            new MovementCompletedEvent
+            {
+                TypeId = "movement_completed",
+                Timestamp = 0.25f,
+                Entity = entity,
+                OldPosition = (0, 0),
+                NewPosition = (0, 1),
+                Direction = Direction.North,
+            }
+        );
 
         // Assert
         eventSequence.Should().ContainInOrder("Started", "SteppedOn", "Completed");
@@ -450,19 +474,23 @@ public class Phase2IntegrationTests
         var sub3 = _eventBus.Subscribe<MovementStartedEvent>(e => callOrder.Add(3));
 
         // Act
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
         // Assert - Order is maintained (no priority support, but consistent)
         callOrder.Should().HaveCount(3);
-        callOrder.Should().ContainInOrder(1, 2, 3, "handlers should be called in subscription order");
+        callOrder
+            .Should()
+            .ContainInOrder(1, 2, 3, "handlers should be called in subscription order");
 
         // Cleanup
         sub1.Dispose();
@@ -508,15 +536,17 @@ public class Phase2IntegrationTests
         mockScript.OnInitialize(ctx);
 
         // Publish event
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
         // Assert
         mockScript.EventReceived.Should().BeTrue("tile behavior script should receive event");
@@ -564,15 +594,17 @@ public class Phase2IntegrationTests
         sub.Dispose();
 
         // Act
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
 
         // Assert
         callCount.Should().Be(0, "disposed subscription should not receive events");
@@ -617,7 +649,10 @@ public class Phase2IntegrationTests
         }
 
         // Assert
-        _eventBus.GetSubscriberCount<MovementStartedEvent>().Should().Be(0, "all subscriptions should be cleaned up");
+        _eventBus
+            .GetSubscriberCount<MovementStartedEvent>()
+            .Should()
+            .Be(0, "all subscriptions should be cleaned up");
     }
 
     [Test]
@@ -655,15 +690,17 @@ public class Phase2IntegrationTests
         // 1. CSX scripts can subscribe to events
         var eventReceived = false;
         var sub = _eventBus.Subscribe<MovementStartedEvent>(e => eventReceived = true);
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
         results["Event Subscription Works"] = eventReceived;
         sub.Dispose();
 
@@ -673,15 +710,17 @@ public class Phase2IntegrationTests
         var sub1 = _eventBus.Subscribe<MovementStartedEvent>(e => oldCalled = true);
         sub1.Dispose();
         var sub2 = _eventBus.Subscribe<MovementStartedEvent>(e => newCalled = true);
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = Vector2.Zero,
-            Direction = Direction.North,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = Vector2.Zero,
+                Direction = Direction.North,
+                StartPosition = Vector2.Zero,
+            }
+        );
         results["Hot-Reload Cleanup Works"] = !oldCalled && newCalled;
         sub2.Dispose();
 
@@ -691,8 +730,10 @@ public class Phase2IntegrationTests
         {
             subscriptions.Add(_eventBus.Subscribe<MovementStartedEvent>(e => { }));
         }
-        foreach (var s in subscriptions) s.Dispose();
-        results["Memory Leak Prevention Works"] = _eventBus.GetSubscriberCount<MovementStartedEvent>() == 0;
+        foreach (var s in subscriptions)
+            s.Dispose();
+        results["Memory Leak Prevention Works"] =
+            _eventBus.GetSubscriberCount<MovementStartedEvent>() == 0;
 
         // 4. Inheritance works
         var mockScript = new MockTileBehaviorScript();
@@ -716,7 +757,9 @@ public class Phase2IntegrationTests
         }
         TestContext.WriteLine("=======================================\n");
 
-        results.Values.Should().AllBeEquivalentTo(true, "all Phase 2 success criteria should be met");
+        results
+            .Values.Should()
+            .AllBeEquivalentTo(true, "all Phase 2 success criteria should be met");
     }
 
     #endregion

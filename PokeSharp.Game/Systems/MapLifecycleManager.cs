@@ -154,10 +154,15 @@ public class MapLifecycleManager(
         );
 
         // 2. If we found the map entity, iterate its children using ParentOf relationships
-        if (mapInfoEntity.HasValue && world.IsAlive(mapInfoEntity.Value) && mapInfoEntity.Value.HasRelationship<ParentOf>())
+        if (
+            mapInfoEntity.HasValue
+            && world.IsAlive(mapInfoEntity.Value)
+            && mapInfoEntity.Value.HasRelationship<ParentOf>()
+        )
         {
-            ref var mapChildren = ref mapInfoEntity.Value.GetRelationships<ParentOf>();
-            foreach (var kvp in mapChildren)
+            ref Relationship<ParentOf> mapChildren =
+                ref mapInfoEntity.Value.GetRelationships<ParentOf>();
+            foreach (KeyValuePair<Entity, ParentOf> kvp in mapChildren)
             {
                 Entity childEntity = kvp.Key;
                 if (!world.IsAlive(childEntity))
@@ -409,8 +414,9 @@ public class MapLifecycleManager(
                 // If it has children, collect them all
                 if (entity.HasRelationship<ParentOf>())
                 {
-                    ref var mapChildren = ref entity.GetRelationships<ParentOf>();
-                    foreach (var kvp in mapChildren)
+                    ref Relationship<ParentOf> mapChildren =
+                        ref entity.GetRelationships<ParentOf>();
+                    foreach (KeyValuePair<Entity, ParentOf> kvp in mapChildren)
                     {
                         Entity childEntity = kvp.Key;
                         if (world.IsAlive(childEntity))

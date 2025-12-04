@@ -1,8 +1,8 @@
 #load "UnifiedScriptBase.cs"
 
-using PokeSharp.Scripting.Unified;
 using System.Collections.Generic;
 using System.Linq;
+using PokeSharp.Scripting.Unified;
 
 /// <summary>
 /// NPC patrol behavior - follows a path and reacts to player
@@ -19,7 +19,7 @@ public class NPCPatrolScript : UnifiedScriptBase
         new Point(10, 5),
         new Point(15, 5),
         new Point(15, 10),
-        new Point(10, 10)
+        new Point(10, 10),
     };
 
     private int _currentWaypoint = 0;
@@ -38,10 +38,7 @@ public class NPCPatrolScript : UnifiedScriptBase
         Subscribe<PlayerMoveEvent>(HandlePlayerMove);
 
         // Subscribe to interaction events (player talks to NPC)
-        SubscribeWhen<PlayerInteractEvent>(
-            evt => evt.Target == Target,
-            HandlePlayerInteraction
-        );
+        SubscribeWhen<PlayerInteractEvent>(evt => evt.Target == Target, HandlePlayerInteraction);
 
         // Load saved state
         _currentWaypoint = Get("current_waypoint", 0);
@@ -137,11 +134,7 @@ public class NPCPatrolScript : UnifiedScriptBase
         }
 
         // Request movement through event system
-        Publish(new RequestEntityMoveEvent
-        {
-            Entity = npc,
-            TargetPosition = nextPos
-        });
+        Publish(new RequestEntityMoveEvent { Entity = npc, TargetPosition = nextPos });
     }
 
     private void HandlePlayerMove(PlayerMoveEvent evt)
@@ -163,16 +156,18 @@ public class NPCPatrolScript : UnifiedScriptBase
         var npc = Target as INPC;
         var dialogue = GetDialogue();
 
-        Publish(new StartDialogueEvent
-        {
-            NPC = npc,
-            DialogueText = dialogue,
-            OnComplete = () =>
+        Publish(
+            new StartDialogueEvent
             {
-                _state = NPCState.Patrolling;
-                Log("Dialogue ended, resuming patrol");
+                NPC = npc,
+                DialogueText = dialogue,
+                OnComplete = () =>
+                {
+                    _state = NPCState.Patrolling;
+                    Log("Dialogue ended, resuming patrol");
+                },
             }
-        });
+        );
     }
 
     private void OnPlayerSpotted(IPlayer player)
@@ -180,11 +175,9 @@ public class NPCPatrolScript : UnifiedScriptBase
         Log("Player spotted!");
 
         // Play exclamation animation
-        Publish(new PlayAnimationEvent
-        {
-            AnimationName = "exclamation",
-            Position = Target.Position
-        });
+        Publish(
+            new PlayAnimationEvent { AnimationName = "exclamation", Position = Target.Position }
+        );
 
         // Play sound
         Publish(new PlaySoundEvent { SoundName = "trainer_spotted" });
@@ -201,11 +194,7 @@ public class NPCPatrolScript : UnifiedScriptBase
     {
         Set("already_battled", true);
 
-        Publish(new TrainerBattleEvent
-        {
-            Trainer = Target as INPC,
-            Player = player
-        });
+        Publish(new TrainerBattleEvent { Trainer = Target as INPC, Player = player });
     }
 
     private bool CanSeePlayer(IPlayer player)
@@ -236,11 +225,7 @@ public class NPCPatrolScript : UnifiedScriptBase
         else
             direction = dy > 0 ? 0 : 1; // Down : Up
 
-        Publish(new SetEntityDirectionEvent
-        {
-            Entity = npc,
-            Direction = direction
-        });
+        Publish(new SetEntityDirectionEvent { Entity = npc, Direction = direction });
     }
 
     private string GetDialogue()
@@ -250,7 +235,7 @@ public class NPCPatrolScript : UnifiedScriptBase
             "I'm on patrol duty today!",
             "Have you seen any suspicious activity?",
             "Beautiful day for a walk, isn't it?",
-            "I've been walking this route for years."
+            "I've been walking this route for years.",
         };
 
         int dialogueIndex = Get("dialogue_count", 0);
@@ -279,7 +264,7 @@ public enum NPCState
     Idle,
     Patrolling,
     Alerted,
-    Interacting
+    Interacting,
 }
 
 public interface INPC : IScriptable

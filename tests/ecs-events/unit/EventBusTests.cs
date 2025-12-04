@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using NUnit.Framework;
 using FluentAssertions;
+using NUnit.Framework;
 
 namespace PokeSharp.EcsEvents.Tests.Unit;
 
@@ -66,7 +66,8 @@ public class EventBusTests
     {
         // Act & Assert
         Action act = () => _eventBus.Publish<TestEvent>(null!);
-        act.Should().Throw<ArgumentNullException>()
+        act.Should()
+            .Throw<ArgumentNullException>()
             .WithMessage("*event*", "null events should not be allowed");
     }
 
@@ -191,8 +192,14 @@ public class EventBusTests
         _eventBus.Publish(new TestEvent());
 
         // Assert
-        executionOrder.Should().ContainInOrder("high", "medium", "low",
-            "handlers should execute in priority order (high to low)");
+        executionOrder
+            .Should()
+            .ContainInOrder(
+                "high",
+                "medium",
+                "low",
+                "handlers should execute in priority order (high to low)"
+            );
     }
 
     #endregion
@@ -270,11 +277,14 @@ public class EventBusTests
         var handler2Executed = false;
         var handler3Executed = false;
 
-        _eventBus.Subscribe<CancellableEvent>(evt =>
-        {
-            handler1Executed = true;
-            evt.Cancel = true; // Cancel propagation
-        }, priority: 10);
+        _eventBus.Subscribe<CancellableEvent>(
+            evt =>
+            {
+                handler1Executed = true;
+                evt.Cancel = true; // Cancel propagation
+            },
+            priority: 10
+        );
 
         _eventBus.Subscribe<CancellableEvent>(evt => handler2Executed = true, priority: 5);
         _eventBus.Subscribe<CancellableEvent>(evt => handler3Executed = true, priority: 1);
@@ -307,8 +317,9 @@ public class EventBusTests
         var elapsed = DateTime.UtcNow - startTime;
 
         // Assert
-        elapsed.Should().BeLessThan(TimeSpan.FromMilliseconds(100),
-            "subscribing 1000 handlers should be fast");
+        elapsed
+            .Should()
+            .BeLessThan(TimeSpan.FromMilliseconds(100), "subscribing 1000 handlers should be fast");
     }
 
     [Test]
@@ -329,8 +340,7 @@ public class EventBusTests
         }
 
         // Assert
-        publishedEvents.Count.Should().BeLessThan(100,
-            "pooling should reuse event objects");
+        publishedEvents.Count.Should().BeLessThan(100, "pooling should reuse event objects");
     }
 
     #endregion
@@ -366,14 +376,19 @@ public class EventBus : IDisposable
 {
     public event EventHandler<Exception>? OnError;
 
-    public ISubscription Subscribe<TEvent>(EventHandler<TEvent> handler, int priority = 0, Func<TEvent, bool>? filter = null)
+    public ISubscription Subscribe<TEvent>(
+        EventHandler<TEvent> handler,
+        int priority = 0,
+        Func<TEvent, bool>? filter = null
+    )
         where TEvent : IEvent
     {
         // TODO: Implement subscription logic
         return new Subscription(() => { });
     }
 
-    public void Publish<TEvent>(TEvent evt) where TEvent : IEvent
+    public void Publish<TEvent>(TEvent evt)
+        where TEvent : IEvent
     {
         ArgumentNullException.ThrowIfNull(evt);
         // TODO: Implement publish logic
@@ -397,7 +412,8 @@ public interface ICancellableEvent
     bool Cancel { get; set; }
 }
 
-public delegate void EventHandler<in TEvent>(TEvent evt) where TEvent : IEvent;
+public delegate void EventHandler<in TEvent>(TEvent evt)
+    where TEvent : IEvent;
 
 public interface ISubscription
 {
@@ -416,9 +432,11 @@ public class Subscription : ISubscription
     public void Unsubscribe() => _unsubscribeAction();
 }
 
-public class EventPool<TEvent> where TEvent : IEvent, new()
+public class EventPool<TEvent>
+    where TEvent : IEvent, new()
 {
     public TEvent Get() => new TEvent();
+
     public void Return(TEvent evt) { }
 }
 

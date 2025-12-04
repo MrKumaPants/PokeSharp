@@ -4,10 +4,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NUnit.Framework;
-using FluentAssertions;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Types.Events;
 
@@ -123,8 +123,7 @@ public class EventBusComprehensiveTests
     {
         // Act & Assert
         Action act = () => _eventBus.Publish<TestEvent>(null!);
-        act.Should().Throw<ArgumentNullException>()
-            .WithMessage("*eventData*");
+        act.Should().Throw<ArgumentNullException>().WithMessage("*eventData*");
     }
 
     [Test]
@@ -135,7 +134,9 @@ public class EventBusComprehensiveTests
         var handler3Executed = false;
 
         _eventBus.Subscribe<TestEvent>(evt => handler1Executed = true);
-        _eventBus.Subscribe<TestEvent>(evt => throw new InvalidOperationException("Handler 2 failed"));
+        _eventBus.Subscribe<TestEvent>(evt =>
+            throw new InvalidOperationException("Handler 2 failed")
+        );
         _eventBus.Subscribe<TestEvent>(evt => handler3Executed = true);
 
         var testEvent = new TestEvent { TypeId = "test", Timestamp = 0f };
@@ -166,8 +167,16 @@ public class EventBusComprehensiveTests
         _eventBus.Publish(new TestEvent { TypeId = "event5", Timestamp = 0f });
 
         // Assert
-        eventOrder.Should().ContainInOrder("event1", "event2", "event3", "event4", "event5",
-            "events should be dispatched in order");
+        eventOrder
+            .Should()
+            .ContainInOrder(
+                "event1",
+                "event2",
+                "event3",
+                "event4",
+                "event5",
+                "events should be dispatched in order"
+            );
     }
 
     #endregion
@@ -190,8 +199,7 @@ public class EventBusComprehensiveTests
     {
         // Act & Assert
         Action act = () => _eventBus.Subscribe<TestEvent>(null!);
-        act.Should().Throw<ArgumentNullException>()
-            .WithMessage("*handler*");
+        act.Should().Throw<ArgumentNullException>().WithMessage("*handler*");
     }
 
     [Test]
@@ -323,7 +331,14 @@ public class EventBusComprehensiveTests
         // Act
         _eventBus.ClearAllSubscriptions();
         _eventBus.Publish(new TestEvent { TypeId = "test", Timestamp = 0f });
-        _eventBus.Publish(new DialogueRequestedEvent { TypeId = "dialogue", Timestamp = 0f, Message = "test" });
+        _eventBus.Publish(
+            new DialogueRequestedEvent
+            {
+                TypeId = "dialogue",
+                Timestamp = 0f,
+                Message = "test",
+            }
+        );
 
         // Assert
         count1.Should().Be(0, "no test event handlers should execute");
@@ -345,17 +360,23 @@ public class EventBusComprehensiveTests
         for (int i = 0; i < 100; i++)
         {
             var index = i;
-            tasks.Add(Task.Run(() =>
-            {
-                _eventBus.Subscribe<TestEvent>(evt => Interlocked.Increment(ref callCounts[index]));
-            }));
+            tasks.Add(
+                Task.Run(() =>
+                {
+                    _eventBus.Subscribe<TestEvent>(evt =>
+                        Interlocked.Increment(ref callCounts[index])
+                    );
+                })
+            );
         }
 
         Task.WaitAll(tasks.ToArray());
         _eventBus.Publish(new TestEvent { TypeId = "test", Timestamp = 0f });
 
         // Assert
-        callCounts.Should().AllBeEquivalentTo(1, "all handlers should be registered and called once");
+        callCounts
+            .Should()
+            .AllBeEquivalentTo(1, "all handlers should be registered and called once");
     }
 
     [Test]
@@ -370,10 +391,12 @@ public class EventBusComprehensiveTests
         // Act
         for (int i = 0; i < 50; i++)
         {
-            tasks.Add(Task.Run(() =>
-            {
-                _eventBus.Publish(new TestEvent { TypeId = "test", Timestamp = 0f });
-            }));
+            tasks.Add(
+                Task.Run(() =>
+                {
+                    _eventBus.Publish(new TestEvent { TypeId = "test", Timestamp = 0f });
+                })
+            );
         }
 
         Task.WaitAll(tasks.ToArray());
@@ -408,12 +431,19 @@ public class EventBusComprehensiveTests
 
         // At 60fps, we have 16.67ms per frame
         // Event system should use minimal time
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(10,
-            "10,000 events should complete quickly (< 10ms for stress test)");
+        stopwatch
+            .ElapsedMilliseconds.Should()
+            .BeLessThan(10, "10,000 events should complete quickly (< 10ms for stress test)");
 
-        Console.WriteLine($"Performance: 10,000 events completed in {stopwatch.ElapsedMilliseconds}ms");
-        Console.WriteLine($"Average: {stopwatch.Elapsed.TotalMilliseconds / 10_000:F6}ms per event");
-        Console.WriteLine($"Average: {stopwatch.Elapsed.TotalMicroseconds / 10_000:F3}μs per event");
+        Console.WriteLine(
+            $"Performance: 10,000 events completed in {stopwatch.ElapsedMilliseconds}ms"
+        );
+        Console.WriteLine(
+            $"Average: {stopwatch.Elapsed.TotalMilliseconds / 10_000:F6}ms per event"
+        );
+        Console.WriteLine(
+            $"Average: {stopwatch.Elapsed.TotalMicroseconds / 10_000:F3}μs per event"
+        );
     }
 
     [Test]
@@ -447,8 +477,9 @@ public class EventBusComprehensiveTests
         Console.WriteLine($"Average publish time: {averageMicroseconds:F3}μs per event");
 
         // Target: <1μs per event (this is aspirational, actual may be higher)
-        averageMicroseconds.Should().BeLessThan(10,
-            "average publish time should be efficient (< 10μs)");
+        averageMicroseconds
+            .Should()
+            .BeLessThan(10, "average publish time should be efficient (< 10μs)");
     }
 
     [Test]
@@ -478,13 +509,16 @@ public class EventBusComprehensiveTests
         // Assert
         var averageNanoseconds = (stopwatch.Elapsed.TotalMilliseconds * 1_000_000) / iterations;
 
-        Console.WriteLine($"Performance: {iterations} invokes in {stopwatch.ElapsedMilliseconds}ms");
+        Console.WriteLine(
+            $"Performance: {iterations} invokes in {stopwatch.ElapsedMilliseconds}ms"
+        );
         Console.WriteLine($"Average invoke time: {averageNanoseconds:F0}ns per invoke");
         Console.WriteLine($"Average invoke time: {averageNanoseconds / 1000:F3}μs per invoke");
 
         // Target: <0.5μs (500ns) per invoke (this is aspirational)
-        averageNanoseconds.Should().BeLessThan(5000,
-            "average invoke time should be very fast (< 5000ns = 5μs)");
+        averageNanoseconds
+            .Should()
+            .BeLessThan(5000, "average invoke time should be very fast (< 5000ns = 5μs)");
     }
 
     [Test]
@@ -529,14 +563,17 @@ public class EventBusComprehensiveTests
         Console.WriteLine("Scaling Performance:");
         foreach (var (handlers, ms) in timings)
         {
-            Console.WriteLine($"  {handlers} handlers: {ms:F2}ms for {iterations} events ({ms / iterations:F6}ms per event)");
+            Console.WriteLine(
+                $"  {handlers} handlers: {ms:F2}ms for {iterations} events ({ms / iterations:F6}ms per event)"
+            );
         }
 
         // Assert reasonable scaling (not exponential)
         // Time should roughly double when handlers double
         var ratio = timings[^1].milliseconds / timings[0].milliseconds;
-        ratio.Should().BeLessThan(handlerCounts[^1] * 2,
-            "time should scale linearly, not exponentially");
+        ratio
+            .Should()
+            .BeLessThan(handlerCounts[^1] * 2, "time should scale linearly, not exponentially");
     }
 
     #endregion
@@ -578,8 +615,9 @@ public class EventBusComprehensiveTests
         Console.WriteLine($"GC Gen0 collections: {gen0Collections}");
 
         // Allow some allocation for ConcurrentDictionary overhead
-        allocatedBytes.Should().BeLessThan(1024 * 100,
-            "minimal allocations on hot path (< 100KB for 10K events)");
+        allocatedBytes
+            .Should()
+            .BeLessThan(1024 * 100, "minimal allocations on hot path (< 100KB for 10K events)");
     }
 
     #endregion
@@ -599,7 +637,14 @@ public class EventBusComprehensiveTests
         // Act
         _eventBus.Publish(new TestEvent { TypeId = "test", Timestamp = 0f });
         _eventBus.Publish(new TestEvent { TypeId = "test", Timestamp = 0f });
-        _eventBus.Publish(new DialogueRequestedEvent { TypeId = "dialogue", Timestamp = 0f, Message = "Hello" });
+        _eventBus.Publish(
+            new DialogueRequestedEvent
+            {
+                TypeId = "dialogue",
+                Timestamp = 0f,
+                Message = "Hello",
+            }
+        );
 
         // Assert
         testEventCount.Should().Be(2, "only TestEvent handlers should be called");
@@ -626,8 +671,8 @@ public class EventBusComprehensiveTests
     {
         public List<string> Errors { get; } = new();
 
-        public IDisposable BeginScope<TState>(TState state) where TState : notnull
-            => NullLogger.Instance.BeginScope(state);
+        public IDisposable BeginScope<TState>(TState state)
+            where TState : notnull => NullLogger.Instance.BeginScope(state);
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
@@ -636,7 +681,8 @@ public class EventBusComprehensiveTests
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter)
+            Func<TState, Exception?, string> formatter
+        )
         {
             if (logLevel == LogLevel.Error)
             {

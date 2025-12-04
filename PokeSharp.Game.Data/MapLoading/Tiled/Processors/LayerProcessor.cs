@@ -241,7 +241,7 @@ public class LayerProcessor : ILayerProcessor
             TmxTileset tileset = tilesets[data.TilesetIndex].Tileset;
 
             // Add ParentOf relationship - map is parent of all tiles
-            mapInfoEntity.AddRelationship<ParentOf>(entity, parentOfData);
+            mapInfoEntity.AddRelationship(entity, parentOfData);
 
             // Get tile properties from tileset
             int localTileId = data.TileGid - tileset.FirstGid;

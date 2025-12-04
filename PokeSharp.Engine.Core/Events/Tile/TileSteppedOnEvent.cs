@@ -1,4 +1,5 @@
 using Arch.Core;
+using PokeSharp.Engine.Core.Types;
 
 namespace PokeSharp.Engine.Core.Events.Tile;
 
@@ -9,23 +10,18 @@ namespace PokeSharp.Engine.Core.Events.Tile;
 /// <remarks>
 ///     Published by the TileBehaviorSystem during movement validation (before MovementStartedEvent).
 ///     Handlers can cancel this event to prevent the entity from stepping on the tile.
-///
 ///     This event is checked BEFORE movement occurs, allowing for:
 ///     - Tile-based movement blocking (impassable tiles)
 ///     - Conditional access (need Surf HM for water tiles)
 ///     - Scripted tile behaviors (prevent entry during cutscene)
-///
 ///     If not cancelled, the movement continues and TileSteppedOnEvent is published again
 ///     (as a notification) after the entity reaches the tile.
-///
 ///     Common handlers:
 ///     - Tall grass: Trigger wild encounters
 ///     - Ice: Start forced sliding movement
 ///     - Warp tiles: Initiate map transition
 ///     - Special tiles: Play animations, sounds, or trigger events
-///
 ///     This class supports object pooling via EventPool{T} to reduce allocations.
-///
 ///     See EventSystemArchitecture.md lines 120-132 for tile behavior integration.
 /// </remarks>
 public sealed class TileSteppedOnEvent : CancellableEventBase
@@ -67,7 +63,7 @@ public sealed class TileSteppedOnEvent : CancellableEventBase
     ///     Gets or sets the tile behavior flags for fast behavior checks.
     ///     See TileBehaviorFlags enum for available flags.
     /// </summary>
-    public Engine.Core.Types.TileBehaviorFlags BehaviorFlags { get; set; }
+    public TileBehaviorFlags BehaviorFlags { get; set; }
 
     /// <inheritdoc />
     public override void Reset()

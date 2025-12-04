@@ -35,14 +35,16 @@ public static class PanelConstants
         // ═══════════════════════════════════════════════════════════════
         // Column Widths (responsive with min/max bounds)
         // ═══════════════════════════════════════════════════════════════
-        
+
         // Preferred column widths (used when space is available)
         public const float EventNameColumnWidth = 200f; // Matches Profiler.NameColumnWidth
         public const float SubsColumnWidth = 50f;
         public const float CountColumnWidth = 70f;
+
         public const float TimeColumnWidth = 100f; // Matches Profiler.MsColumnWidth
+
         // Note: Execution Time bar is DYNAMIC - fills remaining space
-        
+
         // Minimum column widths (for responsive layout)
         public const float MinEventNameColumnWidth = 120f; // Must fit event names with ellipsis
         public const float MinBarColumnWidth = 80f; // Minimum bar width for readability
@@ -53,10 +55,10 @@ public static class PanelConstants
         // ═══════════════════════════════════════════════════════════════
         // Layout & Spacing
         // ═══════════════════════════════════════════════════════════════
-        
+
         // Row height (tighter than default PanelRowHeight for more content density)
         public const float RowHeight = 22f;
-        
+
         // Tree indentation (subscriptions section)
         public const float TreeIndentLevel1 = 24f; // First level indent
         public const float TreeIndentLevel2 = 70f; // Second level indent (after priority)
@@ -68,7 +70,7 @@ public static class PanelConstants
         // ═══════════════════════════════════════════════════════════════
         // Responsive Breakpoints
         // ═══════════════════════════════════════════════════════════════
-        
+
         public const float MinPanelWidth = 450f; // Absolute minimum usable width
         public const float BreakpointHideSubs = 550f; // Hide Subs column below this
         public const float BreakpointHideBar = 650f; // Hide execution bar below this

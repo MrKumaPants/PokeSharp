@@ -161,7 +161,7 @@ public sealed class BulkQueryOperations
     /// {
     ///     // ✅ SAFE: Read operations, logging, etc.
     ///     Console.WriteLine($"Enemy: {entity.Id}");
-    ///     
+    ///
     ///     // ❌ UNSAFE: Don't add/remove components here!
     ///     // Use AddComponentToMatching() instead for structural changes
     /// });

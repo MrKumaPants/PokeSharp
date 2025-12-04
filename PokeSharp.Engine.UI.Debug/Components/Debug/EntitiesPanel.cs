@@ -34,6 +34,9 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
 
     // Entity change tracking
     private readonly HashSet<int> _previousEntityIds = new();
+
+    // Tree view state
+    private readonly HashSet<int> _processedInTree = new(); // Prevent infinite loops in tree
     private readonly HashSet<int> _removedEntityIds = new();
 
     // Auto-refresh settings
@@ -46,7 +49,9 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
 
     // Mouse click tracking for double-click detection
     private DateTime _lastClickTime = DateTime.MinValue;
+
     private double _lastUpdateTime;
+
     // PERFORMANCE: Increased default from 1.0s to 2.0s to reduce refresh overhead with relationships
     private float _refreshInterval = 2.0f;
     private int _removedThisSession;
@@ -63,12 +68,9 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     private string _tagFilter = "";
     private float _timeSinceLastChange;
     private float _timeSinceRefresh;
-    
+
     // View mode
     private EntityViewMode _viewMode = EntityViewMode.Normal;
-    
-    // Tree view state
-    private readonly HashSet<int> _processedInTree = new(); // Prevent infinite loops in tree
 
     /// <summary>
     ///     Creates an EntitiesPanel with the specified components.
@@ -1070,7 +1072,7 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
         float scrollbarEndY = bufferRect.Y + bufferRect.Height - _entityListBuffer.LinePadding;
 
         // Check if mouse is within scrollbar area
-        return mousePos.X >= scrollbarStartX 
+        return mousePos.X >= scrollbarStartX
             && mousePos.X <= scrollbarEndX
             && mousePos.Y >= scrollbarStartY
             && mousePos.Y <= scrollbarEndY;
@@ -1375,13 +1377,15 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
         if (_navigableEntityIds.Count > 0)
         {
             hints = $"[{_selectedIndex + 1}/{_navigableEntityIds.Count}] {_viewMode}";
-            
+
             // Controls are the SAME in both views now - use NerdFont icons
             if (KeyboardNavEnabled)
             {
                 // Use NerdFont arrows instead of Unicode ↑↓
-                hints += $" | {NerdFontIcons.ArrowUp}{NerdFontIcons.ArrowDown}:Nav Enter:Exp P:Pin V:View";
+                hints +=
+                    $" | {NerdFontIcons.ArrowUp}{NerdFontIcons.ArrowDown}:Nav Enter:Exp P:Pin V:View";
             }
+
             if (MouseNavEnabled && KeyboardNavEnabled)
             {
                 // Abbreviated when both are enabled
@@ -1459,25 +1463,31 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
             if (_viewMode == EntityViewMode.Relationships)
             {
                 _processedInTree.Clear();
-                RenderEntityTree(entity, indent: "      ", depth: 0);
+                RenderEntityTree(entity, "      ", 0);
                 return; // Don't show components in relationships view
             }
-            
+
             // In Normal view mode, show relationships first if any exist, then components
             if (entity.Relationships.Count > 0)
             {
                 RenderRelationships(entity);
             }
-            
+
             _entityListBuffer.AppendLine("      Components:", ThemeManager.Current.Info);
             int componentsShown = 0;
             foreach (string component in entity.Components.Take(MaxComponentsToShow))
             {
                 Color componentColor = GetComponentColor(component);
                 _entityListBuffer.AppendLine($"        - {component}", componentColor);
-                
+
                 // Show component field values if available
-                if (entity.ComponentData.TryGetValue(component, out Dictionary<string, string>? fields) && fields.Count > 0)
+                if (
+                    entity.ComponentData.TryGetValue(
+                        component,
+                        out Dictionary<string, string>? fields
+                    )
+                    && fields.Count > 0
+                )
                 {
                     foreach ((string fieldName, string fieldValue) in fields)
                     {
@@ -1486,13 +1496,13 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                         {
                             string[] lines = fieldValue.Split('\n');
                             _entityListBuffer.AppendLine(
-                                $"            {fieldName}: {lines[0]}", 
+                                $"            {fieldName}: {lines[0]}",
                                 ThemeManager.Current.TextDim
                             );
                             for (int i = 1; i < lines.Length; i++)
                             {
                                 _entityListBuffer.AppendLine(
-                                    $"            {lines[i]}", 
+                                    $"            {lines[i]}",
                                     ThemeManager.Current.TextDim
                                 );
                             }
@@ -1500,13 +1510,13 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                         else
                         {
                             _entityListBuffer.AppendLine(
-                                $"            {fieldName}: {fieldValue}", 
+                                $"            {fieldName}: {fieldValue}",
                                 ThemeManager.Current.TextDim
                             );
                         }
                     }
                 }
-                
+
                 componentsShown++;
             }
 
@@ -1525,33 +1535,40 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     /// <summary>
     ///     Renders all entities in a hierarchical tree view organized by relationships.
     /// </summary>
-    private void RenderRelationshipTreeView(List<EntityInfo> pinnedEntities, List<EntityInfo> regularEntities)
+    private void RenderRelationshipTreeView(
+        List<EntityInfo> pinnedEntities,
+        List<EntityInfo> regularEntities
+    )
     {
         _processedInTree.Clear();
-        
+
         // Combine all entities for tree processing
         var allEntities = new List<EntityInfo>();
         allEntities.AddRange(pinnedEntities);
         allEntities.AddRange(regularEntities);
-        
+
         // Build child lookup from FORWARD hierarchical relationships
         var childLookup = new Dictionary<int, List<EntityInfo>>();
         var hasParent = new HashSet<int>(); // Track which entities have parents
-        
-        foreach (var entity in allEntities)
+
+        foreach (EntityInfo entity in allEntities)
         {
             // Use "Children" relationship (ParentOf) to build parent → children map
-            if (entity.Relationships.TryGetValue("Children", out var children))
+            if (
+                entity.Relationships.TryGetValue("Children", out List<EntityRelationship>? children)
+            )
             {
-                foreach (var child in children)
+                foreach (EntityRelationship child in children)
                 {
                     if (!childLookup.ContainsKey(entity.Id))
                     {
                         childLookup[entity.Id] = new List<EntityInfo>();
                     }
-                    
+
                     // Find the actual child entity
-                    var childEntity = allEntities.FirstOrDefault(e => e.Id == child.EntityId);
+                    EntityInfo? childEntity = allEntities.FirstOrDefault(e =>
+                        e.Id == child.EntityId
+                    );
                     if (childEntity != null)
                     {
                         childLookup[entity.Id].Add(childEntity);
@@ -1559,17 +1576,20 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                     }
                 }
             }
-            
+
             // Check inverse "Parent" relationship to mark entities with parents
-            if (entity.Relationships.TryGetValue("Parent", out var parents) && parents.Count > 0)
+            if (
+                entity.Relationships.TryGetValue("Parent", out List<EntityRelationship>? parents)
+                && parents.Count > 0
+            )
             {
                 hasParent.Add(entity.Id);
             }
         }
-        
+
         // Find root entities (entities that don't have parents via any hierarchical relationship)
         var rootEntities = allEntities.Where(e => !hasParent.Contains(e.Id)).ToList();
-        
+
         // Display pinned section if any
         if (pinnedEntities.Count > 0)
         {
@@ -1577,22 +1597,22 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                 $"  {NerdFontIcons.Pinned} PINNED",
                 ThemeManager.Current.Warning
             );
-            
+
             foreach (EntityInfo entity in pinnedEntities)
             {
                 if (!rootEntities.Contains(entity))
                 {
                     // Pinned but not a root - show it anyway
-                    RenderEntityInTreeView(entity, "  ", childLookup, isLast: false, depth: 0);
+                    RenderEntityInTreeView(entity, "  ", childLookup, false, 0);
                 }
             }
-            
+
             if (pinnedEntities.Any(e => !rootEntities.Contains(e)))
             {
                 _entityListBuffer.AppendLine("", ThemeManager.Current.TextDim);
             }
         }
-        
+
         // Display root entities in tree format
         if (rootEntities.Count == 0)
         {
@@ -1606,25 +1626,28 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
             );
             return;
         }
-        
+
         // Count meaningful relationship stats for debug info
-        int entitiesWithChildren = allEntities.Count(e => 
-            e.Relationships.TryGetValue("Children", out var ch) && ch.Count > 0);
-        int totalChildCount = allEntities.Sum(e => 
-            e.Relationships.TryGetValue("Children", out var ch) ? ch.Count : 0);
-        
+        int entitiesWithChildren = allEntities.Count(e =>
+            e.Relationships.TryGetValue("Children", out List<EntityRelationship>? ch)
+            && ch.Count > 0
+        );
+        int totalChildCount = allEntities.Sum(e =>
+            e.Relationships.TryGetValue("Children", out List<EntityRelationship>? ch) ? ch.Count : 0
+        );
+
         _entityListBuffer.AppendLine(
             $"  {NerdFontIcons.CollapsedWithSpace}ROOT ({rootEntities.Count}) | {entitiesWithChildren} parents | {totalChildCount} children | {allEntities.Count} total",
             ThemeManager.Current.Info
         );
-        
+
         for (int i = 0; i < rootEntities.Count; i++)
         {
             EntityInfo rootEntity = rootEntities[i];
             bool isLast = i == rootEntities.Count - 1;
-            RenderEntityInTreeView(rootEntity, "  ", childLookup, isLast, depth: 0);
+            RenderEntityInTreeView(rootEntity, "  ", childLookup, isLast, 0);
         }
-        
+
         // If there are no hierarchical relationships at all, show alternative organization
         if (totalChildCount == 0)
         {
@@ -1634,40 +1657,42 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                 ThemeManager.Current.Warning
             );
             _entityListBuffer.AppendLine("", ThemeManager.Current.TextDim);
-            
+
             // Show entities with Owns relationships
-            var ownerEntities = allEntities.Where(e => 
-                e.Relationships.ContainsKey("Owns") && 
-                e.Relationships["Owns"].Count > 0
-            ).ToList();
-            
+            var ownerEntities = allEntities
+                .Where(e =>
+                    e.Relationships.ContainsKey("Owns") && e.Relationships["Owns"].Count > 0
+                )
+                .ToList();
+
             if (ownerEntities.Count > 0)
             {
                 _entityListBuffer.AppendLine(
                     $"  {NerdFontIcons.CollapsedWithSpace}OWNERSHIP ({ownerEntities.Count})",
                     ThemeManager.Current.Info
                 );
-                
-                foreach (var ownerEntity in ownerEntities)
+
+                foreach (EntityInfo ownerEntity in ownerEntities)
                 {
                     int lineNum = _entityListBuffer.TotalLines;
-                    var ownsRels = ownerEntity.Relationships["Owns"];
+                    List<EntityRelationship> ownsRels = ownerEntity.Relationships["Owns"];
                     _entityListBuffer.AppendLine(
                         $"    [{ownerEntity.Id}] {ownerEntity.Name} (owns {ownsRels.Count})",
                         ThemeManager.Current.Success
                     );
                     _lineToEntityId[lineNum] = ownerEntity.Id;
-                    
+
                     // Show owned entities if expanded
                     if (_expandedEntities.Contains(ownerEntity.Id))
                     {
-                        foreach (var ownsRel in ownsRels.Take(10))
+                        foreach (EntityRelationship ownsRel in ownsRels.Take(10))
                         {
                             _entityListBuffer.AppendLine(
                                 $"      └── [{ownsRel.EntityId}] {ownsRel.EntityName ?? "Unknown"}",
                                 ThemeManager.Current.TextDim
                             );
                         }
+
                         if (ownsRels.Count > 10)
                         {
                             _entityListBuffer.AppendLine(
@@ -1687,50 +1712,57 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
             }
         }
     }
-    
+
     /// <summary>
     ///     Renders a single entity in the tree view with its children.
     /// </summary>
     private void RenderEntityInTreeView(
-        EntityInfo entity, 
-        string indent, 
+        EntityInfo entity,
+        string indent,
         Dictionary<int, List<EntityInfo>> childLookup,
         bool isLast,
-        int depth)
+        int depth
+    )
     {
         const int MaxDepth = 5;
-        
+
         if (depth >= MaxDepth)
         {
-            _entityListBuffer.AppendLine($"{indent}... (max depth reached)", ThemeManager.Current.TextDim);
+            _entityListBuffer.AppendLine(
+                $"{indent}... (max depth reached)",
+                ThemeManager.Current.TextDim
+            );
             return;
         }
-        
+
         // Prevent infinite loops
         if (_processedInTree.Contains(entity.Id))
         {
-            _entityListBuffer.AppendLine($"{indent}... (circular reference)", ThemeManager.Current.TextDim);
+            _entityListBuffer.AppendLine(
+                $"{indent}... (circular reference)",
+                ThemeManager.Current.TextDim
+            );
             return;
         }
-        
+
         _processedInTree.Add(entity.Id);
-        
+
         // Determine tree branch characters
         string branch = isLast ? "└── " : "├── ";
         string childIndent = isLast ? "    " : "│   ";
-        
+
         // Determine entity status (use SAME expansion state as normal view!)
         bool isSelected = _selectedEntityId == entity.Id;
         bool isNew = _newEntityIds.Contains(entity.Id);
         bool isPinned = _pinnedEntities.Contains(entity.Id);
         bool isExpanded = _expandedEntities.Contains(entity.Id);
-        
+
         // Build entity display line
         string selectedMarker = isSelected ? NerdFontIcons.SelectedWithSpace : "";
         string pinnedMarker = isPinned ? $"{NerdFontIcons.Pinned} " : "";
         string newMarker = isNew ? "* " : "";
         string expandMarker = isExpanded ? "▼ " : "► ";
-        
+
         // Determine color
         Color statusColor;
         if (isNew)
@@ -1749,61 +1781,73 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
         {
             statusColor = ThemeManager.Current.Success;
         }
-        
+
         // Get children count for display
-        int childCount = childLookup.TryGetValue(entity.Id, out var children) ? children.Count : 0;
+        int childCount = childLookup.TryGetValue(entity.Id, out List<EntityInfo>? children)
+            ? children.Count
+            : 0;
         string childCountStr = childCount > 0 ? $" ({childCount} children)" : "";
-        
+
         // Render entity line
-        string displayLine = $"{indent}{branch}{selectedMarker}{expandMarker}{pinnedMarker}{newMarker}[{entity.Id}] {entity.Name}{childCountStr}";
+        string displayLine =
+            $"{indent}{branch}{selectedMarker}{expandMarker}{pinnedMarker}{newMarker}[{entity.Id}] {entity.Name}{childCountStr}";
         if (entity.Tag != null && entity.Tag != entity.Name)
         {
             displayLine += $" ({entity.Tag})";
         }
-        
+
         int lineNum = _entityListBuffer.TotalLines;
         _entityListBuffer.AppendLine(displayLine, statusColor);
         _lineToEntityId[lineNum] = entity.Id;
-        
+
         // Show full details if expanded (SAME as normal view)
         if (isExpanded)
         {
             // Show relationships first (excluding hierarchical ones shown in tree structure)
             if (entity.Relationships.Count > 0)
             {
-                bool hasNonHierarchical = entity.Relationships.Any(kvp => 
-                    kvp.Value.Count > 0 && 
-                    kvp.Key != "Children" && 
-                    kvp.Key != "Parent");
-                
+                bool hasNonHierarchical = entity.Relationships.Any(kvp =>
+                    kvp.Value.Count > 0 && kvp.Key != "Children" && kvp.Key != "Parent"
+                );
+
                 if (hasNonHierarchical)
                 {
-                    _entityListBuffer.AppendLine($"{indent}{childIndent}  Relationships:", ThemeManager.Current.Warning);
-                    
-                    foreach (var (relType, rels) in entity.Relationships)
+                    _entityListBuffer.AppendLine(
+                        $"{indent}{childIndent}  Relationships:",
+                        ThemeManager.Current.Warning
+                    );
+
+                    foreach (
+                        (string relType, List<EntityRelationship> rels) in entity.Relationships
+                    )
                     {
                         // Skip hierarchical relationships - they're shown in the tree structure
                         if (rels.Count == 0 || relType == "Children" || relType == "Parent")
+                        {
                             continue;
-                        
+                        }
+
                         _entityListBuffer.AppendLine(
                             $"{indent}{childIndent}    {relType} ({rels.Count}):",
                             ThemeManager.Current.Info
                         );
-                        
-                        foreach (var rel in rels.Take(5))
+
+                        foreach (EntityRelationship rel in rels.Take(5))
                         {
-                            Color relColor = rel.IsValid ? ThemeManager.Current.Success : ThemeManager.Current.TextDim;
-                            string entityDisplay = rel.EntityName != null
-                                ? $"[{rel.EntityId}] {rel.EntityName}"
-                                : $"[{rel.EntityId}]";
-                            
+                            Color relColor = rel.IsValid
+                                ? ThemeManager.Current.Success
+                                : ThemeManager.Current.TextDim;
+                            string entityDisplay =
+                                rel.EntityName != null
+                                    ? $"[{rel.EntityId}] {rel.EntityName}"
+                                    : $"[{rel.EntityId}]";
+
                             _entityListBuffer.AppendLine(
                                 $"{indent}{childIndent}      → {entityDisplay}",
                                 relColor
                             );
                         }
-                        
+
                         if (rels.Count > 5)
                         {
                             _entityListBuffer.AppendLine(
@@ -1812,43 +1856,58 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                             );
                         }
                     }
-                    
+
                     _entityListBuffer.AppendLine("", ThemeManager.Current.TextDim);
                 }
             }
-            
+
             // Show components
-            _entityListBuffer.AppendLine($"{indent}{childIndent}  Components:", ThemeManager.Current.Info);
+            _entityListBuffer.AppendLine(
+                $"{indent}{childIndent}  Components:",
+                ThemeManager.Current.Info
+            );
             int componentsShown = 0;
             foreach (string component in entity.Components.Take(MaxComponentsToShow))
             {
                 Color componentColor = GetComponentColor(component);
-                _entityListBuffer.AppendLine($"{indent}{childIndent}    - {component}", componentColor);
-                
+                _entityListBuffer.AppendLine(
+                    $"{indent}{childIndent}    - {component}",
+                    componentColor
+                );
+
                 // Show component field values if available
-                if (entity.ComponentData.TryGetValue(component, out Dictionary<string, string>? fields) && fields.Count > 0)
+                if (
+                    entity.ComponentData.TryGetValue(
+                        component,
+                        out Dictionary<string, string>? fields
+                    )
+                    && fields.Count > 0
+                )
                 {
-                    foreach ((string fieldName, string fieldValue) in fields.Take(MaxPropertiesToShow))
+                    foreach (
+                        (string fieldName, string fieldValue) in fields.Take(MaxPropertiesToShow)
+                    )
                     {
                         // Handle multiline values
                         if (fieldValue.Contains('\n'))
                         {
                             string[] lines = fieldValue.Split('\n');
                             _entityListBuffer.AppendLine(
-                                $"{indent}{childIndent}        {fieldName}: {lines[0]}", 
+                                $"{indent}{childIndent}        {fieldName}: {lines[0]}",
                                 ThemeManager.Current.TextDim
                             );
                             for (int i = 1; i < Math.Min(lines.Length, 3); i++)
                             {
                                 _entityListBuffer.AppendLine(
-                                    $"{indent}{childIndent}        {lines[i]}", 
+                                    $"{indent}{childIndent}        {lines[i]}",
                                     ThemeManager.Current.TextDim
                                 );
                             }
+
                             if (lines.Length > 3)
                             {
                                 _entityListBuffer.AppendLine(
-                                    $"{indent}{childIndent}        ... ({lines.Length - 3} more lines)", 
+                                    $"{indent}{childIndent}        ... ({lines.Length - 3} more lines)",
                                     ThemeManager.Current.TextDim
                                 );
                             }
@@ -1856,13 +1915,13 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                         else
                         {
                             _entityListBuffer.AppendLine(
-                                $"{indent}{childIndent}        {fieldName}: {fieldValue}", 
+                                $"{indent}{childIndent}        {fieldName}: {fieldValue}",
                                 ThemeManager.Current.TextDim
                             );
                         }
                     }
                 }
-                
+
                 componentsShown++;
             }
 
@@ -1876,7 +1935,7 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
 
             _entityListBuffer.AppendLine("", ThemeManager.Current.TextDim);
         }
-        
+
         // ALWAYS render children in tree view - that's the point of the tree!
         // Expand/collapse only controls whether we show DETAILS, not children
         if (childCount > 0 && children != null)
@@ -1885,15 +1944,15 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
             {
                 bool childIsLast = i == children.Count - 1;
                 RenderEntityInTreeView(
-                    children[i], 
-                    indent + childIndent, 
-                    childLookup, 
-                    childIsLast, 
+                    children[i],
+                    indent + childIndent,
+                    childLookup,
+                    childIsLast,
                     depth + 1
                 );
             }
         }
-        
+
         _processedInTree.Remove(entity.Id);
     }
 
@@ -1903,49 +1962,64 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     private void RenderEntityTree(EntityInfo entity, string indent, int depth)
     {
         const int MaxDepth = 5; // Prevent too deep recursion
-        
+
         if (depth >= MaxDepth)
         {
-            _entityListBuffer.AppendLine($"{indent}... (max depth reached)", ThemeManager.Current.TextDim);
+            _entityListBuffer.AppendLine(
+                $"{indent}... (max depth reached)",
+                ThemeManager.Current.TextDim
+            );
             return;
         }
-        
+
         // Prevent infinite loops - if we've already processed this entity in this tree
         if (_processedInTree.Contains(entity.Id))
         {
-            _entityListBuffer.AppendLine($"{indent}... (already shown)", ThemeManager.Current.TextDim);
+            _entityListBuffer.AppendLine(
+                $"{indent}... (already shown)",
+                ThemeManager.Current.TextDim
+            );
             return;
         }
-        
+
         _processedInTree.Add(entity.Id);
-        
+
         if (entity.Relationships.Count == 0)
         {
-            _entityListBuffer.AppendLine($"{indent}(no relationships)", ThemeManager.Current.TextDim);
+            _entityListBuffer.AppendLine(
+                $"{indent}(no relationships)",
+                ThemeManager.Current.TextDim
+            );
             return;
         }
-        
+
         // Render each relationship type
         bool isFirstType = true;
-        foreach ((string relationshipType, List<EntityRelationship> relationships) in entity.Relationships)
+        foreach (
+            (
+                string relationshipType,
+                List<EntityRelationship> relationships
+            ) in entity.Relationships
+        )
         {
             if (relationships.Count == 0)
             {
                 continue;
             }
-            
+
             if (!isFirstType)
             {
                 _entityListBuffer.AppendLine("", ThemeManager.Current.TextDim);
             }
+
             isFirstType = false;
-            
+
             // Relationship type header
             _entityListBuffer.AppendLine(
                 $"{indent}{relationshipType} ({relationships.Count}):",
                 ThemeManager.Current.Warning
             );
-            
+
             // Render each related entity as a tree node
             for (int i = 0; i < relationships.Count; i++)
             {
@@ -1953,32 +2027,33 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                 bool isLast = i == relationships.Count - 1;
                 string branch = isLast ? "└── " : "├── ";
                 string childIndent = isLast ? "    " : "│   ";
-                
-                Color relationshipColor = rel.IsValid 
-                    ? ThemeManager.Current.Success 
+
+                Color relationshipColor = rel.IsValid
+                    ? ThemeManager.Current.Success
                     : ThemeManager.Current.TextDim;
-                
-                string entityDisplay = rel.EntityName != null
-                    ? $"[{rel.EntityId}] {rel.EntityName}"
-                    : $"[{rel.EntityId}]";
-                
+
+                string entityDisplay =
+                    rel.EntityName != null
+                        ? $"[{rel.EntityId}] {rel.EntityName}"
+                        : $"[{rel.EntityId}]";
+
                 if (!rel.IsValid)
                 {
                     entityDisplay += " (invalid)";
                 }
-                
+
                 bool isExpanded = _expandedEntities.Contains(rel.EntityId);
                 string expandMarker = isExpanded ? "▼ " : "► ";
-                
+
                 _entityListBuffer.AppendLine(
                     $"{indent}{branch}{expandMarker}{entityDisplay}",
                     relationshipColor
                 );
-                
+
                 // Track line number for click handling
                 int lineNum = _entityListBuffer.TotalLines - 1;
                 _lineToEntityId[lineNum] = rel.EntityId;
-                
+
                 // Show metadata
                 if (rel.Metadata.Count > 0 && depth < 2) // Only show metadata at shallow depths
                 {
@@ -1990,7 +2065,7 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                         );
                     }
                 }
-                
+
                 // If expanded, recursively render this entity's relationships
                 if (isExpanded)
                 {
@@ -2002,7 +2077,7 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
                 }
             }
         }
-        
+
         _processedInTree.Remove(entity.Id);
     }
 
@@ -2012,7 +2087,7 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     private void RenderRelationships(EntityInfo entity)
     {
         _entityListBuffer.AppendLine("      Relationships:", ThemeManager.Current.Warning);
-        
+
         int totalRelationships = entity.Relationships.Values.Sum(list => list.Count);
         if (totalRelationships == 0)
         {
@@ -2022,7 +2097,12 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
         }
 
         // Render each relationship type
-        foreach ((string relationshipType, List<EntityRelationship> relationships) in entity.Relationships)
+        foreach (
+            (
+                string relationshipType,
+                List<EntityRelationship> relationships
+            ) in entity.Relationships
+        )
         {
             if (relationships.Count == 0)
             {
@@ -2038,13 +2118,14 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
             // Render each relationship
             foreach (EntityRelationship relationship in relationships)
             {
-                Color relationshipColor = relationship.IsValid 
-                    ? ThemeManager.Current.Success 
+                Color relationshipColor = relationship.IsValid
+                    ? ThemeManager.Current.Success
                     : ThemeManager.Current.TextDim;
 
-                string entityDisplay = relationship.EntityName != null
-                    ? $"[{relationship.EntityId}] {relationship.EntityName}"
-                    : $"[{relationship.EntityId}]";
+                string entityDisplay =
+                    relationship.EntityName != null
+                        ? $"[{relationship.EntityId}] {relationship.EntityName}"
+                        : $"[{relationship.EntityId}]";
 
                 if (!relationship.IsValid)
                 {
@@ -2150,17 +2231,17 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     {
         // Generate a hash from the component name
         int hash = componentName.GetHashCode();
-        
+
         // Use hash to generate HSL values
         // Hue: 0-360 degrees (full color spectrum)
-        float hue = (Math.Abs(hash) % 360);
-        
+        float hue = Math.Abs(hash) % 360;
+
         // Saturation: 50-80% (vibrant but not oversaturated)
-        float saturation = 0.5f + ((Math.Abs(hash >> 8) % 30) / 100f);
-        
+        float saturation = 0.5f + (Math.Abs(hash >> 8) % 30 / 100f);
+
         // Lightness: 50-70% (readable on dark background)
-        float lightness = 0.5f + ((Math.Abs(hash >> 16) % 20) / 100f);
-        
+        float lightness = 0.5f + (Math.Abs(hash >> 16) % 20 / 100f);
+
         return HslToRgb(hue, saturation, lightness);
     }
 
@@ -2169,42 +2250,52 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     /// </summary>
     private static Color HslToRgb(float h, float s, float l)
     {
-        float c = (1 - Math.Abs(2 * l - 1)) * s;
-        float x = c * (1 - Math.Abs((h / 60) % 2 - 1));
-        float m = l - c / 2;
-        
-        float r, g, b;
-        
+        float c = (1 - Math.Abs((2 * l) - 1)) * s;
+        float x = c * (1 - Math.Abs((h / 60 % 2) - 1));
+        float m = l - (c / 2);
+
+        float r,
+            g,
+            b;
+
         if (h < 60)
         {
-            r = c; g = x; b = 0;
+            r = c;
+            g = x;
+            b = 0;
         }
         else if (h < 120)
         {
-            r = x; g = c; b = 0;
+            r = x;
+            g = c;
+            b = 0;
         }
         else if (h < 180)
         {
-            r = 0; g = c; b = x;
+            r = 0;
+            g = c;
+            b = x;
         }
         else if (h < 240)
         {
-            r = 0; g = x; b = c;
+            r = 0;
+            g = x;
+            b = c;
         }
         else if (h < 300)
         {
-            r = x; g = 0; b = c;
+            r = x;
+            g = 0;
+            b = c;
         }
         else
         {
-            r = c; g = 0; b = x;
+            r = c;
+            g = 0;
+            b = x;
         }
-        
-        return new Color(
-            (byte)((r + m) * 255),
-            (byte)((g + m) * 255),
-            (byte)((b + m) * 255)
-        );
+
+        return new Color((byte)((r + m) * 255), (byte)((g + m) * 255), (byte)((b + m) * 255));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -2460,10 +2551,11 @@ public class EntitiesPanel : DebugPanelBase, IEntityOperations
     /// </summary>
     private void ToggleViewMode()
     {
-        _viewMode = _viewMode == EntityViewMode.Normal 
-            ? EntityViewMode.Relationships 
-            : EntityViewMode.Normal;
-        
+        _viewMode =
+            _viewMode == EntityViewMode.Normal
+                ? EntityViewMode.Relationships
+                : EntityViewMode.Normal;
+
         // Refresh display to show new view (expansion state is preserved)
         UpdateDisplay();
         UpdateStatusBar();
@@ -2477,7 +2569,7 @@ public enum EntityViewMode
 {
     /// <summary>Normal view showing components and relationships.</summary>
     Normal,
-    
+
     /// <summary>Relationships-only view showing only entity relationships.</summary>
-    Relationships
+    Relationships,
 }

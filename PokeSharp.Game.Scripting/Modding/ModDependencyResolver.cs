@@ -28,7 +28,7 @@ public class ModDependencyResolver
         ValidateDependencies(modList, modLookup);
 
         // Build dependency graph
-        var dependencyGraph = BuildDependencyGraph(modList, modLookup);
+        Dictionary<string, List<string>> dependencyGraph = BuildDependencyGraph(modList, modLookup);
 
         // Detect circular dependencies
         DetectCircularDependencies(dependencyGraph);
@@ -49,11 +49,18 @@ public class ModDependencyResolver
         {
             foreach (string dependency in mod.Dependencies)
             {
-                if (!TryParseDependency(dependency, out string? depId, out string? op, out string? version))
+                if (
+                    !TryParseDependency(
+                        dependency,
+                        out string? depId,
+                        out string? op,
+                        out string? version
+                    )
+                )
                 {
                     throw new ModDependencyException(
-                        $"Mod '{mod.Id}' has invalid dependency format: '{dependency}'. " +
-                        "Expected format: 'mod-id >= version' or 'mod-id == version'"
+                        $"Mod '{mod.Id}' has invalid dependency format: '{dependency}'. "
+                            + "Expected format: 'mod-id >= version' or 'mod-id == version'"
                     );
                 }
 
@@ -72,7 +79,10 @@ public class ModDependencyResolver
                 }
 
                 // Validate version constraint
-                if (!string.IsNullOrEmpty(version) && !ValidateVersionConstraint(depMod.Version, op, version))
+                if (
+                    !string.IsNullOrEmpty(version)
+                    && !ValidateVersionConstraint(depMod.Version, op, version)
+                )
                 {
                     throw new ModDependencyException(
                         $"Mod '{mod.Id}' requires '{depId} {op} {version}' but found version {depMod.Version}"
@@ -98,7 +108,10 @@ public class ModDependencyResolver
 
             foreach (string dependency in mod.Dependencies)
             {
-                if (TryParseDependency(dependency, out string? depId, out _, out _) && depId != null)
+                if (
+                    TryParseDependency(dependency, out string? depId, out _, out _)
+                    && depId != null
+                )
                 {
                     graph[mod.Id].Add(depId);
                 }
@@ -120,9 +133,7 @@ public class ModDependencyResolver
         {
             if (HasCircularDependency(modId, graph, visited, recursionStack, out string? cycle))
             {
-                throw new ModDependencyException(
-                    $"Circular dependency detected: {cycle}"
-                );
+                throw new ModDependencyException($"Circular dependency detected: {cycle}");
             }
         }
     }
@@ -257,15 +268,27 @@ public class ModDependencyResolver
     /// <summary>
     ///     Validates a version constraint using semantic versioning comparison.
     /// </summary>
-    private bool ValidateVersionConstraint(string actualVersion, string? op, string? requiredVersion)
+    private bool ValidateVersionConstraint(
+        string actualVersion,
+        string? op,
+        string? requiredVersion
+    )
     {
         if (string.IsNullOrEmpty(requiredVersion))
         {
             return true;
         }
 
-        if (!TryParseVersion(actualVersion, out var actual) ||
-            !TryParseVersion(requiredVersion, out var required))
+        if (
+            !TryParseVersion(
+                actualVersion,
+                out (int major, int minor, int patch, string prerelease) actual
+            )
+            || !TryParseVersion(
+                requiredVersion,
+                out (int major, int minor, int patch, string prerelease) required
+            )
+        )
         {
             return false;
         }
@@ -279,22 +302,25 @@ public class ModDependencyResolver
             "==" => comparison == 0,
             "<=" => comparison <= 0,
             "<" => comparison < 0,
-            _ => true
+            _ => true,
         };
     }
 
     /// <summary>
     ///     Parses a semantic version string into components.
     /// </summary>
-    private bool TryParseVersion(string version, out (int major, int minor, int patch, string prerelease) result)
+    private bool TryParseVersion(
+        string version,
+        out (int major, int minor, int patch, string prerelease) result
+    )
     {
         result = (0, 0, 0, string.Empty);
 
-        var parts = version.Split('-');
-        var versionPart = parts[0];
-        var prerelease = parts.Length > 1 ? parts[1] : string.Empty;
+        string[] parts = version.Split('-');
+        string versionPart = parts[0];
+        string prerelease = parts.Length > 1 ? parts[1] : string.Empty;
 
-        var numbers = versionPart.Split('.');
+        string[] numbers = versionPart.Split('.');
         if (numbers.Length < 1 || numbers.Length > 3)
         {
             return false;
@@ -320,15 +346,27 @@ public class ModDependencyResolver
         (int major, int minor, int patch, string prerelease) v2
     )
     {
-        if (v1.major != v2.major) return v1.major.CompareTo(v2.major);
-        if (v1.minor != v2.minor) return v1.minor.CompareTo(v2.minor);
-        if (v1.patch != v2.patch) return v1.patch.CompareTo(v2.patch);
+        if (v1.major != v2.major)
+        {
+            return v1.major.CompareTo(v2.major);
+        }
+
+        if (v1.minor != v2.minor)
+        {
+            return v1.minor.CompareTo(v2.minor);
+        }
+
+        if (v1.patch != v2.patch)
+        {
+            return v1.patch.CompareTo(v2.patch);
+        }
 
         // Prerelease comparison (empty string = stable, comes after prerelease)
         if (string.IsNullOrEmpty(v1.prerelease) && !string.IsNullOrEmpty(v2.prerelease))
         {
             return 1;
         }
+
         if (!string.IsNullOrEmpty(v1.prerelease) && string.IsNullOrEmpty(v2.prerelease))
         {
             return -1;
@@ -343,6 +381,9 @@ public class ModDependencyResolver
 /// </summary>
 public class ModDependencyException : Exception
 {
-    public ModDependencyException(string message) : base(message) { }
-    public ModDependencyException(string message, Exception innerException) : base(message, innerException) { }
+    public ModDependencyException(string message)
+        : base(message) { }
+
+    public ModDependencyException(string message, Exception innerException)
+        : base(message, innerException) { }
 }

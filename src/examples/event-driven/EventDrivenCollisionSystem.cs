@@ -58,7 +58,7 @@ public class EventDrivenCollisionService : ICollisionService
             FromDirection = fromDirection,
             Elevation = entityElevation,
             IsWalkable = true, // Default: walkable
-            IsCancelled = false
+            IsCancelled = false,
         };
 
         // Publish event - handlers can modify IsWalkable
@@ -94,7 +94,7 @@ public class EventDrivenCollisionService : ICollisionService
             Timestamp = 0f,
             FromDirection = fromDirection,
             Elevation = entityElevation,
-            IsWalkable = true
+            IsWalkable = true,
         };
 
         _events.Publish(ref collisionEvt);
@@ -111,7 +111,8 @@ public class EventDrivenCollisionService : ICollisionService
 
             foreach (Entity tileEntity in entities)
             {
-                if (!tileEntity.Has<TileBehavior>()) continue;
+                if (!tileEntity.Has<TileBehavior>())
+                    continue;
 
                 // Check elevation
                 if (tileEntity.Has<Elevation>())
@@ -129,7 +130,7 @@ public class EventDrivenCollisionService : ICollisionService
                     Timestamp = 0f,
                     FromDirection = fromDirection.Opposite(),
                     JumpDirection = Direction.None,
-                    JumpDistance = 2
+                    JumpDistance = 2,
                 };
 
                 _events.Publish(ref jumpEvt);
@@ -169,17 +170,32 @@ public class EventDrivenCollisionService : ICollisionService
             // Check tile behavior blocking
             if (_tileBehaviorSystem != null && _world != null && entity.Has<TileBehavior>())
             {
-                Direction toDirection = evt.FromDirection != Direction.None
-                    ? evt.FromDirection.Opposite()
-                    : Direction.None;
+                Direction toDirection =
+                    evt.FromDirection != Direction.None
+                        ? evt.FromDirection.Opposite()
+                        : Direction.None;
 
-                if (_tileBehaviorSystem.IsMovementBlocked(_world, entity, evt.FromDirection, toDirection))
+                if (
+                    _tileBehaviorSystem.IsMovementBlocked(
+                        _world,
+                        entity,
+                        evt.FromDirection,
+                        toDirection
+                    )
+                )
                 {
                     evt.IsWalkable = false;
                     evt.CancellationReason = "Blocked by tile behavior";
 
                     // Fire collision occurred event
-                    PublishCollisionOccurred(evt.Entity, evt.MapId, evt.Position, entity, evt.FromDirection, CollisionType.Tile);
+                    PublishCollisionOccurred(
+                        evt.Entity,
+                        evt.MapId,
+                        evt.Position,
+                        entity,
+                        evt.FromDirection,
+                        CollisionType.Tile
+                    );
                     return;
                 }
             }
@@ -194,7 +210,14 @@ public class EventDrivenCollisionService : ICollisionService
                     evt.CancellationReason = "Solid collision";
 
                     // Fire collision occurred event
-                    PublishCollisionOccurred(evt.Entity, evt.MapId, evt.Position, entity, evt.FromDirection, CollisionType.Entity);
+                    PublishCollisionOccurred(
+                        evt.Entity,
+                        evt.MapId,
+                        evt.Position,
+                        entity,
+                        evt.FromDirection,
+                        CollisionType.Entity
+                    );
                     return;
                 }
             }
@@ -218,7 +241,7 @@ public class EventDrivenCollisionService : ICollisionService
             Timestamp = 0f,
             CollidedWith = collidedWith,
             CollisionDirection = direction,
-            Type = type
+            Type = type,
         };
 
         _events.Publish(ref evt);
@@ -248,7 +271,7 @@ public static class DirectionExtensions
             Direction.South => Direction.North,
             Direction.East => Direction.West,
             Direction.West => Direction.East,
-            _ => Direction.None
+            _ => Direction.None,
         };
     }
 }

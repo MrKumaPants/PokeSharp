@@ -165,7 +165,7 @@ public class ConsolePanelBuilder
 
     private TextEditor CreateDefaultCommandEditor()
     {
-        var theme = ThemeManager.Current;
+        UITheme theme = ThemeManager.Current;
         return new TextEditor("console_input")
         {
             Prompt = NerdFontIcons.Prompt,
@@ -183,7 +183,7 @@ public class ConsolePanelBuilder
 
     private SuggestionsDropdown CreateDefaultSuggestionsDropdown()
     {
-        var theme = ThemeManager.Current;
+        UITheme theme = ThemeManager.Current;
         return new SuggestionsDropdown("console_suggestions")
         {
             MaxVisibleItems = _maxVisibleSuggestions,
@@ -216,7 +216,7 @@ public class ConsolePanelBuilder
 
     private SearchBar CreateDefaultSearchBar()
     {
-        var theme = ThemeManager.Current;
+        UITheme theme = ThemeManager.Current;
         return new SearchBar("console_search")
         {
             // BackgroundColor uses theme fallback - don't set explicitly
@@ -246,7 +246,7 @@ public class ConsolePanelBuilder
 
     private ParameterHintTooltip CreateDefaultParameterHints()
     {
-        var theme = ThemeManager.Current;
+        UITheme theme = ThemeManager.Current;
         return new ParameterHintTooltip("parameter_hints")
         {
             Constraint = new LayoutConstraint
@@ -263,7 +263,7 @@ public class ConsolePanelBuilder
 
     private DocumentationPopup CreateDefaultDocumentationPopup()
     {
-        var theme = ThemeManager.Current;
+        UITheme theme = ThemeManager.Current;
         return new DocumentationPopup("documentation_popup")
         {
             Constraint = new LayoutConstraint

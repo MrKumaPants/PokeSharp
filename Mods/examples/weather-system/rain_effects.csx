@@ -1,12 +1,12 @@
 #r "PokeSharp.Engine.Core.dll"
 #load "events/WeatherEvents.csx"
 
-using PokeSharp.Engine.Core.Events;
-using PokeSharp.Engine.Core.Events.System;
-using PokeSharp.Engine.Core.Scripting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using PokeSharp.Engine.Core.Events;
+using PokeSharp.Engine.Core.Events.System;
+using PokeSharp.Engine.Core.Scripting;
 
 /// <summary>
 /// Handles visual and audio effects for rain weather.
@@ -37,7 +37,7 @@ public class RainEffects : ScriptBase
                         PuddlePositions = new HashSet<(int, int)>(),
                         EvaporationTimer = 0f,
                         EvaporationDuration = 0f,
-                        IsEvaporating = false
+                        IsEvaporating = false,
                     }
                 );
                 Context.Logger.LogInformation("Rain state initialized");
@@ -50,7 +50,10 @@ public class RainEffects : ScriptBase
                 state.EvaporationTimer += evt.DeltaTime;
 
                 // Evaporate puddles gradually
-                if (state.EvaporationTimer >= state.EvaporationDuration / state.PuddlePositions.Count)
+                if (
+                    state.EvaporationTimer
+                    >= state.EvaporationDuration / state.PuddlePositions.Count
+                )
                 {
                     var puddle = state.PuddlePositions.First();
                     RemovePuddle(puddle.Item1, puddle.Item2);
@@ -90,7 +93,9 @@ public class RainEffects : ScriptBase
     {
         ref var state = ref Context.GetState<RainState>();
 
-        Context.Logger.LogInformation($"Rain started! Intensity: {evt.Intensity:F2}, Duration: {evt.DurationSeconds}s");
+        Context.Logger.LogInformation(
+            $"Rain started! Intensity: {evt.Intensity:F2}, Duration: {evt.DurationSeconds}s"
+        );
 
         state.IsRaining = true;
         state.RainIntensity = evt.Intensity;
@@ -163,7 +168,9 @@ public class RainEffects : ScriptBase
         // 3. Add splash effects when droplets hit ground
         // 4. Darken the lighting/sky
 
-        Context.Logger.LogInformation($"Starting rain particle effects (intensity: {intensity:F2})");
+        Context.Logger.LogInformation(
+            $"Starting rain particle effects (intensity: {intensity:F2})"
+        );
 
         // Calculate particle count based on intensity
         int particleCount = (int)(intensity * 500); // 0-500 particles

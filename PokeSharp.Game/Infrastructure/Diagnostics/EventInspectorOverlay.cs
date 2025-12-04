@@ -1,6 +1,4 @@
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.UI.Debug.Components.Debug;
 using PokeSharp.Engine.UI.Debug.Core;
@@ -14,18 +12,16 @@ namespace PokeSharp.Game.Infrastructure.Diagnostics;
 /// </summary>
 public class EventInspectorOverlay : IDisposable
 {
-    private readonly EventInspectorPanel _panel;
     private readonly EventInspectorAdapter _adapter;
-    private readonly UIContext _uiContext;
     private readonly InputState _inputState;
+    private readonly EventInspectorPanel _panel;
+    private readonly UIContext _uiContext;
     private bool _disposed;
 
     /// <summary>
     ///     Creates a new Event Inspector overlay.
     /// </summary>
-    public EventInspectorOverlay(
-        GraphicsDevice graphicsDevice,
-        EventBus eventBus)
+    public EventInspectorOverlay(GraphicsDevice graphicsDevice, EventBus eventBus)
     {
         // Create metrics (disabled by default)
         var metrics = new EventMetrics { IsEnabled = false };
@@ -34,7 +30,7 @@ public class EventInspectorOverlay : IDisposable
         eventBus.Metrics = metrics;
 
         // Create adapter
-        _adapter = new EventInspectorAdapter(eventBus, metrics, maxLogEntries: 100);
+        _adapter = new EventInspectorAdapter(eventBus, metrics, 100);
 
         // Create panel
         _panel = new EventInspectorPanelBuilder()
@@ -56,6 +52,17 @@ public class EventInspectorOverlay : IDisposable
     ///     Whether the overlay is currently visible.
     /// </summary>
     public bool IsVisible => _panel.Visible;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _uiContext.Dispose();
+    }
 
     /// <summary>
     ///     Toggles the overlay visibility and metrics collection.
@@ -86,10 +93,7 @@ public class EventInspectorOverlay : IDisposable
         }
 
         // Update screen size
-        _uiContext.UpdateScreenSize(
-            graphicsDevice.Viewport.Width,
-            graphicsDevice.Viewport.Height
-        );
+        _uiContext.UpdateScreenSize(graphicsDevice.Viewport.Width, graphicsDevice.Viewport.Height);
 
         // Update input state (keyboard for panel controls)
         _inputState.Update();
@@ -118,16 +122,5 @@ public class EventInspectorOverlay : IDisposable
                 _uiContext.EndFrame();
             }
         }
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        _disposed = true;
-        _uiContext.Dispose();
     }
 }

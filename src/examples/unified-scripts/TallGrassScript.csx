@@ -1,7 +1,7 @@
 #load "UnifiedScriptBase.cs"
 
-using PokeSharp.Scripting.Unified;
 using System;
+using PokeSharp.Scripting.Unified;
 
 /// <summary>
 /// Tall grass behavior - trigger random wild Pokemon encounters
@@ -40,11 +40,9 @@ public class TallGrassScript : UnifiedScriptBase
     private void HandlePlayerEntered(PlayerMoveEvent evt)
     {
         // Play rustling grass animation
-        Publish(new PlayAnimationEvent
-        {
-            AnimationName = "grass_rustle",
-            Position = Target.Position
-        });
+        Publish(
+            new PlayAnimationEvent { AnimationName = "grass_rustle", Position = Target.Position }
+        );
 
         // Play sound
         Publish(new PlaySoundEvent { SoundName = "grass_rustle" });
@@ -56,11 +54,9 @@ public class TallGrassScript : UnifiedScriptBase
     private void HandlePlayerExited(PlayerMoveEvent evt)
     {
         // Stop grass animation
-        Publish(new StopAnimationEvent
-        {
-            AnimationName = "grass_rustle",
-            Position = Target.Position
-        });
+        Publish(
+            new StopAnimationEvent { AnimationName = "grass_rustle", Position = Target.Position }
+        );
     }
 
     private void CheckForEncounter(IPlayer player)
@@ -102,13 +98,15 @@ public class TallGrassScript : UnifiedScriptBase
         Log($"Wild {encounterData.PokemonName} appeared!");
 
         // Publish encounter event
-        Publish(new WildPokemonEncounterEvent
-        {
-            PokemonName = encounterData.PokemonName,
-            Level = encounterData.Level,
-            Location = Target.Position,
-            EncounterType = "tall_grass"
-        });
+        Publish(
+            new WildPokemonEncounterEvent
+            {
+                PokemonName = encounterData.PokemonName,
+                Level = encounterData.Level,
+                Location = Target.Position,
+                EncounterType = "tall_grass",
+            }
+        );
     }
 
     private EncounterData DetermineWildPokemon()
@@ -117,9 +115,24 @@ public class TallGrassScript : UnifiedScriptBase
         // based on map, time of day, weather, etc.
         var pokemonOptions = new[]
         {
-            new EncounterData { PokemonName = "Rattata", Level = 3, Weight = 40 },
-            new EncounterData { PokemonName = "Pidgey", Level = 3, Weight = 40 },
-            new EncounterData { PokemonName = "Pikachu", Level = 5, Weight = 20 }
+            new EncounterData
+            {
+                PokemonName = "Rattata",
+                Level = 3,
+                Weight = 40,
+            },
+            new EncounterData
+            {
+                PokemonName = "Pidgey",
+                Level = 3,
+                Weight = 40,
+            },
+            new EncounterData
+            {
+                PokemonName = "Pikachu",
+                Level = 5,
+                Weight = 20,
+            },
         };
 
         // Weighted random selection

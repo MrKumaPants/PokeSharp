@@ -131,7 +131,7 @@ public class EntityPoolManager
     /// <summary>
     ///     Acquire entity from a named pool.
     /// </summary>
-    /// <param name="poolName">Pool name (uses <see cref="PoolNames.Default"/> if not specified)</param>
+    /// <param name="poolName">Pool name (uses <see cref="PoolNames.Default" /> if not specified)</param>
     /// <returns>Entity from the pool</returns>
     /// <exception cref="KeyNotFoundException">Thrown if pool doesn't exist</exception>
     /// <exception cref="InvalidOperationException">Thrown if pool is exhausted</exception>
@@ -203,7 +203,7 @@ public class EntityPoolManager
     /// }
     /// else if (result.FailureReason == PoolAcquireFailureReason.PoolExhausted)
     /// {
-    ///     _logger.LogError("Pool '{PoolName}' exhausted at {Size} entities", 
+    ///     _logger.LogError("Pool '{PoolName}' exhausted at {Size} entities",
     ///         result.PoolName, result.PoolSize);
     /// }
     /// </code>
@@ -389,36 +389,42 @@ public readonly struct PoolAcquireResult
     /// <summary>
     ///     Creates a success result.
     /// </summary>
-    public static PoolAcquireResult Success(Entity entity) =>
-        new()
+    public static PoolAcquireResult Success(Entity entity)
+    {
+        return new PoolAcquireResult
         {
             IsSuccess = true,
             Entity = entity,
             FailureReason = PoolAcquireFailureReason.None,
         };
+    }
 
     /// <summary>
     ///     Creates a "pool not found" failure result.
     /// </summary>
-    public static PoolAcquireResult PoolNotFound(string poolName) =>
-        new()
+    public static PoolAcquireResult PoolNotFound(string poolName)
+    {
+        return new PoolAcquireResult
         {
             IsSuccess = false,
             FailureReason = PoolAcquireFailureReason.PoolNotFound,
             PoolName = poolName,
         };
+    }
 
     /// <summary>
     ///     Creates a "pool exhausted" failure result.
     /// </summary>
-    public static PoolAcquireResult PoolExhausted(string poolName, int poolSize) =>
-        new()
+    public static PoolAcquireResult PoolExhausted(string poolName, int poolSize)
+    {
+        return new PoolAcquireResult
         {
             IsSuccess = false,
             FailureReason = PoolAcquireFailureReason.PoolExhausted,
             PoolName = poolName,
             PoolSize = poolSize,
         };
+    }
 }
 
 /// <summary>

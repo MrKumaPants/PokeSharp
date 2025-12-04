@@ -300,7 +300,8 @@ public class GameDataLoader
                     AllowRunning = GetPropertyBool(properties, "allowRunning") ?? true,
                     AllowCycling = GetPropertyBool(properties, "allowCycling") ?? true,
                     AllowEscaping = GetPropertyBool(properties, "allowEscaping") ?? false,
-                    BattleScene = GetPropertyString(properties, "battleScene") ?? "MAP_BATTLE_SCENE_NORMAL",
+                    BattleScene =
+                        GetPropertyString(properties, "battleScene") ?? "MAP_BATTLE_SCENE_NORMAL",
                     RegionMapSection = GetPropertyString(properties, "regionMapSection"),
                     NorthMapId = northMapId,
                     NorthConnectionOffset = northOffset,

@@ -20,14 +20,15 @@ namespace PokeSharp.Engine.Core.Events;
 ///         the EventBus level, not here.
 ///     </para>
 /// </remarks>
-public sealed class EventPool<TEvent> where TEvent : class, IPoolableEvent, new()
+public sealed class EventPool<TEvent>
+    where TEvent : class, IPoolableEvent, new()
 {
-    private readonly Stack<TEvent> _pool;
     private readonly int _maxSize;
+    private readonly Stack<TEvent> _pool;
     private readonly bool _trackStats;
+    private int _totalCreated;
     private int _totalRented;
     private int _totalReturned;
-    private int _totalCreated;
 
     /// <summary>
     ///     Creates a new event pool with specified configuration.
@@ -55,7 +56,9 @@ public sealed class EventPool<TEvent> where TEvent : class, IPoolableEvent, new(
     public TEvent Rent()
     {
         if (_trackStats)
+        {
             _totalRented++;
+        }
 
         if (_pool.Count > 0)
         {
@@ -65,7 +68,9 @@ public sealed class EventPool<TEvent> where TEvent : class, IPoolableEvent, new(
         }
 
         if (_trackStats)
+        {
             _totalCreated++;
+        }
 
         return new TEvent();
     }
@@ -77,10 +82,14 @@ public sealed class EventPool<TEvent> where TEvent : class, IPoolableEvent, new(
     public void Return(TEvent evt)
     {
         if (evt == null)
+        {
             return;
+        }
 
         if (_trackStats)
+        {
             _totalReturned++;
+        }
 
         // Only pool up to max size
         if (_pool.Count < _maxSize)
@@ -101,7 +110,7 @@ public sealed class EventPool<TEvent> where TEvent : class, IPoolableEvent, new(
             TotalReturned = _totalReturned,
             TotalCreated = _totalCreated,
             CurrentlyInUse = _totalRented - _totalReturned,
-            ReuseRate = _totalRented > 0 ? 1.0 - ((double)_totalCreated / _totalRented) : 0.0
+            ReuseRate = _totalRented > 0 ? 1.0 - ((double)_totalCreated / _totalRented) : 0.0,
         };
     }
 

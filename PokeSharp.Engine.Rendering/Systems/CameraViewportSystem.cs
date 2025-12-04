@@ -17,16 +17,16 @@ public class CameraViewportSystem(ILogger<CameraViewportSystem>? logger = null)
 {
     private readonly ILogger<CameraViewportSystem>? _logger = logger;
     private QueryDescription _cameraQuery;
-    private int _lastWindowWidth;
     private int _lastWindowHeight;
-
-    /// <inheritdoc />
-    public override int Priority => SystemPriority.CameraViewport;
+    private int _lastWindowWidth;
 
     /// <summary>
     ///     Gets the update priority. Lower values execute first.
     /// </summary>
     public int UpdatePriority => SystemPriority.CameraViewport;
+
+    /// <inheritdoc />
+    public override int Priority => SystemPriority.CameraViewport;
 
     /// <inheritdoc />
     public override void Initialize(World world)
@@ -90,4 +90,3 @@ public class CameraViewportSystem(ILogger<CameraViewportSystem>? logger = null)
         );
     }
 }
-

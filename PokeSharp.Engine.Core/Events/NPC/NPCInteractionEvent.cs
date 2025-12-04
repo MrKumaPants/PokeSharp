@@ -12,21 +12,17 @@ namespace PokeSharp.Engine.Core.Events.NPC;
 ///     - Player is facing an NPC
 ///     - NPC is within interaction range (adjacent tile)
 ///     - No other interaction is currently active
-///
 ///     This event triggers NPC-specific behavior:
 ///     - Start dialogue sequence
 ///     - Initiate battle (trainer NPCs)
 ///     - Give items (gift NPCs)
 ///     - Trigger scripted events
 ///     - Open shop interface (merchant NPCs)
-///
 ///     Handlers typically subscribe with priority to ensure correct execution order:
 ///     1. High priority: Battle system (trainer battles)
 ///     2. Medium priority: Dialogue system (conversations)
 ///     3. Low priority: Scripted events (custom behaviors)
-///
 ///     This class supports object pooling via EventPool{T} to reduce allocations.
-///
 ///     See EventSystemArchitecture.md for mod API event subscription patterns.
 /// </remarks>
 public sealed class NPCInteractionEvent : NotificationEventBase

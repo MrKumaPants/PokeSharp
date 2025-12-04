@@ -13,7 +13,7 @@ namespace PokeSharp.Game.Systems.Events;
 ///     prevent collisions. The collision service will respect the IsBlocked flag.
 ///     Properties are mutable to support event pooling for performance.
 /// </remarks>
-public record CollisionCheckEvent : TypeEventBase
+public record CollisionCheckEvent : TypeEventBase, PokeSharp.Engine.Core.Events.ICancellableEvent
 {
     /// <summary>
     ///     The entity performing the collision check (e.g., player, NPC).
@@ -55,6 +55,68 @@ public record CollisionCheckEvent : TypeEventBase
     ///     Optional reason for blocking (for debugging/logging).
     /// </summary>
     public string? BlockReason { get; set; }
+
+    /// <summary>
+    ///     Implementation of ICancellableEvent.IsCancelled.
+    ///     Alias for IsBlocked to support the standard cancellation API.
+    /// </summary>
+    public bool IsCancelled
+    {
+        get => IsBlocked;
+        set => IsBlocked = value;
+    }
+
+    /// <summary>
+    ///     Implementation of ICancellableEvent.CancellationReason.
+    ///     Alias for BlockReason to support the standard cancellation API.
+    /// </summary>
+    public string? CancellationReason
+    {
+        get => BlockReason;
+        set => BlockReason = value;
+    }
+
+    /// <summary>
+    ///     Unique identifier for this event instance (required by IGameEvent).
+    /// </summary>
+    public Guid EventId { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    ///     UTC timestamp when this event was created (required by IGameEvent).
+    ///     Note: TypeEventBase also has a float Timestamp property for game time.
+    /// </summary>
+    DateTime PokeSharp.Engine.Core.Events.IGameEvent.Timestamp { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    ///     Cancels this collision check (blocks movement).
+    /// </summary>
+    public void PreventDefault(string? reason = null)
+    {
+        IsBlocked = true;
+        BlockReason = reason;
+    }
+
+    /// <summary>
+    ///     Resets the event to a clean state for pool reuse.
+    ///     Overrides base Reset() to also clear collision-specific fields.
+    /// </summary>
+    /// <remarks>
+    ///     PERFORMANCE: Does NOT reset EventId or Timestamp to avoid allocations.
+    ///     EventId is only used for debugging, and Timestamp is set by callers.
+    ///     This maintains zero-GC pooling!
+    /// </remarks>
+    public override void Reset()
+    {
+        base.Reset();
+        Entity = default;
+        MapId = 0;
+        TilePosition = default;
+        FromDirection = Direction.None;
+        ToDirection = Direction.None;
+        Elevation = Components.Rendering.Elevation.Default;
+        IsBlocked = false;
+        BlockReason = null;
+    }
 }
 
 /// <summary>
@@ -170,7 +232,7 @@ public enum CollisionType
     Elevation,
 
     /// <summary>Blocked by tile behavior (one-way tiles, etc.)</summary>
-    Behavior
+    Behavior,
 }
 
 /// <summary>
@@ -191,5 +253,5 @@ public enum ResolutionStrategy
     Pushback,
 
     /// <summary>Custom resolution by script</summary>
-    Custom
+    Custom,
 }

@@ -2,11 +2,11 @@ using System;
 using System.IO;
 using System.Security;
 using System.Threading.Tasks;
-using NUnit.Framework;
 using FluentAssertions;
-using PokeSharp.Game.Scripting.Services;
-using PokeSharp.Game.Scripting.Runtime;
 using Microsoft.Extensions.Logging.Abstractions;
+using NUnit.Framework;
+using PokeSharp.Game.Scripting.Runtime;
+using PokeSharp.Game.Scripting.Services;
 
 namespace PokeSharp.EcsEvents.Tests.Scripts;
 
@@ -33,7 +33,8 @@ public class ScriptValidationTests
     public void Compile_ValidScript_CompilesSuccessfully()
     {
         // Arrange
-        var script = @"
+        var script =
+            @"
 using PokeSharp.Game.Scripting.Runtime;
 using PokeSharp.Game.Components.Movement;
 
@@ -59,7 +60,8 @@ return new TestBehavior();
     public void Compile_SyntaxError_ReturnsNull()
     {
         // Arrange
-        var invalidScript = @"
+        var invalidScript =
+            @"
 public class { // Invalid syntax
     return true;
 }
@@ -76,7 +78,8 @@ public class { // Invalid syntax
     public void Compile_MissingBaseClass_ReturnsNull()
     {
         // Arrange
-        var invalidScript = @"
+        var invalidScript =
+            @"
 public class NotABehavior // Does not inherit TileBehaviorScriptBase
 {
     public bool IsBlockedFrom() { return true; }
@@ -99,7 +102,8 @@ return new NotABehavior();
     public void Validate_FileSystemAccess_Rejected()
     {
         // Arrange
-        var maliciousScript = @"
+        var maliciousScript =
+            @"
 using System.IO;
 
 public class EvilScript : TileBehaviorScriptBase
@@ -115,7 +119,8 @@ return new EvilScript();
 
         // Act & Assert
         Action act = () => _validator.Validate(maliciousScript);
-        act.Should().Throw<SecurityException>()
+        act.Should()
+            .Throw<SecurityException>()
             .WithMessage("*File*", "file system access should be blocked");
     }
 
@@ -123,7 +128,8 @@ return new EvilScript();
     public void Validate_NetworkAccess_Rejected()
     {
         // Arrange
-        var networkScript = @"
+        var networkScript =
+            @"
 using System.Net;
 
 public class NetworkScript : TileBehaviorScriptBase
@@ -139,7 +145,8 @@ return new NetworkScript();
 
         // Act & Assert
         Action act = () => _validator.Validate(networkScript);
-        act.Should().Throw<SecurityException>()
+        act.Should()
+            .Throw<SecurityException>()
             .WithMessage("*Network*", "network access should be blocked");
     }
 
@@ -147,7 +154,8 @@ return new NetworkScript();
     public void Validate_ReflectionAccess_Rejected()
     {
         // Arrange
-        var reflectionScript = @"
+        var reflectionScript =
+            @"
 using System.Reflection;
 
 public class ReflectionScript : TileBehaviorScriptBase
@@ -164,7 +172,8 @@ return new ReflectionScript();
 
         // Act & Assert
         Action act = () => _validator.Validate(reflectionScript);
-        act.Should().Throw<SecurityException>()
+        act.Should()
+            .Throw<SecurityException>()
             .WithMessage("*Reflection*", "reflection should be blocked");
     }
 
@@ -172,7 +181,8 @@ return new ReflectionScript();
     public void Validate_ProcessExecution_Rejected()
     {
         // Arrange
-        var processScript = @"
+        var processScript =
+            @"
 using System.Diagnostics;
 
 public class ProcessScript : TileBehaviorScriptBase
@@ -188,7 +198,8 @@ return new ProcessScript();
 
         // Act & Assert
         Action act = () => _validator.Validate(processScript);
-        act.Should().Throw<SecurityException>()
+        act.Should()
+            .Throw<SecurityException>()
             .WithMessage("*Process*", "process execution should be blocked");
     }
 
@@ -196,7 +207,8 @@ return new ProcessScript();
     public void Validate_UnsafeCode_Rejected()
     {
         // Arrange
-        var unsafeScript = @"
+        var unsafeScript =
+            @"
 public class UnsafeScript : TileBehaviorScriptBase
 {
     public override bool IsBlockedFrom(ScriptContext ctx, Direction from, Direction to)
@@ -213,7 +225,8 @@ return new UnsafeScript();
 
         // Act & Assert
         Action act = () => _validator.Validate(unsafeScript);
-        act.Should().Throw<SecurityException>()
+        act.Should()
+            .Throw<SecurityException>()
             .WithMessage("*unsafe*", "unsafe code should be blocked");
     }
 
@@ -225,7 +238,8 @@ return new UnsafeScript();
     public async Task Execute_ValidScript_ReturnsInstance()
     {
         // Arrange
-        var script = @"
+        var script =
+            @"
 public class TestBehavior : TileBehaviorScriptBase
 {
     public override bool IsBlockedFrom(ScriptContext ctx, Direction from, Direction to)
@@ -250,7 +264,8 @@ return new TestBehavior();
     public void Execute_InfiniteLoop_TimesOut()
     {
         // Arrange
-        var infiniteLoopScript = @"
+        var infiniteLoopScript =
+            @"
 public class InfiniteLoop : TileBehaviorScriptBase
 {
     public override bool IsBlockedFrom(ScriptContext ctx, Direction from, Direction to)
@@ -267,15 +282,15 @@ return new InfiniteLoop();
 
         // Act & Assert
         Func<Task> act = async () => await executor.ExecuteAsync(compiled!);
-        act.Should().ThrowAsync<TimeoutException>(
-            "infinite loops should be terminated");
+        act.Should().ThrowAsync<TimeoutException>("infinite loops should be terminated");
     }
 
     [Test]
     public async Task Execute_MemoryAllocation_LimitEnforced()
     {
         // Arrange
-        var memoryHogScript = @"
+        var memoryHogScript =
+            @"
 public class MemoryHog : TileBehaviorScriptBase
 {
     public override bool IsBlockedFrom(ScriptContext ctx, Direction from, Direction to)
@@ -296,8 +311,8 @@ return new MemoryHog();
 
         // Act & Assert
         Func<Task> act = async () => await executor.ExecuteAsync(compiled!);
-        act.Should().ThrowAsync<OutOfMemoryException>(
-            "excessive memory allocation should be prevented");
+        act.Should()
+            .ThrowAsync<OutOfMemoryException>("excessive memory allocation should be prevented");
     }
 
     #endregion
@@ -308,7 +323,8 @@ return new MemoryHog();
     public void Script_StatelessExecution_NoSharedState()
     {
         // Scripts should be stateless - no instance fields/properties
-        var stateScript = @"
+        var stateScript =
+            @"
 public class StatefulScript : TileBehaviorScriptBase
 {
     private int counter = 0; // WRONG: Instance state
@@ -324,7 +340,8 @@ return new StatefulScript();
 
         // Act & Assert
         Action act = () => _validator.ValidateStateless(stateScript);
-        act.Should().Throw<SecurityException>()
+        act.Should()
+            .Throw<SecurityException>()
             .WithMessage("*stateless*", "scripts should not have instance state");
     }
 
@@ -332,7 +349,8 @@ return new StatefulScript();
     public async Task Script_UseContextState_AllowedPattern()
     {
         // Correct pattern: Use ScriptContext for state
-        var contextStateScript = @"
+        var contextStateScript =
+            @"
 public class ContextStateScript : TileBehaviorScriptBase
 {
     public override bool IsBlockedFrom(ScriptContext ctx, Direction from, Direction to)
@@ -361,7 +379,8 @@ return new ContextStateScript();
     public async Task Script_UseAllowedAPIs_ExecutesSuccessfully()
     {
         // Scripts can use safe APIs
-        var allowedScript = @"
+        var allowedScript =
+            @"
 using System;
 using System.Linq;
 
@@ -409,7 +428,7 @@ public class ScriptValidator
         "System.IO",
         "System.Net",
         "System.Diagnostics",
-        "System.Reflection"
+        "System.Reflection",
     };
 
     private static readonly string[] BlockedTypes = new[]
@@ -419,7 +438,7 @@ public class ScriptValidator
         "Process",
         "WebClient",
         "HttpClient",
-        "Assembly"
+        "Assembly",
     };
 
     public void Validate(string scriptCode)

@@ -1,10 +1,10 @@
 #r "PokeSharp.Engine.Core.dll"
 #load "events/WeatherEvents.csx"
 
+using System;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Engine.Core.Scripting;
-using System;
 
 /// <summary>
 /// Handles lightning flash and thunder sound effects during thunderstorms.
@@ -31,7 +31,10 @@ public class ThunderEffects : ScriptBase
                     new ThunderState
                     {
                         ThunderstrikeCount = 0,
-                        EnableDamage = Context.Configuration.GetValueOrDefault("enableWeatherDamage", true)
+                        EnableDamage = Context.Configuration.GetValueOrDefault(
+                            "enableWeatherDamage",
+                            true
+                        ),
                     }
                 );
                 Context.Logger.LogInformation("Thunder state initialized (damage: True)");
@@ -49,7 +52,9 @@ public class ThunderEffects : ScriptBase
         if (Context.HasState<ThunderState>())
         {
             ref var state = ref Context.GetState<ThunderState>();
-            Context.Logger.LogInformation($"Thunder Effects shutting down ({state.ThunderstrikeCount} total strikes)");
+            Context.Logger.LogInformation(
+                $"Thunder Effects shutting down ({state.ThunderstrikeCount} total strikes)"
+            );
             Context.RemoveState<ThunderState>();
         }
     }
@@ -59,8 +64,12 @@ public class ThunderEffects : ScriptBase
         ref var state = ref Context.GetState<ThunderState>();
         state.ThunderstrikeCount++;
 
-        Context.Logger.LogInformation($"⚡ THUNDERSTRIKE #{state.ThunderstrikeCount} at ({evt.StrikePosition.X}, {evt.StrikePosition.Y})!");
-        Context.Logger.LogInformation($"   Intensity: {evt.Intensity:F2}, Damage: {evt.Damage}, Radius: {evt.AffectRadius}");
+        Context.Logger.LogInformation(
+            $"⚡ THUNDERSTRIKE #{state.ThunderstrikeCount} at ({evt.StrikePosition.X}, {evt.StrikePosition.Y})!"
+        );
+        Context.Logger.LogInformation(
+            $"   Intensity: {evt.Intensity:F2}, Damage: {evt.Damage}, Radius: {evt.AffectRadius}"
+        );
 
         // Create visual lightning flash effect
         CreateLightningFlash(evt);
@@ -92,7 +101,9 @@ public class ThunderEffects : ScriptBase
         // 3. Flash intensity based on event intensity
         // 4. Brief screen shake
 
-        Context.Logger.LogInformation($"⚡ Lightning flash at ({evt.StrikePosition.X}, {evt.StrikePosition.Y})");
+        Context.Logger.LogInformation(
+            $"⚡ Lightning flash at ({evt.StrikePosition.X}, {evt.StrikePosition.Y})"
+        );
 
         // Example: Would call game rendering system
         // Renderer.CreateFlash(Color.White, evt.Intensity);
@@ -145,7 +156,9 @@ public class ThunderEffects : ScriptBase
         // 3. Apply damage to exposed entities
         // 4. Apply status effects (paralysis?)
 
-        Context.Logger.LogInformation($"Applying {evt.Damage} thunder damage in radius {evt.AffectRadius}");
+        Context.Logger.LogInformation(
+            $"Applying {evt.Damage} thunder damage in radius {evt.AffectRadius}"
+        );
 
         // Example: Would query game entity system
         // var entities = EntityManager.GetEntitiesInRadius(
@@ -164,7 +177,9 @@ public class ThunderEffects : ScriptBase
         // }
 
         // For now, just log hypothetical damage
-        Context.Logger.LogInformation($"Thunder damaged entities at ({evt.StrikePosition.X}, {evt.StrikePosition.Y})");
+        Context.Logger.LogInformation(
+            $"Thunder damaged entities at ({evt.StrikePosition.X}, {evt.StrikePosition.Y})"
+        );
     }
 
     private void CreateEnvironmentalEffects(ThunderstrikeEvent evt)
@@ -182,7 +197,9 @@ public class ThunderEffects : ScriptBase
         // Small chance to start a fire
         if (random.NextDouble() < 0.2) // 20% chance
         {
-            Context.Logger.LogInformation($"⚠️  Lightning started a fire at ({evt.StrikePosition.X}, {evt.StrikePosition.Y})!");
+            Context.Logger.LogInformation(
+                $"⚠️  Lightning started a fire at ({evt.StrikePosition.X}, {evt.StrikePosition.Y})!"
+            );
 
             // Example: Would call fire system
             // FireManager.StartFire(evt.StrikePosition.X, evt.StrikePosition.Y, evt.Intensity);
@@ -245,7 +262,7 @@ public class ThunderEffects : ScriptBase
             StrikePosition = (x, y),
             Damage = damage,
             AffectRadius = 2,
-            CausesEnvironmentalEffects = true
+            CausesEnvironmentalEffects = true,
         };
 
         Context.Events.Publish(evt);

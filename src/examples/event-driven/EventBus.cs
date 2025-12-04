@@ -11,12 +11,14 @@ namespace PokeSharp.Engine.Events;
 /// <summary>
 /// Delegate for event handlers that operate on events by reference (zero-copy).
 /// </summary>
-public delegate void EventHandler<TEvent>(ref TEvent evt) where TEvent : struct, IGameEvent;
+public delegate void EventHandler<TEvent>(ref TEvent evt)
+    where TEvent : struct, IGameEvent;
 
 /// <summary>
 /// Delegate for event filters (return false to skip handler).
 /// </summary>
-public delegate bool EventFilter<TEvent>(ref TEvent evt) where TEvent : struct, IGameEvent;
+public delegate bool EventFilter<TEvent>(ref TEvent evt)
+    where TEvent : struct, IGameEvent;
 
 /// <summary>
 /// High-performance event bus for game-wide event dispatching.
@@ -40,7 +42,8 @@ public sealed class EventBus : IDisposable
     /// Event is passed by reference to all handlers.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Publish<TEvent>(ref TEvent evt) where TEvent : struct, IGameEvent
+    public void Publish<TEvent>(ref TEvent evt)
+        where TEvent : struct, IGameEvent
     {
         ThrowIfDisposed();
         GetOrCreateDispatcher<TEvent>().Dispatch(ref evt);
@@ -51,7 +54,8 @@ public sealed class EventBus : IDisposable
     /// Convenience overload that accepts event by value.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Publish<TEvent>(TEvent evt) where TEvent : struct, IGameEvent
+    public void Publish<TEvent>(TEvent evt)
+        where TEvent : struct, IGameEvent
     {
         Publish(ref evt);
     }
@@ -61,7 +65,8 @@ public sealed class EventBus : IDisposable
     /// Event will be dispatched during ProcessQueue().
     /// Useful for events that shouldn't fire during system updates.
     /// </summary>
-    public void Queue<TEvent>(TEvent evt) where TEvent : struct, IGameEvent
+    public void Queue<TEvent>(TEvent evt)
+        where TEvent : struct, IGameEvent
     {
         ThrowIfDisposed();
         GetOrCreateDispatcher<TEvent>().Enqueue(evt);
@@ -96,7 +101,8 @@ public sealed class EventBus : IDisposable
         EventHandler<TEvent> handler,
         int priority = 0,
         EventFilter<TEvent>? filter = null
-    ) where TEvent : struct, IGameEvent
+    )
+        where TEvent : struct, IGameEvent
     {
         ThrowIfDisposed();
         return GetOrCreateDispatcher<TEvent>().Subscribe(handler, priority, filter);
@@ -121,7 +127,8 @@ public sealed class EventBus : IDisposable
     /// <summary>
     /// Gets statistics for an event type.
     /// </summary>
-    public EventStatistics? GetStatistics<TEvent>() where TEvent : struct, IGameEvent
+    public EventStatistics? GetStatistics<TEvent>()
+        where TEvent : struct, IGameEvent
     {
         if (_dispatchers.TryGetValue(typeof(TEvent), out var dispatcher))
         {
@@ -136,7 +143,8 @@ public sealed class EventBus : IDisposable
     /// <summary>
     /// Clears all handlers for an event type.
     /// </summary>
-    public void Clear<TEvent>() where TEvent : struct, IGameEvent
+    public void Clear<TEvent>()
+        where TEvent : struct, IGameEvent
     {
         if (_dispatchers.TryGetValue(typeof(TEvent), out var dispatcher))
         {
@@ -161,7 +169,8 @@ public sealed class EventBus : IDisposable
         }
     }
 
-    private EventDispatcher<TEvent> GetOrCreateDispatcher<TEvent>() where TEvent : struct, IGameEvent
+    private EventDispatcher<TEvent> GetOrCreateDispatcher<TEvent>()
+        where TEvent : struct, IGameEvent
     {
         var eventType = typeof(TEvent);
 
@@ -196,7 +205,8 @@ public sealed class EventBus : IDisposable
 /// <summary>
 /// Type-specific event dispatcher with priority queue and filtering.
 /// </summary>
-internal sealed class EventDispatcher<TEvent> : IEventDispatcher where TEvent : struct, IGameEvent
+internal sealed class EventDispatcher<TEvent> : IEventDispatcher
+    where TEvent : struct, IGameEvent
 {
     private readonly List<HandlerRegistration> _handlers = new();
     private readonly Queue<TEvent> _eventQueue = new(capacity: 32);
@@ -221,7 +231,8 @@ internal sealed class EventDispatcher<TEvent> : IEventDispatcher where TEvent : 
         EventFilter<TEvent>? filter = null
     )
     {
-        if (handler == null) throw new ArgumentNullException(nameof(handler));
+        if (handler == null)
+            throw new ArgumentNullException(nameof(handler));
 
         lock (_lock)
         {
@@ -231,7 +242,7 @@ internal sealed class EventDispatcher<TEvent> : IEventDispatcher where TEvent : 
                 SubscriptionId = subscriptionId,
                 Handler = handler,
                 Filter = filter,
-                Priority = priority
+                Priority = priority,
             };
 
             _handlers.Add(registration);
@@ -240,7 +251,7 @@ internal sealed class EventDispatcher<TEvent> : IEventDispatcher where TEvent : 
             return new EventSubscription
             {
                 SubscriptionId = subscriptionId,
-                EventType = typeof(TEvent)
+                EventType = typeof(TEvent),
             };
         }
     }
@@ -288,7 +299,11 @@ internal sealed class EventDispatcher<TEvent> : IEventDispatcher where TEvent : 
             }
             catch (Exception ex)
             {
-                _logger?.LogError(ex, "Event handler for {EventType} threw exception", typeof(TEvent).Name);
+                _logger?.LogError(
+                    ex,
+                    "Event handler for {EventType} threw exception",
+                    typeof(TEvent).Name
+                );
             }
 
             // Check if event was cancelled (for ICancellableEvent)
@@ -349,7 +364,7 @@ internal sealed class EventDispatcher<TEvent> : IEventDispatcher where TEvent : 
             TotalDispatched = _totalDispatched,
             TotalQueued = _totalQueued,
             TotalHandlerInvocations = _totalHandlerInvocations,
-            QueuedEvents = _eventQueue.Count
+            QueuedEvents = _eventQueue.Count,
         };
     }
 
@@ -395,10 +410,10 @@ public struct EventStatistics
 
     public override string ToString()
     {
-        return $"{EventType.Name}: {HandlerCount} handlers, " +
-               $"{TotalDispatched} dispatched, " +
-               $"{TotalHandlerInvocations} invocations, " +
-               $"{QueuedEvents} queued";
+        return $"{EventType.Name}: {HandlerCount} handlers, "
+            + $"{TotalDispatched} dispatched, "
+            + $"{TotalHandlerInvocations} invocations, "
+            + $"{QueuedEvents} queued";
     }
 }
 
@@ -407,7 +422,12 @@ public struct EventStatistics
 /// </summary>
 internal static class EventLoggerExtensions
 {
-    public static void LogError(this ILogger? logger, Exception ex, string message, params object[] args)
+    public static void LogError(
+        this ILogger? logger,
+        Exception ex,
+        string message,
+        params object[] args
+    )
     {
         // Placeholder for logging integration
         Console.WriteLine($"[ERROR] {string.Format(message, args)}: {ex.Message}");

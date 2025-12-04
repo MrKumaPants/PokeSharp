@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using Arch.Core;
-using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Configuration;
 using PokeSharp.Engine.Common.Logging;
@@ -42,10 +41,10 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
     private readonly IEventBus _eventBus;
     private readonly ILogger<ScriptAttachmentSystem> _logger;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly ScriptService _scriptService;
     private readonly ConcurrentDictionary<string, ILogger> _scriptLoggerCache = new();
-    private int _tickCounter;
+    private readonly ScriptService _scriptService;
     private int _lastAttachmentSummaryCount;
+    private int _tickCounter;
 
     public ScriptAttachmentSystem(
         ILogger<ScriptAttachmentSystem> logger,
@@ -65,19 +64,14 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
     }
 
     /// <summary>
-    ///     System priority - runs early to ensure scripts are loaded before other systems need them.
-    /// </summary>
-    public override int Priority => SystemPriority.ScriptAttachment;
-
-    /// <summary>
     ///     Update priority for IUpdateSystem interface.
     /// </summary>
     public int UpdatePriority => Priority;
 
-    protected override void OnInitialized()
-    {
-        _logger.LogSystemInitialized("ScriptAttachmentSystem");
-    }
+    /// <summary>
+    ///     System priority - runs early to ensure scripts are loaded before other systems need them.
+    /// </summary>
+    public override int Priority => SystemPriority.ScriptAttachment;
 
     public override void Update(World world, float deltaTime)
     {
@@ -180,6 +174,11 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
         }
     }
 
+    protected override void OnInitialized()
+    {
+        _logger.LogSystemInitialized("ScriptAttachmentSystem");
+    }
+
     /// <summary>
     ///     Loads a script from the specified path using ScriptService.
     /// </summary>
@@ -191,7 +190,7 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
         {
             // Use ScriptService to load and compile the script asynchronously
             // Note: This blocks, but it's acceptable for script loading
-            var loadTask = _scriptService.LoadScriptAsync(attachment.ScriptPath);
+            Task<object?> loadTask = _scriptService.LoadScriptAsync(attachment.ScriptPath);
             loadTask.Wait();
 
             if (loadTask.IsCompletedSuccessfully && loadTask.Result is ScriptBase scriptInstance)
@@ -205,10 +204,7 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
                 return true;
             }
 
-            _logger.LogError(
-                "Failed to load script '{ScriptPath}'",
-                attachment.ScriptPath
-            );
+            _logger.LogError("Failed to load script '{ScriptPath}'", attachment.ScriptPath);
             return false;
         }
         catch (Exception ex)
@@ -291,11 +287,13 @@ public class ScriptAttachmentSystem : SystemBase, IUpdateSystem
         try
         {
             // ScriptBase uses event-driven architecture - publish TickEvent for scripts to react to
-            _eventBus.Publish(new TickEvent
-            {
-                DeltaTime = deltaTime,
-                TotalTime = 0f // TODO: Track total elapsed time if needed
-            });
+            _eventBus.Publish(
+                new TickEvent
+                {
+                    DeltaTime = deltaTime,
+                    TotalTime = 0f, // TODO: Track total elapsed time if needed
+                }
+            );
         }
         catch (Exception ex)
         {

@@ -1,6 +1,9 @@
+using System.Collections;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Arch.Core;
 using Arch.Core.Extensions;
+using Microsoft.Xna.Framework;
 using EntityExtensions = Arch.Core.Extensions.EntityExtensions;
 
 // For Has<T> and Get<T> extension methods
@@ -138,9 +141,11 @@ public class DebugComponentRegistry
                     .FirstOrDefault(m =>
                     {
                         if (m.Name != "Get" || !m.IsGenericMethod)
+                        {
                             return false;
-                        
-                        var parameters = m.GetParameters();
+                        }
+
+                        ParameterInfo[] parameters = m.GetParameters();
                         // Check for single Entity parameter (might be by-ref or in)
                         return parameters.Length == 1;
                     });
@@ -157,7 +162,7 @@ public class DebugComponentRegistry
 
             // Invoke Get<T> - even though it returns ref T, Invoke will box it
             object? component = getMethod.Invoke(null, new object[] { entity });
-            
+
             if (component == null)
             {
                 properties["_error"] = "Get<T> returned null";
@@ -166,7 +171,7 @@ public class DebugComponentRegistry
 
             // Extract fields and properties
             properties = ExtractComponentFields(component, componentType);
-            
+
             // Empty structs (flags) won't have any fields - this is expected
             // Don't add debug message for empty components
         }
@@ -232,7 +237,6 @@ public class DebugComponentRegistry
             // Note: This method doesn't have access to World, so it can't extract values
             // Use GetPropertiesDynamicWithWorld instead when World is available
             return properties;
-
         }
         catch
         {
@@ -249,7 +253,7 @@ public class DebugComponentRegistry
     private static Dictionary<string, string> GetPropertiesDynamicWithWorld(
         Entity entity,
         Type componentType,
-        Arch.Core.World world
+        World world
     )
     {
         var properties = new Dictionary<string, string>();
@@ -257,12 +261,10 @@ public class DebugComponentRegistry
         try
         {
             // Use World.GetComponent<T>(Entity) which returns by value
-            MethodInfo? getComponentMethod = typeof(Arch.Core.World)
+            MethodInfo? getComponentMethod = typeof(World)
                 .GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .FirstOrDefault(m =>
-                    m.Name == "GetComponent"
-                    && m.IsGenericMethod
-                    && m.GetParameters().Length == 1
+                    m.Name == "GetComponent" && m.IsGenericMethod && m.GetParameters().Length == 1
                 );
 
             if (getComponentMethod == null)
@@ -272,7 +274,7 @@ public class DebugComponentRegistry
 
             MethodInfo genericGet = getComponentMethod.MakeGenericMethod(componentType);
             object? component = genericGet.Invoke(world, new object[] { entity });
-            
+
             if (component == null)
             {
                 return properties;
@@ -343,66 +345,78 @@ public class DebugComponentRegistry
                 return b.ToString().ToLower();
             case Enum e:
                 return e.ToString();
-            
+
             // Handle dictionaries BEFORE ICollection (since IDictionary inherits from ICollection)
-            case System.Collections.IDictionary dict:
+            case IDictionary dict:
                 if (dict.Count == 0)
+                {
                     return "{}";
-                
+                }
+
                 var lines = new List<string> { $"{{{dict.Count} entries}}" };
-                
-                foreach (System.Collections.DictionaryEntry entry in dict)
+
+                foreach (DictionaryEntry entry in dict)
                 {
                     string key = FormatValue(entry.Key);
                     string val = FormatValue(entry.Value);
                     lines.Add($"  {key}: {val}");
                 }
-                
+
                 return string.Join("\n", lines);
-            
+
             // Handle arrays
             case Array arr:
                 if (arr.Length == 0)
+                {
                     return "[]";
+                }
+
                 return FormatArray(arr);
-            
+
             // Handle common collections (non-generic)
-            case System.Collections.ICollection collection:
+            case ICollection collection:
                 if (collection.Count == 0)
+                {
                     return "[]";
+                }
+
                 return FormatCollection(collection);
-            
+
             // Handle IEnumerable (last resort for collections like HashSet<T>, List<T>, etc.)
-            case System.Collections.IEnumerable enumerable when !(value is string):
+            case IEnumerable enumerable when !(value is string):
                 return FormatEnumerable(enumerable);
-            
+
             // Handle XNA/MonoGame types
-            case Microsoft.Xna.Framework.Vector2 v2:
+            case Vector2 v2:
                 return $"({v2.X:F1}, {v2.Y:F1})";
-            case Microsoft.Xna.Framework.Vector3 v3:
+            case Vector3 v3:
                 return $"({v3.X:F1}, {v3.Y:F1}, {v3.Z:F1})";
-            case Microsoft.Xna.Framework.Rectangle rect:
+            case Rectangle rect:
                 return $"({rect.X}, {rect.Y}, {rect.Width}x{rect.Height})";
-            case Microsoft.Xna.Framework.Point pt:
+            case Point pt:
                 return $"({pt.X}, {pt.Y})";
-            case Microsoft.Xna.Framework.Color color:
+            case Color color:
                 return $"#{color.R:X2}{color.G:X2}{color.B:X2}{(color.A < 255 ? color.A.ToString("X2") : "")}";
-            
+
             // Handle ValueTuple types
-            case System.Runtime.CompilerServices.ITuple tuple:
+            case ITuple tuple:
                 var tupleItems = new List<string>();
                 for (int i = 0; i < tuple.Length; i++)
                 {
                     tupleItems.Add(FormatValue(tuple[i]));
                 }
+
                 return $"({string.Join(", ", tupleItems)})";
-            
+
             // Default: use ToString()
             default:
                 string str = value.ToString() ?? "?";
                 // If ToString() just returns the type name, it's not helpful
                 if (str == value.GetType().FullName || str == value.GetType().Name)
+                {
                     return $"<{value.GetType().Name}>";
+                }
+
                 return str;
         }
     }
@@ -413,58 +427,64 @@ public class DebugComponentRegistry
     private static string FormatArray(Array arr)
     {
         if (arr.Length == 0)
+        {
             return "[]";
-        
+        }
+
         var lines = new List<string> { $"[{arr.Length} items]" };
-        
+
         for (int i = 0; i < arr.Length; i++)
         {
             lines.Add($"  [{i}] {FormatValue(arr.GetValue(i))}");
         }
-        
+
         return string.Join("\n", lines);
     }
 
     /// <summary>
     ///     Formats a collection for display - always multiline, shows all items.
     /// </summary>
-    private static string FormatCollection(System.Collections.ICollection collection)
+    private static string FormatCollection(ICollection collection)
     {
         if (collection.Count == 0)
+        {
             return "[]";
-        
+        }
+
         var lines = new List<string> { $"[{collection.Count} items]" };
-        
+
         int idx = 0;
         foreach (object? item in collection)
         {
             lines.Add($"  [{idx}] {FormatValue(item)}");
             idx++;
         }
-        
+
         return string.Join("\n", lines);
     }
 
     /// <summary>
     ///     Formats an IEnumerable for display - always multiline, shows all items.
     /// </summary>
-    private static string FormatEnumerable(System.Collections.IEnumerable enumerable)
+    private static string FormatEnumerable(IEnumerable enumerable)
     {
         var items = new List<object?>();
         foreach (object? item in enumerable)
         {
             items.Add(item);
         }
-        
+
         if (items.Count == 0)
+        {
             return "[]";
-        
+        }
+
         var lines = new List<string> { $"[{items.Count} items]" };
         for (int i = 0; i < items.Count; i++)
         {
             lines.Add($"  [{i}] {FormatValue(items[i])}");
         }
-        
+
         return string.Join("\n", lines);
     }
 
@@ -540,12 +560,12 @@ public class DebugComponentRegistry
         try
         {
             var componentsOnEntity = _descriptors.Where(d => d.HasComponent(entity)).ToList();
-            
+
             // Iterate through registered descriptors and extract component data
             foreach (ComponentDescriptor descriptor in componentsOnEntity)
             {
                 var fields = new Dictionary<string, string>();
-                
+
                 // If descriptor has GetProperties, use it (already has the component data)
                 if (descriptor.GetProperties != null)
                 {
@@ -560,7 +580,7 @@ public class DebugComponentRegistry
                         fields["_error"] = $"Failed: {ex.Message}";
                     }
                 }
-                
+
                 // Always add to componentData (even if empty) so we know it's there
                 componentData[descriptor.DisplayName] = fields;
             }
@@ -570,7 +590,7 @@ public class DebugComponentRegistry
             // Add error to help debug
             componentData["_GetComponentData_Error"] = new Dictionary<string, string>
             {
-                ["error"] = ex.Message
+                ["error"] = ex.Message,
             };
         }
 
@@ -580,12 +600,19 @@ public class DebugComponentRegistry
     /// <summary>
     ///     Extracts public fields and properties from a component object.
     /// </summary>
-    private static Dictionary<string, string> ExtractComponentFields(object component, Type componentType)
+    private static Dictionary<string, string> ExtractComponentFields(
+        object component,
+        Type componentType
+    )
     {
         var fields = new Dictionary<string, string>();
 
         // Extract public properties
-        foreach (PropertyInfo prop in componentType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        foreach (
+            PropertyInfo prop in componentType.GetProperties(
+                BindingFlags.Public | BindingFlags.Instance
+            )
+        )
         {
             try
             {
@@ -599,7 +626,9 @@ public class DebugComponentRegistry
         }
 
         // Extract public fields
-        foreach (FieldInfo field in componentType.GetFields(BindingFlags.Public | BindingFlags.Instance))
+        foreach (
+            FieldInfo field in componentType.GetFields(BindingFlags.Public | BindingFlags.Instance)
+        )
         {
             try
             {

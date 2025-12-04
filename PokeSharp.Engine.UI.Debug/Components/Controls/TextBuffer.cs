@@ -2,7 +2,6 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using PokeSharp.Engine.UI.Debug.Components.Base;
-using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Core;
 using PokeSharp.Engine.UI.Debug.Input;
 using PokeSharp.Engine.UI.Debug.Layout;
@@ -31,6 +30,9 @@ public class TextBuffer : UIComponent, ITextDisplay
     private readonly List<TextBufferLine> _filteredLines = new();
     private readonly List<TextBufferLine> _lines = new();
 
+    // Scrollbar tracking
+    private readonly ScrollbarComponent _scrollbar = new();
+
     // Search
     private readonly List<int> _searchMatches = new(); // Line indices that match search
 
@@ -49,9 +51,6 @@ public class TextBuffer : UIComponent, ITextDisplay
     // Hover tracking
     private int _hoveredLine = -1;
     private bool _isDirty = true;
-
-    // Scrollbar tracking
-    private readonly ScrollbarComponent _scrollbar = new();
 
     // Text selection tracking
     private bool _isSelectingText;
@@ -713,7 +712,6 @@ public class TextBuffer : UIComponent, ITextDisplay
         // Handle input for scrolling (keyboard only - mouse wheel handled by ScrollbarComponent)
         if (input != null && resolvedRect.Contains(input.MousePosition))
         {
-
             // Handle keyboard scrolling with key repeat
             if (input.IsKeyPressedWithRepeat(Keys.PageUp))
             {
@@ -970,7 +968,13 @@ public class TextBuffer : UIComponent, ITextDisplay
                 scrollbarHeight
             );
             // Note: Using theme colors - custom colors would require ScrollbarComponent enhancement
-            _scrollbar.Draw(renderer, ThemeManager.Current, scrollbarRect, lines.Count, visibleCount);
+            _scrollbar.Draw(
+                renderer,
+                ThemeManager.Current,
+                scrollbarRect,
+                lines.Count,
+                visibleCount
+            );
         }
     }
 
@@ -1144,7 +1148,6 @@ public class TextBuffer : UIComponent, ITextDisplay
             }
         }
     }
-
 
     private int GetLineAtPosition(Point mousePos, LayoutRect rect)
     {

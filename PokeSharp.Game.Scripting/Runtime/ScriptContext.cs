@@ -585,7 +585,9 @@ public sealed class ScriptContext
     /// </code>
     /// </example>
     public IDisposable OnMovementStarted(Action<MovementStartedEvent> handler)
-        => On(handler, priority: 500);
+    {
+        return On(handler, 500);
+    }
 
     /// <summary>
     ///     Subscribes to MovementCompletedEvent with default priority.
@@ -609,7 +611,9 @@ public sealed class ScriptContext
     /// </code>
     /// </example>
     public IDisposable OnMovementCompleted(Action<MovementCompletedEvent> handler)
-        => On(handler, priority: 500);
+    {
+        return On(handler, 500);
+    }
 
     /// <summary>
     ///     Subscribes to CollisionDetectedEvent with default priority.
@@ -636,7 +640,9 @@ public sealed class ScriptContext
     /// </code>
     /// </example>
     public IDisposable OnCollisionDetected(Action<CollisionDetectedEvent> handler)
-        => On(handler, priority: 500);
+    {
+        return On(handler, 500);
+    }
 
     /// <summary>
     ///     Subscribes to TileSteppedOnEvent with default priority.
@@ -663,7 +669,9 @@ public sealed class ScriptContext
     /// </code>
     /// </example>
     public IDisposable OnTileSteppedOn(Action<TileSteppedOnEvent> handler)
-        => On(handler, priority: 500);
+    {
+        return On(handler, 500);
+    }
 
     #endregion
 }

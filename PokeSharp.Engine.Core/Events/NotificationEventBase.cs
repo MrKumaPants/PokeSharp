@@ -10,10 +10,8 @@ namespace PokeSharp.Engine.Core.Events;
 ///     - MovementBlockedEvent: Movement was blocked
 ///     - CollisionDetectedEvent: A collision was detected
 ///     - CollisionResolvedEvent: A collision was resolved
-///
 ///     These events cannot be cancelled because the action is already done.
 ///     Handlers can react to them but cannot prevent them.
-///
 ///     For events that CAN be cancelled (to prevent an action), use CancellableEventBase.
 /// </remarks>
 public abstract class NotificationEventBase : IGameEvent, IPoolableEvent

@@ -23,8 +23,8 @@ public class ConsoleContext : IConsoleContext
     private readonly Action _closeAction;
     private readonly ConsoleScene _consoleScene;
     private readonly ConsoleLoggingCallbacks _loggingCallbacks;
-    private readonly ConsoleServices _services;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ConsoleServices _services;
 
     /// <summary>
     ///     Creates a new ConsoleContext with aggregated services.
@@ -51,7 +51,8 @@ public class ConsoleContext : IConsoleContext
             loggingCallbacks ?? throw new ArgumentNullException(nameof(loggingCallbacks));
         TimeControl = timeControl; // Can be null - time control is optional
         _services = services ?? throw new ArgumentNullException(nameof(services));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _serviceProvider =
+            serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
     }
 
     /// <summary>

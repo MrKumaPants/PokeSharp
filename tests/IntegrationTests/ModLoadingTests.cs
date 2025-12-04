@@ -69,7 +69,7 @@ public class ModLoadingTests : IDisposable
                 Id = "mod-a",
                 Name = "Mod A",
                 Version = "1.0.0",
-                Scripts = new List<string>()
+                Scripts = new List<string>(),
             },
             new ModManifest
             {
@@ -77,7 +77,7 @@ public class ModLoadingTests : IDisposable
                 Name = "Mod B",
                 Version = "1.0.0",
                 Scripts = new List<string>(),
-                Dependencies = new List<string> { "mod-a" }
+                Dependencies = new List<string> { "mod-a" },
             },
             new ModManifest
             {
@@ -85,8 +85,8 @@ public class ModLoadingTests : IDisposable
                 Name = "Mod C",
                 Version = "1.0.0",
                 Scripts = new List<string>(),
-                Dependencies = new List<string> { "mod-b" }
-            }
+                Dependencies = new List<string> { "mod-b" },
+            },
         };
 
         // Simulate loading
@@ -112,16 +112,15 @@ public class ModLoadingTests : IDisposable
                 Name = "Dependent Mod",
                 Version = "1.0.0",
                 Scripts = new List<string>(),
-                Dependencies = new List<string> { "non-existent-mod" }
-            }
+                Dependencies = new List<string> { "non-existent-mod" },
+            },
         };
 
         var resolver = new ModDependencyResolver();
 
         // Act & Assert
         var act = () => resolver.ResolveDependencies(manifests);
-        act.Should().Throw<ModDependencyException>()
-            .WithMessage("*non-existent-mod*");
+        act.Should().Throw<ModDependencyException>().WithMessage("*non-existent-mod*");
     }
 
     [Fact]
@@ -136,7 +135,7 @@ public class ModLoadingTests : IDisposable
                 Name = "Mod A",
                 Version = "1.0.0",
                 Scripts = new List<string>(),
-                Dependencies = new List<string> { "mod-b" }
+                Dependencies = new List<string> { "mod-b" },
             },
             new ModManifest
             {
@@ -144,16 +143,15 @@ public class ModLoadingTests : IDisposable
                 Name = "Mod B",
                 Version = "1.0.0",
                 Scripts = new List<string>(),
-                Dependencies = new List<string> { "mod-a" }
-            }
+                Dependencies = new List<string> { "mod-a" },
+            },
         };
 
         var resolver = new ModDependencyResolver();
 
         // Act & Assert
         var act = () => resolver.ResolveDependencies(manifests);
-        act.Should().Throw<ModDependencyException>()
-            .WithMessage("*circular*");
+        act.Should().Throw<ModDependencyException>().WithMessage("*circular*");
     }
 
     #endregion
@@ -247,13 +245,15 @@ public class ModLoadingTests : IDisposable
 
         for (int i = 0; i < 100; i++)
         {
-            _eventBus.Publish(new TileSteppedOnEvent
-            {
-                Entity = _world.Create(),
-                TileX = i,
-                TileY = i,
-                TileType = "test"
-            });
+            _eventBus.Publish(
+                new TileSteppedOnEvent
+                {
+                    Entity = _world.Create(),
+                    TileX = i,
+                    TileY = i,
+                    TileType = "test",
+                }
+            );
         }
 
         sub.Dispose();
@@ -281,13 +281,15 @@ public class ModLoadingTests : IDisposable
             version1EventCount++;
         });
 
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 1,
-            TileY = 1,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 1,
+                TileY = 1,
+                TileType = "test",
+            }
+        );
 
         // Act - Reload (dispose old, create new)
         sub1.Dispose();
@@ -297,13 +299,15 @@ public class ModLoadingTests : IDisposable
             version2EventCount++;
         });
 
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 2,
-            TileY = 2,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 2,
+                TileY = 2,
+                TileType = "test",
+            }
+        );
 
         // Assert
         version1EventCount.Should().Be(1, "v1 should handle one event");
@@ -329,13 +333,15 @@ public class ModLoadingTests : IDisposable
         sub2 = _eventBus.Subscribe<TileSteppedOnEvent>(_ => mod2Count++);
 
         // Publish event
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 1,
-            TileY = 1,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 1,
+                TileY = 1,
+                TileType = "test",
+            }
+        );
 
         // Assert
         mod1Count.Should().Be(1, "mod 1 should still be functional");
@@ -361,10 +367,12 @@ public class ModLoadingTests : IDisposable
         for (int i = 0; i < 10; i++)
         {
             var modId = i;
-            subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(_ =>
-            {
-                _output.WriteLine($"[Mod {modId}] Event handled");
-            }));
+            subscriptions.Add(
+                _eventBus.Subscribe<TileSteppedOnEvent>(_ =>
+                {
+                    _output.WriteLine($"[Mod {modId}] Event handled");
+                })
+            );
         }
 
         var count = _eventBus.GetSubscriberCount<TileSteppedOnEvent>();

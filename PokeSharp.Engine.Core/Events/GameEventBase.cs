@@ -8,11 +8,8 @@ namespace PokeSharp.Engine.Core.Events;
 ///     Cancellable events represent actions that are about to happen:
 ///     - MovementStartedEvent: Entity is about to move (can be blocked)
 ///     - CollisionCheckEvent: Checking if position is walkable (can be blocked)
-///
 ///     Handlers can call PreventDefault() to cancel the event and prevent the action.
-///
 ///     For events that CANNOT be cancelled (notifications), use NotificationEventBase.
-///
 ///     Inherits from NotificationEventBase to share common properties (EventId, Timestamp)
 ///     and adds ICancellableEvent implementation for cancellation support.
 /// </remarks>
@@ -44,6 +41,4 @@ public abstract class CancellableEventBase : NotificationEventBase, ICancellable
 ///     Alias for backwards compatibility. Use CancellableEventBase instead.
 /// </summary>
 [Obsolete("Use CancellableEventBase instead. This alias will be removed in a future version.")]
-public abstract class GameEventBase : CancellableEventBase
-{
-}
+public abstract class GameEventBase : CancellableEventBase { }

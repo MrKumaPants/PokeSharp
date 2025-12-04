@@ -20,7 +20,6 @@ using PokeSharp.Game.Scripting.Runtime;
 /// - Custom mechanics (ComboChainEvent, AchievementUnlockedEvent)
 /// - Mod-to-mod communication (CrossModEvent)
 /// </summary>
-
 // ============================================================================
 // STEP 1: DEFINE CUSTOM EVENT TYPES
 // ============================================================================
@@ -353,29 +352,32 @@ public class CustomEventSubscriber : ScriptBase
         });
 
         // Example 2: Subscribe to cancellable event (can prevent action)
-        On<CustomActionEvent>(evt =>
-        {
-            Context.Logger.LogInformation(
-                "Entity {Actor} attempting action: {Action} on entity {Target}",
-                evt.ActorEntity.Id,
-                evt.ActionType,
-                evt.TargetEntity.Id
-            );
-
-            // TODO: Add validation logic
-            // Example: Prevent action under certain conditions
-            /*
-            if (ShouldBlockAction(evt))
+        On<CustomActionEvent>(
+            evt =>
             {
-                evt.PreventDefault("Action blocked by custom logic");
-                Context.Logger.LogInformation("Blocked action: {Action}", evt.ActionType);
-                return;
-            }
-            */
+                Context.Logger.LogInformation(
+                    "Entity {Actor} attempting action: {Action} on entity {Target}",
+                    evt.ActorEntity.Id,
+                    evt.ActionType,
+                    evt.TargetEntity.Id
+                );
 
-            // If not blocked, react to the action
-            // TODO: Update state, trigger effects, etc.
-        }, priority: 1000); // High priority for validation
+                // TODO: Add validation logic
+                // Example: Prevent action under certain conditions
+                /*
+                if (ShouldBlockAction(evt))
+                {
+                    evt.PreventDefault("Action blocked by custom logic");
+                    Context.Logger.LogInformation("Blocked action: {Action}", evt.ActionType);
+                    return;
+                }
+                */
+
+                // If not blocked, react to the action
+                // TODO: Update state, trigger effects, etc.
+            },
+            priority: 1000
+        ); // High priority for validation
 
         // ====================================================================
         // SUBSCRIBE TO FILTERED EVENTS
@@ -427,10 +429,7 @@ public class CustomEventSubscriber : ScriptBase
             // You can use message prefixes or custom properties to identify source mod
             if (evt.Message.StartsWith("ModA:"))
             {
-                Context.Logger.LogInformation(
-                    "Received event from ModA: {Message}",
-                    evt.Message
-                );
+                Context.Logger.LogInformation("Received event from ModA: {Message}", evt.Message);
 
                 // TODO: Respond to other mod's event
                 // Example: Update shared state, trigger coordinated actions

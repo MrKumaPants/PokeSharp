@@ -21,6 +21,12 @@ public class ProfilerContent : UIComponent
 
     // Cached metrics
     private readonly List<SystemMetricEntry> _cachedMetrics = new();
+
+    // Scrolling support
+    private readonly ScrollbarComponent _scrollbar = new();
+
+    // Table header
+    private readonly SortableTableHeader<ProfilerSortMode> _tableHeader;
     private readonly float _warningThresholdMs;
     private Point _lastMousePosition = Point.Zero;
 
@@ -30,14 +36,8 @@ public class ProfilerContent : UIComponent
 
     private Func<IReadOnlyDictionary<string, SystemMetrics>?>? _metricsProvider;
     private double _refreshIntervalSeconds = 0.1; // 100ms default
-
-    // Scrolling support
-    private readonly ScrollbarComponent _scrollbar = new();
     private bool _showOnlyActive = true;
     private ProfilerSortMode _sortMode = ProfilerSortMode.ByExecutionTime;
-
-    // Table header
-    private readonly SortableTableHeader<ProfilerSortMode> _tableHeader;
 
     public ProfilerContent(string id, float targetFrameTimeMs, float warningThresholdMs)
     {
@@ -49,6 +49,17 @@ public class ProfilerContent : UIComponent
         _tableHeader = new SortableTableHeader<ProfilerSortMode>(ProfilerSortMode.ByExecutionTime);
         _tableHeader.SortChanged += OnSortChanged;
     }
+
+    public bool HasProvider { get; private set; }
+
+    public float TotalFrameTimeMs { get; private set; }
+
+    public float TargetFrameTimeMs { get; }
+
+    /// <summary>
+    ///     Gets the refresh interval in frames (for backward compatibility).
+    /// </summary>
+    public int RefreshFrameInterval => (int)Math.Round(_refreshIntervalSeconds * 60);
 
     private void OnSortChanged(ProfilerSortMode newSort)
     {
@@ -77,17 +88,6 @@ public class ProfilerContent : UIComponent
 
         RefreshMetrics();
     }
-
-    public bool HasProvider { get; private set; }
-
-    public float TotalFrameTimeMs { get; private set; }
-
-    public float TargetFrameTimeMs { get; }
-
-    /// <summary>
-    ///     Gets the refresh interval in frames (for backward compatibility).
-    /// </summary>
-    public int RefreshFrameInterval => (int)Math.Round(_refreshIntervalSeconds * 60);
 
     public void SetMetricsProvider(Func<IReadOnlyDictionary<string, SystemMetrics>?>? provider)
     {
@@ -361,7 +361,14 @@ public class ProfilerContent : UIComponent
                 scrollbarWidth,
                 tableBottomY - tableStartY
             );
-            _scrollbar.HandleInput(context, input, scrollbarRect, _cachedMetrics.Count, maxBarsVisible, Id);
+            _scrollbar.HandleInput(
+                context,
+                input,
+                scrollbarRect,
+                _cachedMetrics.Count,
+                maxBarsVisible,
+                Id
+            );
         }
 
         // Handle scroll input (mouse wheel)

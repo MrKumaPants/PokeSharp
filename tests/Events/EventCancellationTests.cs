@@ -1,8 +1,8 @@
 using System;
 using Arch.Core;
+using FluentAssertions;
 using Microsoft.Xna.Framework;
 using NUnit.Framework;
-using FluentAssertions;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Events.Tile;
 using PokeSharp.Engine.Core.Types.Events;
@@ -52,7 +52,7 @@ public class EventCancellationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.Up,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         _eventBus.Subscribe<MovementStartedEvent>(e =>
@@ -81,7 +81,7 @@ public class EventCancellationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.Up,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         var handler1Executed = false;
@@ -134,7 +134,7 @@ public class EventCancellationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.Up,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         _eventBus.Subscribe<MovementStartedEvent>(e =>
@@ -163,7 +163,7 @@ public class EventCancellationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.Up,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         _eventBus.Subscribe<MovementStartedEvent>(e =>
@@ -194,7 +194,7 @@ public class EventCancellationTests
             Timestamp = 0f,
             Entity = entity,
             TilePosition = new TilePosition(5, 5),
-            TileType = "lava"
+            TileType = "lava",
         };
 
         _eventBus.Subscribe<TileSteppedOnEvent>(e =>
@@ -226,7 +226,7 @@ public class EventCancellationTests
             Timestamp = 0f,
             Entity = entity,
             TilePosition = new TilePosition(5, 5),
-            TileType = "ice"
+            TileType = "ice",
         };
 
         // Handler 1: Weather-based cancellation
@@ -251,7 +251,8 @@ public class EventCancellationTests
 
         // Assert
         evt.IsCancelled.Should().BeTrue();
-        evt.CancellationReason.Should().Be("Ice is too slippery", "first cancellation reason should be preserved");
+        evt.CancellationReason.Should()
+            .Be("Ice is too slippery", "first cancellation reason should be preserved");
     }
 
     [Test]
@@ -304,7 +305,7 @@ public class EventCancellationTests
             TilePosition = (10, 10),
             FromDirection = Direction.Down,
             ToDirection = Direction.Up,
-            Elevation = 0
+            Elevation = 0,
         };
 
         _eventBus.Subscribe<CollisionCheckEvent>(e =>
@@ -336,7 +337,7 @@ public class EventCancellationTests
             TilePosition = (10, 10),
             FromDirection = Direction.Down,
             ToDirection = Direction.Up,
-            Elevation = 0
+            Elevation = 0,
         };
 
         var bridgeLevel = new CollisionCheckEvent
@@ -348,7 +349,7 @@ public class EventCancellationTests
             TilePosition = (10, 10),
             FromDirection = Direction.Down,
             ToDirection = Direction.Up,
-            Elevation = 3 // Bridge elevation
+            Elevation = 3, // Bridge elevation
         };
 
         _eventBus.Subscribe<CollisionCheckEvent>(e =>
@@ -385,7 +386,7 @@ public class EventCancellationTests
             TilePosition = (5, 5),
             FromDirection = Direction.Down,
             ToDirection = Direction.Up,
-            Elevation = 0
+            Elevation = 0,
         };
 
         var downwardMovement = new CollisionCheckEvent
@@ -397,7 +398,7 @@ public class EventCancellationTests
             TilePosition = (5, 5),
             FromDirection = Direction.Up,
             ToDirection = Direction.Down,
-            Elevation = 0
+            Elevation = 0,
         };
 
         _eventBus.Subscribe<CollisionCheckEvent>(e =>
@@ -435,7 +436,7 @@ public class EventCancellationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.Up,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         var executionOrder = new System.Collections.Generic.List<string>();
@@ -467,12 +468,14 @@ public class EventCancellationTests
         _eventBus.Publish(evt);
 
         // Assert
-        executionOrder.Should().ContainInOrder(
-            "Handler1: Check cutscene",
-            "Handler2: Check menu",
-            "Handler3: Check dialogue",
-            "Handler3: Detected existing cancellation"
-        );
+        executionOrder
+            .Should()
+            .ContainInOrder(
+                "Handler1: Check cutscene",
+                "Handler2: Check menu",
+                "Handler3: Check dialogue",
+                "Handler3: Detected existing cancellation"
+            );
         evt.IsCancelled.Should().BeTrue();
     }
 
@@ -487,14 +490,16 @@ public class EventCancellationTests
             Timestamp = 0f,
             Entity = entity,
             TilePosition = new TilePosition(5, 5),
-            TileType = "grass"
+            TileType = "grass",
         };
 
         var handler1Executed = false;
         var handler3Executed = false;
 
         _eventBus.Subscribe<TileSteppedOnEvent>(e => handler1Executed = true);
-        _eventBus.Subscribe<TileSteppedOnEvent>(e => throw new InvalidOperationException("Handler crashed"));
+        _eventBus.Subscribe<TileSteppedOnEvent>(e =>
+            throw new InvalidOperationException("Handler crashed")
+        );
         _eventBus.Subscribe<TileSteppedOnEvent>(e =>
         {
             handler3Executed = true;
@@ -525,7 +530,7 @@ public class EventCancellationTests
             TileType = tileType,
             FromDirection = 0,
             Elevation = 0,
-            BehaviorFlags = Engine.Core.Types.TileBehaviorFlags.None
+            BehaviorFlags = Engine.Core.Types.TileBehaviorFlags.None,
         };
     }
 

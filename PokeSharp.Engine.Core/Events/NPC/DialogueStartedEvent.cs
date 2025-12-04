@@ -8,23 +8,19 @@ namespace PokeSharp.Engine.Core.Events.NPC;
 /// </summary>
 /// <remarks>
 ///     Published by the DialogueSystem after NPCInteractionEvent or scripted trigger.
-///
 ///     This event causes the game to:
 ///     - Pause player input (movement, menu access)
 ///     - Display dialogue box UI
 ///     - Orient NPC to face the player
 ///     - Play dialogue sound effects
 ///     - Load dialogue text/script
-///
 ///     The dialogue system takes control of input until the dialogue sequence completes,
 ///     at which point a DialogueEndedEvent is published.
-///
 ///     Handlers can use this event for:
 ///     - Logging dialogue interactions
 ///     - Triggering dialogue-related achievements
 ///     - Modifying dialogue content (translation, personalization)
 ///     - Analytics and telemetry
-///
 ///     This class supports object pooling via EventPool{T} to reduce allocations.
 /// </remarks>
 public sealed class DialogueStartedEvent : NotificationEventBase
@@ -69,7 +65,7 @@ public sealed class DialogueStartedEvent : NotificationEventBase
     ///     Gets or sets the dialogue priority for concurrent dialogue scenarios.
     ///     Higher priority dialogue interrupts lower priority.
     /// </summary>
-    public int Priority { get; set; } = 0;
+    public int Priority { get; set; }
 
     /// <inheritdoc />
     public override void Reset()

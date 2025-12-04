@@ -1,11 +1,11 @@
 #r "PokeSharp.Engine.Core.dll"
 #load "events/WeatherEvents.csx"
 
+using System;
+using System.Collections.Generic;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Engine.Core.Scripting;
-using System;
-using System.Collections.Generic;
 
 /// <summary>
 /// Modifies Pokémon encounter rates and types based on current weather.
@@ -21,7 +21,8 @@ using System.Collections.Generic;
 public class WeatherEncounters : ScriptBase
 {
     // Configuration value loaded from mod.json
-    private float WeatherEncounterMultiplier => Context.Configuration.GetValueOrDefault("weatherEncounterMultiplier", 1.5f);
+    private float WeatherEncounterMultiplier =>
+        Context.Configuration.GetValueOrDefault("weatherEncounterMultiplier", 1.5f);
 
     public override void Initialize(ScriptContext ctx)
     {
@@ -42,10 +43,12 @@ public class WeatherEncounters : ScriptBase
                     {
                         CurrentWeather = "Clear",
                         TypeMultipliers = new Dictionary<string, float>(),
-                        GlobalMultiplier = 1.0f
+                        GlobalMultiplier = 1.0f,
                     }
                 );
-                Context.Logger.LogInformation($"Encounter state initialized (multiplier: {WeatherEncounterMultiplier})");
+                Context.Logger.LogInformation(
+                    $"Encounter state initialized (multiplier: {WeatherEncounterMultiplier})"
+                );
             }
         });
 
@@ -75,7 +78,9 @@ public class WeatherEncounters : ScriptBase
     {
         ref var state = ref Context.GetState<EncounterState>();
 
-        Context.Logger.LogInformation($"Rain weather active - adjusting encounters (intensity: {evt.Intensity:F2})");
+        Context.Logger.LogInformation(
+            $"Rain weather active - adjusting encounters (intensity: {evt.Intensity:F2})"
+        );
 
         state.CurrentWeather = "Rain";
         ResetMultipliers();
@@ -136,7 +141,9 @@ public class WeatherEncounters : ScriptBase
 
             ApplyEncounterMultipliers();
 
-            Context.Logger.LogInformation($"Electric-type encounter rate: {electricMultiplier:F2}x");
+            Context.Logger.LogInformation(
+                $"Electric-type encounter rate: {electricMultiplier:F2}x"
+            );
         }
     }
 
@@ -144,7 +151,9 @@ public class WeatherEncounters : ScriptBase
     {
         ref var state = ref Context.GetState<EncounterState>();
 
-        Context.Logger.LogInformation($"Snow weather active - ice types appearing (intensity: {evt.Intensity:F2})");
+        Context.Logger.LogInformation(
+            $"Snow weather active - ice types appearing (intensity: {evt.Intensity:F2})"
+        );
 
         state.CurrentWeather = "Snow";
         ResetMultipliers();
@@ -173,7 +182,9 @@ public class WeatherEncounters : ScriptBase
     {
         ref var state = ref Context.GetState<EncounterState>();
 
-        Context.Logger.LogInformation($"Sunshine weather active - fire and grass types thriving (intensity: {evt.Intensity:F2})");
+        Context.Logger.LogInformation(
+            $"Sunshine weather active - fire and grass types thriving (intensity: {evt.Intensity:F2})"
+        );
 
         state.CurrentWeather = "Sunshine";
         ResetMultipliers();
@@ -203,7 +214,9 @@ public class WeatherEncounters : ScriptBase
 
     private void OnWeatherChanged(WeatherChangedEvent evt)
     {
-        Context.Logger.LogInformation($"Weather changed: {evt.PreviousWeather ?? "None"} -> {evt.NewWeather}");
+        Context.Logger.LogInformation(
+            $"Weather changed: {evt.PreviousWeather ?? "None"} -> {evt.NewWeather}"
+        );
 
         // The specific weather events will handle multiplier changes
         // This is just for logging and tracking
@@ -236,7 +249,9 @@ public class WeatherEncounters : ScriptBase
         // 2. Modify spawn rates for each Pokémon type
         // 3. Update encounter tables based on multipliers
 
-        Context.Logger.LogInformation($"Applying encounter multipliers for {state.CurrentWeather} weather:");
+        Context.Logger.LogInformation(
+            $"Applying encounter multipliers for {state.CurrentWeather} weather:"
+        );
 
         foreach (var kvp in state.TypeMultipliers)
         {
@@ -252,7 +267,9 @@ public class WeatherEncounters : ScriptBase
         // Example: Would update encounter tables
         // EncounterManager.RefreshEncounterTables();
 
-        Context.Logger.LogInformation($"Encounter multipliers applied for {state.TypeMultipliers.Count} types");
+        Context.Logger.LogInformation(
+            $"Encounter multipliers applied for {state.TypeMultipliers.Count} types"
+        );
     }
 
     /// <summary>

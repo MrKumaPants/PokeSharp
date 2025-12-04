@@ -23,7 +23,6 @@ public static class MultiScriptExample
     {
         var entity = world.Create(
             new TilePosition { X = x, Y = y },
-
             // Attach 3 different scripts with different priorities
             // Higher priority executes first
             new ScriptAttachment("tiles/ice_slide.csx", priority: 10),
@@ -59,20 +58,29 @@ public static class MultiScriptExample
         Console.WriteLine($"Scripts on tile {tileEntity.Id}:");
         foreach (var attachment in attachments)
         {
-            Console.WriteLine($"  [{attachment.Priority}] {attachment.ScriptPath} (Active: {attachment.IsActive})");
+            Console.WriteLine(
+                $"  [{attachment.Priority}] {attachment.ScriptPath} (Active: {attachment.IsActive})"
+            );
         }
     }
 
     /// <summary>
     /// Dynamically add a script to an existing tile.
     /// </summary>
-    public static void AddScriptToTile(World world, Entity tileEntity, string scriptPath, int priority)
+    public static void AddScriptToTile(
+        World world,
+        Entity tileEntity,
+        string scriptPath,
+        int priority
+    )
     {
         // Add another ScriptAttachment component
         // Arch ECS allows multiple components of the same type
         tileEntity.Add(new ScriptAttachment(scriptPath, priority));
 
-        Console.WriteLine($"Added script '{scriptPath}' with priority {priority} to tile {tileEntity.Id}");
+        Console.WriteLine(
+            $"Added script '{scriptPath}' with priority {priority} to tile {tileEntity.Id}"
+        );
     }
 
     /// <summary>
@@ -120,11 +128,14 @@ public class IceSlideScript : TypeScriptBase
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         // Subscribe to movement events
-        OnMovementCompleted(ctx, evt =>
-        {
-            // Force continued movement in same direction
-            ctx.Logger?.LogInformation("Ice slide: Continuing movement...");
-        });
+        OnMovementCompleted(
+            ctx,
+            evt =>
+            {
+                // Force continued movement in same direction
+                ctx.Logger?.LogInformation("Ice slide: Continuing movement...");
+            }
+        );
     }
 }
 
@@ -146,15 +157,18 @@ public class WildEncounterScript : TypeScriptBase
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        OnTileSteppedOn(ctx, evt =>
-        {
-            // Roll for encounter
-            if (Random.Shared.NextSingle() < _encounterRate)
+        OnTileSteppedOn(
+            ctx,
+            evt =>
             {
-                ctx.Logger?.LogInformation("Wild encounter triggered!");
-                // TODO: Trigger battle event
+                // Roll for encounter
+                if (Random.Shared.NextSingle() < _encounterRate)
+                {
+                    ctx.Logger?.LogInformation("Wild encounter triggered!");
+                    // TODO: Trigger battle event
+                }
             }
-        });
+        );
     }
 }
 
@@ -177,11 +191,14 @@ public class WarpScript : TypeScriptBase
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        OnTileSteppedOn(ctx, evt =>
-        {
-            ctx.Logger?.LogInformation($"Warping to map {_destMapId} at ({_destX}, {_destY})");
-            // TODO: Execute warp
-        });
+        OnTileSteppedOn(
+            ctx,
+            evt =>
+            {
+                ctx.Logger?.LogInformation($"Warping to map {_destMapId} at ({_destX}, {_destY})");
+                // TODO: Execute warp
+            }
+        );
     }
 }
 
@@ -227,9 +244,9 @@ public static class EventDrivenCompositionExample
 
         var tile = world.Create(
             new TilePosition { X = 3, Y = 3 },
-            new ScriptAttachment("tiles/play_sound.csx"),      // Plays footstep sound
+            new ScriptAttachment("tiles/play_sound.csx"), // Plays footstep sound
             new ScriptAttachment("tiles/particle_effect.csx"), // Shows grass particles
-            new ScriptAttachment("tiles/encounter_check.csx")  // Checks for wild encounter
+            new ScriptAttachment("tiles/encounter_check.csx") // Checks for wild encounter
         );
 
         Console.WriteLine("When player steps on grass tile:");

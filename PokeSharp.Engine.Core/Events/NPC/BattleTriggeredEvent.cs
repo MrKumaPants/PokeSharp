@@ -12,23 +12,19 @@ namespace PokeSharp.Engine.Core.Events.NPC;
 ///     - Player is challenged by trainer (line of sight, forced battle)
 ///     - Player initiates battle with trainer (NPCInteractionEvent -> battle)
 ///     - Scripted battle sequence begins
-///
 ///     This event triggers the battle transition:
 ///     1. Fade out overworld rendering
 ///     2. Play battle intro animation/sound
 ///     3. Load battle scene
 ///     4. Initialize battle state
 ///     5. Start battle loop
-///
 ///     The overworld is paused during battle. After battle completes, a BattleEndedEvent
 ///     is published and the overworld resumes.
-///
 ///     Handlers can use this event for:
 ///     - Battle analytics and logging
 ///     - Achievement tracking (number of battles, battle types)
 ///     - Difficulty scaling (adjust wild Pokémon levels)
 ///     - Custom battle intros (mod-specific animations)
-///
 ///     This class supports object pooling via EventPool{T} to reduce allocations.
 /// </remarks>
 public sealed class BattleTriggeredEvent : NotificationEventBase

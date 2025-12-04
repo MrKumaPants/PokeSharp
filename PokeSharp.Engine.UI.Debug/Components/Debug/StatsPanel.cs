@@ -213,7 +213,7 @@ public class StatsData
     public int PooledActive { get; set; }
     public int PooledAvailable { get; set; }
     public float PoolReuseRate { get; set; }
-    
+
     // Event Pool stats
     public int EventPoolCount { get; set; }
     public long EventPoolTotalRented { get; set; }

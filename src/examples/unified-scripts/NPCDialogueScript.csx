@@ -1,7 +1,7 @@
 #load "UnifiedScriptBase.cs"
 
-using PokeSharp.Scripting.Unified;
 using System.Collections.Generic;
+using PokeSharp.Scripting.Unified;
 
 /// <summary>
 /// NPC dialogue behavior - context-aware conversations with branching
@@ -17,10 +17,7 @@ public class NPCDialogueScript : UnifiedScriptBase
     public override void Initialize()
     {
         // Subscribe to player interaction
-        SubscribeWhen<PlayerInteractEvent>(
-            evt => evt.Target == Target,
-            HandlePlayerInteraction
-        );
+        SubscribeWhen<PlayerInteractEvent>(evt => evt.Target == Target, HandlePlayerInteraction);
 
         // Subscribe to quest events to update dialogue
         Subscribe<QuestStateChangedEvent>(HandleQuestStateChanged);
@@ -93,14 +90,16 @@ public class NPCDialogueScript : UnifiedScriptBase
         FacePlayer();
 
         // Show dialogue text
-        Publish(new ShowDialogueEvent
-        {
-            NPC = npc,
-            Text = node.Text,
-            Options = node.Options,
-            OnOptionSelected = (selectedOption) => HandleDialogueOption(selectedOption),
-            OnComplete = () => OnDialogueComplete()
-        });
+        Publish(
+            new ShowDialogueEvent
+            {
+                NPC = npc,
+                Text = node.Text,
+                Options = node.Options,
+                OnOptionSelected = (selectedOption) => HandleDialogueOption(selectedOption),
+                OnComplete = () => OnDialogueComplete(),
+            }
+        );
 
         // Track dialogue
         int timesSpoken = Get("times_spoken", 0);
@@ -135,152 +134,190 @@ public class NPCDialogueScript : UnifiedScriptBase
         var tree = new DialogueTree();
 
         // First meeting
-        tree.AddNode(new DialogueNode
-        {
-            Id = "first_meeting",
-            Text = "Oh, hello there! I don't believe we've met. I'm Professor Oak's assistant!",
-            Options = new[]
+        tree.AddNode(
+            new DialogueNode
             {
-                new DialogueOption
+                Id = "first_meeting",
+                Text = "Oh, hello there! I don't believe we've met. I'm Professor Oak's assistant!",
+                Options = new[]
                 {
-                    Id = "introduce",
-                    Text = "Nice to meet you!",
-                    NextNodeId = "introduction_response"
+                    new DialogueOption
+                    {
+                        Id = "introduce",
+                        Text = "Nice to meet you!",
+                        NextNodeId = "introduction_response",
+                    },
+                    new DialogueOption
+                    {
+                        Id = "bye",
+                        Text = "I have to go.",
+                        Action = () => Set("was_rude", true),
+                    },
                 },
-                new DialogueOption
-                {
-                    Id = "bye",
-                    Text = "I have to go.",
-                    Action = () => Set("was_rude", true)
-                }
             }
-        });
+        );
 
-        tree.AddNode(new DialogueNode
-        {
-            Id = "introduction_response",
-            Text = "If you're looking to train Pokemon, there's a gym in the next town!",
-            Options = new[]
+        tree.AddNode(
+            new DialogueNode
             {
-                new DialogueOption
+                Id = "introduction_response",
+                Text = "If you're looking to train Pokemon, there's a gym in the next town!",
+                Options = new[]
                 {
-                    Id = "thanks",
-                    Text = "Thanks for the tip!",
-                    Action = () => Set("gave_gym_hint", true)
-                }
+                    new DialogueOption
+                    {
+                        Id = "thanks",
+                        Text = "Thanks for the tip!",
+                        Action = () => Set("gave_gym_hint", true),
+                    },
+                },
             }
-        });
+        );
 
         // Regular dialogue
-        tree.AddNode(new DialogueNode
-        {
-            Id = "regular_dialogue",
-            Text = "How's your Pokemon journey going?",
-            Options = new[]
+        tree.AddNode(
+            new DialogueNode
             {
-                new DialogueOption
+                Id = "regular_dialogue",
+                Text = "How's your Pokemon journey going?",
+                Options = new[]
                 {
-                    Id = "going_well",
-                    Text = "It's going great!",
-                    NextNodeId = "encourage"
+                    new DialogueOption
+                    {
+                        Id = "going_well",
+                        Text = "It's going great!",
+                        NextNodeId = "encourage",
+                    },
+                    new DialogueOption
+                    {
+                        Id = "struggling",
+                        Text = "I'm having trouble...",
+                        NextNodeId = "give_tips",
+                    },
                 },
-                new DialogueOption
-                {
-                    Id = "struggling",
-                    Text = "I'm having trouble...",
-                    NextNodeId = "give_tips"
-                }
             }
-        });
+        );
 
-        tree.AddNode(new DialogueNode
-        {
-            Id = "encourage",
-            Text = "That's wonderful! Keep up the good work!",
-            Options = new[] { new DialogueOption { Id = "thanks", Text = "Thanks!" } }
-        });
+        tree.AddNode(
+            new DialogueNode
+            {
+                Id = "encourage",
+                Text = "That's wonderful! Keep up the good work!",
+                Options = new[]
+                {
+                    new DialogueOption { Id = "thanks", Text = "Thanks!" },
+                },
+            }
+        );
 
-        tree.AddNode(new DialogueNode
-        {
-            Id = "give_tips",
-            Text = "Don't forget to heal your Pokemon at the Pokemon Center regularly!",
-            Options = new[] { new DialogueOption { Id = "thanks", Text = "I'll remember that." } }
-        });
+        tree.AddNode(
+            new DialogueNode
+            {
+                Id = "give_tips",
+                Text = "Don't forget to heal your Pokemon at the Pokemon Center regularly!",
+                Options = new[]
+                {
+                    new DialogueOption { Id = "thanks", Text = "I'll remember that." },
+                },
+            }
+        );
 
         // Quest-related dialogue
-        tree.AddNode(new DialogueNode
-        {
-            Id = "quest_hint",
-            Text = "I heard someone's Pokemon got lost near the old pond. Could you help find it?",
-            Options = new[]
+        tree.AddNode(
+            new DialogueNode
             {
-                new DialogueOption
+                Id = "quest_hint",
+                Text =
+                    "I heard someone's Pokemon got lost near the old pond. Could you help find it?",
+                Options = new[]
                 {
-                    Id = "accept_quest",
-                    Text = "I'll look for it!",
-                    Action = () =>
+                    new DialogueOption
                     {
-                        Set("gave_hint", true);
-                        Publish(new StartQuestEvent { QuestId = "find_lost_pokemon" });
-                    }
+                        Id = "accept_quest",
+                        Text = "I'll look for it!",
+                        Action = () =>
+                        {
+                            Set("gave_hint", true);
+                            Publish(new StartQuestEvent { QuestId = "find_lost_pokemon" });
+                        },
+                    },
+                    new DialogueOption { Id = "decline_quest", Text = "Maybe later..." },
                 },
-                new DialogueOption
-                {
-                    Id = "decline_quest",
-                    Text = "Maybe later...",
-                }
             }
-        });
+        );
 
-        tree.AddNode(new DialogueNode
-        {
-            Id = "quest_reminder",
-            Text = "Have you found that lost Pokemon near the old pond yet?",
-            Options = new[] { new DialogueOption { Id = "still_looking", Text = "Still looking!" } }
-        });
-
-        tree.AddNode(new DialogueNode
-        {
-            Id = "quest_reward",
-            Text = "You found it! Thank you so much! Here, take this as a reward.",
-            Options = new[]
+        tree.AddNode(
+            new DialogueNode
             {
-                new DialogueOption
+                Id = "quest_reminder",
+                Text = "Have you found that lost Pokemon near the old pond yet?",
+                Options = new[]
                 {
-                    Id = "accept_reward",
-                    Text = "Thank you!",
-                    Action = () =>
-                    {
-                        Set("gave_reward", true);
-                        Publish(new GiveItemEvent { ItemId = "super_potion", Quantity = 3 });
-                    }
-                }
+                    new DialogueOption { Id = "still_looking", Text = "Still looking!" },
+                },
             }
-        });
+        );
+
+        tree.AddNode(
+            new DialogueNode
+            {
+                Id = "quest_reward",
+                Text = "You found it! Thank you so much! Here, take this as a reward.",
+                Options = new[]
+                {
+                    new DialogueOption
+                    {
+                        Id = "accept_reward",
+                        Text = "Thank you!",
+                        Action = () =>
+                        {
+                            Set("gave_reward", true);
+                            Publish(new GiveItemEvent { ItemId = "super_potion", Quantity = 3 });
+                        },
+                    },
+                },
+            }
+        );
 
         // Time-based dialogue
-        tree.AddNode(new DialogueNode
-        {
-            Id = "night_dialogue",
-            Text = "*yawn* Shouldn't you be resting at the Pokemon Center?",
-            Options = new[] { new DialogueOption { Id = "good_night", Text = "Good night!" } }
-        });
+        tree.AddNode(
+            new DialogueNode
+            {
+                Id = "night_dialogue",
+                Text = "*yawn* Shouldn't you be resting at the Pokemon Center?",
+                Options = new[]
+                {
+                    new DialogueOption { Id = "good_night", Text = "Good night!" },
+                },
+            }
+        );
 
         // Pokemon-specific dialogue
-        tree.AddNode(new DialogueNode
-        {
-            Id = "pikachu_dialogue",
-            Text = "Oh wow, you have a Pikachu! They're so adorable!",
-            Options = new[] { new DialogueOption { Id = "thanks", Text = "Thanks!" } }
-        });
+        tree.AddNode(
+            new DialogueNode
+            {
+                Id = "pikachu_dialogue",
+                Text = "Oh wow, you have a Pikachu! They're so adorable!",
+                Options = new[]
+                {
+                    new DialogueOption { Id = "thanks", Text = "Thanks!" },
+                },
+            }
+        );
 
         // Friend-level dialogue (after many interactions)
-        tree.AddNode(new DialogueNode
-        {
-            Id = "friend_dialogue",
-            Text = "You're becoming quite the Pokemon trainer! I'm proud of how far you've come.",
-            Options = new[] { new DialogueOption { Id = "thanks_friend", Text = "Thanks, that means a lot!" } }
-        });
+        tree.AddNode(
+            new DialogueNode
+            {
+                Id = "friend_dialogue",
+                Text =
+                    "You're becoming quite the Pokemon trainer! I'm proud of how far you've come.",
+                Options = new[]
+                {
+                    new DialogueOption { Id = "thanks_friend", Text = "Thanks, that means a lot!" },
+                },
+            }
+        );
 
         return tree;
     }
@@ -328,11 +365,7 @@ public class NPCDialogueScript : UnifiedScriptBase
         else
             direction = dy > 0 ? 0 : 1;
 
-        Publish(new SetEntityDirectionEvent
-        {
-            Entity = npc,
-            Direction = direction
-        });
+        Publish(new SetEntityDirectionEvent { Entity = npc, Direction = direction });
     }
 
     private void Log(string message)

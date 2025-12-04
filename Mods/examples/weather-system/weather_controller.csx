@@ -1,11 +1,11 @@
 #r "PokeSharp.Engine.Core.dll"
 #load "events/WeatherEvents.csx"
 
+using System;
+using System.Linq;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Engine.Core.Scripting;
-using System;
-using System.Linq;
 
 /// <summary>
 /// Central weather controller that manages dynamic weather changes over time.
@@ -19,13 +19,25 @@ using System.Linq;
 public class WeatherController : ScriptBase
 {
     // Weather types
-    private static readonly string[] WeatherTypes = { "Clear", "Rain", "Thunder", "Snow", "Sunshine", "Fog" };
+    private static readonly string[] WeatherTypes =
+    {
+        "Clear",
+        "Rain",
+        "Thunder",
+        "Snow",
+        "Sunshine",
+        "Fog",
+    };
 
     // Configuration values loaded from mod.json
-    private int ChangeDurationMinutes => Context.Configuration.GetValueOrDefault("weatherChangeDurationMinutes", 5);
-    private float ThunderProbability => Context.Configuration.GetValueOrDefault("thunderProbabilityDuringRain", 0.3f);
-    private float SnowProbabilityWinter => Context.Configuration.GetValueOrDefault("snowProbabilityInWinter", 0.6f);
-    private bool EnableWeatherDamage => Context.Configuration.GetValueOrDefault("enableWeatherDamage", true);
+    private int ChangeDurationMinutes =>
+        Context.Configuration.GetValueOrDefault("weatherChangeDurationMinutes", 5);
+    private float ThunderProbability =>
+        Context.Configuration.GetValueOrDefault("thunderProbabilityDuringRain", 0.3f);
+    private float SnowProbabilityWinter =>
+        Context.Configuration.GetValueOrDefault("snowProbabilityInWinter", 0.6f);
+    private bool EnableWeatherDamage =>
+        Context.Configuration.GetValueOrDefault("enableWeatherDamage", true);
 
     public override void Initialize(ScriptContext ctx)
     {
@@ -48,17 +60,19 @@ public class WeatherController : ScriptBase
                         TicksSinceLastChange = 0,
                         ChangeIntervalSeconds = ChangeDurationMinutes * 60f,
                         ThunderCheckTimer = 0f,
-                        RandomSeed = DateTime.UtcNow.Millisecond
+                        RandomSeed = DateTime.UtcNow.Millisecond,
                     }
                 );
 
                 // Publish initial sunshine event
-                PublishWeatherEvent(new SunshineEvent
-                {
-                    WeatherType = "Sunshine",
-                    Intensity = 0.7f,
-                    DurationSeconds = ChangeDurationMinutes * 60
-                });
+                PublishWeatherEvent(
+                    new SunshineEvent
+                    {
+                        WeatherType = "Sunshine",
+                        Intensity = 0.7f,
+                        DurationSeconds = ChangeDurationMinutes * 60,
+                    }
+                );
 
                 Context.Logger.LogInformation("Initial weather set to Clear/Sunshine");
                 return;
@@ -117,14 +131,18 @@ public class WeatherController : ScriptBase
         StartWeather(newWeather, random);
 
         // Publish weather changed event
-        PublishWeatherEvent(new WeatherChangedEvent
-        {
-            PreviousWeather = previousWeather,
-            NewWeather = newWeather,
-            IsNaturalTransition = true
-        });
+        PublishWeatherEvent(
+            new WeatherChangedEvent
+            {
+                PreviousWeather = previousWeather,
+                NewWeather = newWeather,
+                IsNaturalTransition = true,
+            }
+        );
 
-        Context.Logger.LogInformation($"Weather changed: {previousWeather ?? "None"} -> {newWeather}");
+        Context.Logger.LogInformation(
+            $"Weather changed: {previousWeather ?? "None"} -> {newWeather}"
+        );
     }
 
     private string SelectNewWeather(Random random)
@@ -171,52 +189,60 @@ public class WeatherController : ScriptBase
         switch (weather)
         {
             case "Rain":
-                PublishWeatherEvent(new RainStartedEvent
-                {
-                    WeatherType = "Rain",
-                    Intensity = intensity,
-                    DurationSeconds = duration,
-                    CreatePuddles = true,
-                    CanThunder = random.NextDouble() < ThunderProbability
-                });
+                PublishWeatherEvent(
+                    new RainStartedEvent
+                    {
+                        WeatherType = "Rain",
+                        Intensity = intensity,
+                        DurationSeconds = duration,
+                        CreatePuddles = true,
+                        CanThunder = random.NextDouble() < ThunderProbability,
+                    }
+                );
                 break;
 
             case "Thunder":
                 // Thunder is treated as heavy rain with thunder enabled
-                PublishWeatherEvent(new RainStartedEvent
-                {
-                    WeatherType = "Thunder",
-                    Intensity = 0.9f,
-                    DurationSeconds = duration,
-                    CreatePuddles = true,
-                    CanThunder = true
-                });
+                PublishWeatherEvent(
+                    new RainStartedEvent
+                    {
+                        WeatherType = "Thunder",
+                        Intensity = 0.9f,
+                        DurationSeconds = duration,
+                        CreatePuddles = true,
+                        CanThunder = true,
+                    }
+                );
                 break;
 
             case "Snow":
-                PublishWeatherEvent(new SnowStartedEvent
-                {
-                    WeatherType = "Snow",
-                    Intensity = intensity,
-                    DurationSeconds = duration,
-                    AccumulatesOnGround = true,
-                    AccumulationRate = intensity * 0.5f,
-                    MaxDepthLayers = 3,
-                    CreatesIcyTerrain = intensity > 0.7f
-                });
+                PublishWeatherEvent(
+                    new SnowStartedEvent
+                    {
+                        WeatherType = "Snow",
+                        Intensity = intensity,
+                        DurationSeconds = duration,
+                        AccumulatesOnGround = true,
+                        AccumulationRate = intensity * 0.5f,
+                        MaxDepthLayers = 3,
+                        CreatesIcyTerrain = intensity > 0.7f,
+                    }
+                );
                 break;
 
             case "Sunshine":
-                PublishWeatherEvent(new SunshineEvent
-                {
-                    WeatherType = "Sunshine",
-                    Intensity = intensity,
-                    DurationSeconds = duration,
-                    BrightnessMultiplier = 1.0f + intensity * 0.5f,
-                    AcceleratesEvaporation = true,
-                    BoostsGrassTypes = true,
-                    TemperatureBonus = intensity * 10.0f
-                });
+                PublishWeatherEvent(
+                    new SunshineEvent
+                    {
+                        WeatherType = "Sunshine",
+                        Intensity = intensity,
+                        DurationSeconds = duration,
+                        BrightnessMultiplier = 1.0f + intensity * 0.5f,
+                        AcceleratesEvaporation = true,
+                        BoostsGrassTypes = true,
+                        TemperatureBonus = intensity * 10.0f,
+                    }
+                );
                 break;
 
             case "Clear":
@@ -233,21 +259,21 @@ public class WeatherController : ScriptBase
         {
             case "Rain":
             case "Thunder":
-                PublishWeatherEvent(new RainStoppedEvent
-                {
-                    WeatherType = weather,
-                    Intensity = 0.0f,
-                    PersistPuddles = true,
-                    PuddleEvaporationSeconds = 120
-                });
+                PublishWeatherEvent(
+                    new RainStoppedEvent
+                    {
+                        WeatherType = weather,
+                        Intensity = 0.0f,
+                        PersistPuddles = true,
+                        PuddleEvaporationSeconds = 120,
+                    }
+                );
                 break;
 
             default:
-                PublishWeatherEvent(new WeatherClearedEvent
-                {
-                    ClearedWeather = weather,
-                    ImmediateCleanup = false
-                });
+                PublishWeatherEvent(
+                    new WeatherClearedEvent { ClearedWeather = weather, ImmediateCleanup = false }
+                );
                 break;
         }
     }
@@ -260,15 +286,17 @@ public class WeatherController : ScriptBase
 
         bool enableDamage = EnableWeatherDamage;
 
-        PublishWeatherEvent(new ThunderstrikeEvent
-        {
-            WeatherType = "Thunder",
-            Intensity = 1.0f,
-            StrikePosition = (x, y),
-            Damage = enableDamage ? 10 : 0,
-            AffectRadius = 2,
-            CausesEnvironmentalEffects = enableDamage
-        });
+        PublishWeatherEvent(
+            new ThunderstrikeEvent
+            {
+                WeatherType = "Thunder",
+                Intensity = 1.0f,
+                StrikePosition = (x, y),
+                Damage = enableDamage ? 10 : 0,
+                AffectRadius = 2,
+                CausesEnvironmentalEffects = enableDamage,
+            }
+        );
 
         Context.Logger.LogInformation($"Thunder struck at ({x}, {y})!");
     }
@@ -313,12 +341,14 @@ public class WeatherController : ScriptBase
         var random = new Random(DateTime.UtcNow.Millisecond);
         StartWeather(weatherType, random);
 
-        PublishWeatherEvent(new WeatherChangedEvent
-        {
-            PreviousWeather = previousWeather,
-            NewWeather = weatherType,
-            IsNaturalTransition = false
-        });
+        PublishWeatherEvent(
+            new WeatherChangedEvent
+            {
+                PreviousWeather = previousWeather,
+                NewWeather = weatherType,
+                IsNaturalTransition = false,
+            }
+        );
 
         Context.Logger.LogInformation($"Weather manually set to {weatherType}");
     }

@@ -2,8 +2,8 @@ using Arch.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using PokeSharp.Engine.Core.Modding;
 using PokeSharp.Engine.Core.Events;
+using PokeSharp.Engine.Core.Modding;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
 using PokeSharp.Game.Data;
@@ -56,7 +56,7 @@ public static class CoreServicesExtensions
         // Features: cached handler arrays, fast-path for zero subscribers, aggressive inlining
         services.AddSingleton<IEventBus>(sp =>
         {
-            var logger = sp.GetService<ILogger<EventBus>>();
+            ILogger<EventBus>? logger = sp.GetService<ILogger<EventBus>>();
             return new EventBus(logger);
         });
 
@@ -77,7 +77,7 @@ public static class CoreServicesExtensions
             PoolConfig tilePool = gameplayConfig.Pools.Tile;
 
             poolManager.RegisterPool(
-                PoolNames.Player,
+                Player,
                 playerPool.InitialSize,
                 playerPool.MaxSize,
                 playerPool.Warmup,
@@ -86,7 +86,7 @@ public static class CoreServicesExtensions
                 playerPool.AbsoluteMaxSize
             );
             poolManager.RegisterPool(
-                PoolNames.Npc,
+                Npc,
                 npcPool.InitialSize,
                 npcPool.MaxSize,
                 npcPool.Warmup,
@@ -95,7 +95,7 @@ public static class CoreServicesExtensions
                 npcPool.AbsoluteMaxSize
             );
             poolManager.RegisterPool(
-                PoolNames.Tile,
+                Tile,
                 tilePool.InitialSize,
                 tilePool.MaxSize,
                 tilePool.Warmup,

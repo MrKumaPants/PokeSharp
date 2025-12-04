@@ -29,7 +29,7 @@ public class QuestManager : ScriptBase
                 {
                     ActiveQuests = new Dictionary<string, QuestProgress>(),
                     CompletedQuests = new HashSet<string>(),
-                    OfferedQuests = new HashSet<string>()
+                    OfferedQuests = new HashSet<string>(),
                 }
             );
         }
@@ -37,8 +37,10 @@ public class QuestManager : ScriptBase
         // Load quest definitions from data file
         LoadQuestDefinitions();
 
-        Context.Logger.LogInformation("Quest Manager initialized with {Count} quest definitions",
-            _questDefinitions.Count);
+        Context.Logger.LogInformation(
+            "Quest Manager initialized with {Count} quest definitions",
+            _questDefinitions.Count
+        );
     }
 
     public override void RegisterEventHandlers(ScriptContext ctx)
@@ -61,11 +63,14 @@ public class QuestManager : ScriptBase
                 Progress = 0,
                 Target = questDef.Target,
                 StartTime = DateTime.UtcNow,
-                IsComplete = false
+                IsComplete = false,
             };
 
-            Context.Logger.LogInformation("Quest accepted: {QuestName} ({QuestId})",
-                questDef.Name, evt.QuestId);
+            Context.Logger.LogInformation(
+                "Quest accepted: {QuestName} ({QuestId})",
+                questDef.Name,
+                evt.QuestId
+            );
         });
 
         // Listen for progress updates (e.g., from other game systems)
@@ -107,8 +112,8 @@ public class QuestManager : ScriptBase
                 Rewards = new Dictionary<string, object>
                 {
                     ["money"] = 500,
-                    ["items"] = new[] { "potion", "pokeball" }
-                }
+                    ["items"] = new[] { "potion", "pokeball" },
+                },
             },
             ["defeat_gym_leader"] = new QuestDefinition
             {
@@ -120,8 +125,8 @@ public class QuestManager : ScriptBase
                 Rewards = new Dictionary<string, object>
                 {
                     ["badge"] = "boulder_badge",
-                    ["money"] = 1000
-                }
+                    ["money"] = 1000,
+                },
             },
             ["find_lost_item"] = new QuestDefinition
             {
@@ -133,8 +138,8 @@ public class QuestManager : ScriptBase
                 Rewards = new Dictionary<string, object>
                 {
                     ["items"] = new[] { "rare_candy" },
-                    ["money"] = 300
-                }
+                    ["money"] = 300,
+                },
             },
             ["talk_to_npcs"] = new QuestDefinition
             {
@@ -146,9 +151,9 @@ public class QuestManager : ScriptBase
                 Rewards = new Dictionary<string, object>
                 {
                     ["items"] = new[] { "town_map" },
-                    ["money"] = 100
-                }
-            }
+                    ["money"] = 100,
+                },
+            },
         };
     }
 
@@ -173,12 +178,14 @@ public class QuestManager : ScriptBase
         {
             if (_questDefinitions.TryGetValue(questId, out var questDef))
             {
-                Publish(new QuestCompletedEvent
-                {
-                    Entity = Context.Entity.Value,
-                    QuestId = questId,
-                    Rewards = questDef.Rewards
-                });
+                Publish(
+                    new QuestCompletedEvent
+                    {
+                        Entity = Context.Entity.Value,
+                        QuestId = questId,
+                        Rewards = questDef.Rewards,
+                    }
+                );
 
                 // Move to completed quests
                 state.CompletedQuests.Add(questId);
@@ -194,8 +201,11 @@ public class QuestManager : ScriptBase
         // In a real implementation, serialize quest state to save file
         ref var state = ref Context.GetState<QuestManagerState>();
 
-        Context.Logger.LogDebug("Saving quest state: {Active} active, {Completed} completed",
-            state.ActiveQuests.Count, state.CompletedQuests.Count);
+        Context.Logger.LogDebug(
+            "Saving quest state: {Active} active, {Completed} completed",
+            state.ActiveQuests.Count,
+            state.CompletedQuests.Count
+        );
     }
 }
 
@@ -234,7 +244,7 @@ public enum QuestType
     Battle,
     Fetch,
     Dialogue,
-    Story
+    Story,
 }
 
 return new QuestManager();

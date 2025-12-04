@@ -293,7 +293,7 @@ public abstract class ScriptBase
         }
 
         // Subscribe and track for cleanup
-        var subscription = Context.Events.Subscribe(handler);
+        IDisposable subscription = Context.Events.Subscribe(handler);
         subscriptions.Add(subscription);
 
         Context.Logger?.LogDebug(
@@ -472,7 +472,7 @@ public abstract class ScriptBase
     protected T Get<T>(string key, T defaultValue = default)
         where T : struct
     {
-        if (Context?.TryGetState<T>(out var value) == true)
+        if (Context?.TryGetState<T>(out T value) == true)
         {
             return value;
         }
@@ -584,9 +584,6 @@ public abstract class ScriptBase
 
         Context?.Events?.Publish(evt);
 
-        Context?.Logger?.LogDebug(
-            "Published event {EventType}",
-            typeof(TEvent).Name
-        );
+        Context?.Logger?.LogDebug("Published event {EventType}", typeof(TEvent).Name);
     }
 }

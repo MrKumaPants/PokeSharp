@@ -30,7 +30,9 @@ public class EventBusBenchmarks
         _subscriptions = new IDisposable[SubscriberCount];
         for (int i = 0; i < SubscriberCount; i++)
         {
-            _subscriptions[i] = _eventBus.Subscribe<BenchmarkEvent>(evt => { /* minimal handler */ });
+            _subscriptions[i] = _eventBus.Subscribe<BenchmarkEvent>(evt =>
+            { /* minimal handler */
+            });
         }
     }
 
@@ -120,16 +122,27 @@ public class HighFrequencyEventBenchmarks
     public void Setup()
     {
         _eventBus = new EventBus();
-        _tickEvent = new TickEvent { TypeId = "tick", Timestamp = 0f, DeltaTime = 0.016f };
+        _tickEvent = new TickEvent
+        {
+            TypeId = "tick",
+            Timestamp = 0f,
+            DeltaTime = 0.016f,
+        };
         _movementEvent = new MovementEvent { TypeId = "move", Timestamp = 0f };
         _tileEvent = new TileEvent { TypeId = "tile", Timestamp = 0f };
 
         // Simulate 20 mod handlers per event
         for (int i = 0; i < 20; i++)
         {
-            _eventBus.Subscribe<TickEvent>(evt => { /* mod handler */ });
-            _eventBus.Subscribe<MovementEvent>(evt => { /* mod handler */ });
-            _eventBus.Subscribe<TileEvent>(evt => { /* mod handler */ });
+            _eventBus.Subscribe<TickEvent>(evt =>
+            { /* mod handler */
+            });
+            _eventBus.Subscribe<MovementEvent>(evt =>
+            { /* mod handler */
+            });
+            _eventBus.Subscribe<TileEvent>(evt =>
+            { /* mod handler */
+            });
         }
     }
 
@@ -176,9 +189,9 @@ public class HighFrequencyEventBenchmarks
     [Benchmark(Description = "Frame simulation (all events)")]
     public void SimulateFrame()
     {
-        _eventBus.Publish(_tickEvent);        // Every frame
-        _eventBus.Publish(_movementEvent);    // Movement started
-        _eventBus.Publish(_tileEvent);        // Tile stepped on
+        _eventBus.Publish(_tickEvent); // Every frame
+        _eventBus.Publish(_movementEvent); // Movement started
+        _eventBus.Publish(_tileEvent); // Tile stepped on
     }
 
     private record TickEvent : TypeEventBase
@@ -187,6 +200,7 @@ public class HighFrequencyEventBenchmarks
     }
 
     private record MovementEvent : TypeEventBase;
+
     private record TileEvent : TypeEventBase;
 }
 

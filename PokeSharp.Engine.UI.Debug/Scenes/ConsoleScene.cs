@@ -35,7 +35,6 @@ public class ConsoleScene : SceneBase
     private UIContext? _uiContext;
     private VariablesPanel? _variablesPanel;
     private WatchPanel? _watchPanel;
-    private EventInspectorPanel? _eventInspectorPanel;
 
     public ConsoleScene(
         GraphicsDevice graphicsDevice,
@@ -74,10 +73,10 @@ public class ConsoleScene : SceneBase
     public IStatsOperations? StatsOperations => _statsPanel;
 
     /// <summary>Gets the event inspector panel, or null if panel not loaded.</summary>
-    public EventInspectorPanel? EventInspectorPanel => _eventInspectorPanel;
+    public EventInspectorPanel? EventInspectorPanel { get; private set; }
 
     /// <summary>Gets the event inspector operations, or null if panel not loaded.</summary>
-    public IEventInspectorOperations? EventInspectorOperations => _eventInspectorPanel;
+    public IEventInspectorOperations? EventInspectorOperations => EventInspectorPanel;
 
     // Events for integration with ConsoleSystem
     public event Action<string>? OnCommandSubmitted;
@@ -269,7 +268,7 @@ public class ConsoleScene : SceneBase
     /// </summary>
     public void SetEventInspectorProvider(Func<EventInspectorData>? provider)
     {
-        _eventInspectorPanel?.SetDataProvider(provider);
+        EventInspectorPanel?.SetDataProvider(provider);
     }
 
     /// <summary>
@@ -467,13 +466,17 @@ public class ConsoleScene : SceneBase
             _statsPanel.Constraint = new LayoutConstraint { Anchor = Anchor.Fill, Padding = 0 };
 
             // Create event inspector panel
-            _eventInspectorPanel = new EventInspectorPanelBuilder()
+            EventInspectorPanel = new EventInspectorPanelBuilder()
                 .WithRefreshInterval(2) // Update every 2 frames (30fps for events)
                 .Build();
-            _eventInspectorPanel.BackgroundColor = Color.Transparent;
-            _eventInspectorPanel.BorderColor = Color.Transparent;
-            _eventInspectorPanel.BorderThickness = 0;
-            _eventInspectorPanel.Constraint = new LayoutConstraint { Anchor = Anchor.Fill, Padding = 0 };
+            EventInspectorPanel.BackgroundColor = Color.Transparent;
+            EventInspectorPanel.BorderColor = Color.Transparent;
+            EventInspectorPanel.BorderThickness = 0;
+            EventInspectorPanel.Constraint = new LayoutConstraint
+            {
+                Anchor = Anchor.Fill,
+                Padding = 0,
+            };
 
             // Add tabs to container
             _tabContainer.AddTab("Console", _consolePanel);
@@ -481,7 +484,7 @@ public class ConsoleScene : SceneBase
             _tabContainer.AddTab("Watch", _watchPanel);
             _tabContainer.AddTab("Variables", _variablesPanel);
             _tabContainer.AddTab("Entities", _entitiesPanel);
-            _tabContainer.AddTab("Events", _eventInspectorPanel);
+            _tabContainer.AddTab("Events", EventInspectorPanel);
             _tabContainer.AddTab("Profiler", _profilerPanel);
             _tabContainer.AddTab("Stats", _statsPanel);
             _tabContainer.SetActiveTab(0);

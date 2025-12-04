@@ -3,11 +3,11 @@
 // Shows how ice + grass scripts can work together on the same tile
 // Both scripts receive TileSteppedOnEvent and execute in priority order
 
-using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Scripting.Events;
-using PokeSharp.Core.Components;
 using System;
 using System.Numerics;
+using PokeSharp.Core.Components;
+using PokeSharp.Game.Scripting.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 // First script: Ice behavior (Priority 100 - executes first)
 public class CompositeIceScript : ScriptBase
@@ -18,20 +18,27 @@ public class CompositeIceScript : ScriptBase
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        On<MovementCompletedEvent>(evt => {
-            if (!ctx.Player.IsPlayerEntity(evt.Entity)) return;
+        On<MovementCompletedEvent>(evt =>
+        {
+            if (!ctx.Player.IsPlayerEntity(evt.Entity))
+                return;
 
             ctx.Logger.Info("[Composite Ice] Player completed movement, checking for slide");
 
-            if (IsOnIceTile(evt.NewPosition)) {
+            if (IsOnIceTile(evt.NewPosition))
+            {
                 ContinueSliding(evt.Entity, evt.Direction);
-            } else {
+            }
+            else
+            {
                 RestoreNormalSpeed(evt.Entity);
             }
         });
 
-        On<TileSteppedOnEvent>(evt => {
-            if (ctx.Player.IsPlayerEntity(evt.Entity)) {
+        On<TileSteppedOnEvent>(evt =>
+        {
+            if (ctx.Player.IsPlayerEntity(evt.Entity))
+            {
                 ctx.Effects.PlaySound("ice_slide");
                 ctx.Logger.Info($"[Composite Ice] Ice activated at ({evt.TileX}, {evt.TileY})");
             }
@@ -48,11 +55,14 @@ public class CompositeIceScript : ScriptBase
     {
         var targetPos = GetNextPosition(entity, direction);
 
-        if (ctx.Map.IsWalkable(targetPos) && !ctx.Map.HasCollision(targetPos)) {
+        if (ctx.Map.IsWalkable(targetPos) && !ctx.Map.HasCollision(targetPos))
+        {
             var movement = entity.Get<MovementComponent>();
             movement.Speed = slideSpeed;
             movement.StartMove(targetPos, direction);
-        } else {
+        }
+        else
+        {
             RestoreNormalSpeed(entity);
             ctx.Effects.PlaySound("bump");
         }
@@ -67,12 +77,13 @@ public class CompositeIceScript : ScriptBase
     private Vector2 GetNextPosition(Entity entity, Direction direction)
     {
         var currentPos = entity.Get<Position>().Value;
-        return direction switch {
+        return direction switch
+        {
             Direction.Up => currentPos + new Vector2(0, -1),
             Direction.Down => currentPos + new Vector2(0, 1),
             Direction.Left => currentPos + new Vector2(-1, 0),
             Direction.Right => currentPos + new Vector2(1, 0),
-            _ => currentPos
+            _ => currentPos,
         };
     }
 }
@@ -91,8 +102,10 @@ public class CompositeGrassScript : ScriptBase
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        On<TileSteppedOnEvent>(evt => {
-            if (!ctx.Player.IsPlayerEntity(evt.Entity)) return;
+        On<TileSteppedOnEvent>(evt =>
+        {
+            if (!ctx.Player.IsPlayerEntity(evt.Entity))
+                return;
 
             ctx.Logger.Info($"[Composite Grass] Grass activated at ({evt.TileX}, {evt.TileY})");
 
@@ -106,7 +119,8 @@ public class CompositeGrassScript : ScriptBase
 
     private void CheckWildEncounter(TileSteppedOnEvent evt)
     {
-        if (random.NextDouble() < encounterRate) {
+        if (random.NextDouble() < encounterRate)
+        {
             ctx.Logger.Info("[Composite Grass] Wild encounter triggered on icy grass!");
             TriggerWildBattle(evt.Entity, evt.TilePosition);
         }
@@ -143,10 +157,7 @@ public class CompositeGrassScript : ScriptBase
 // }
 
 // For testing, return both scripts as an array:
-return new ScriptBase[] {
-    new CompositeIceScript(),
-    new CompositeGrassScript()
-};
+return new ScriptBase[] { new CompositeIceScript(), new CompositeGrassScript() };
 
 // Note: This demonstrates that multiple scripts can:
 // - Share the same tile

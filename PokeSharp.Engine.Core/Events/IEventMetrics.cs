@@ -33,7 +33,12 @@ public interface IEventMetrics
     /// <param name="handlerId">The unique handler ID.</param>
     /// <param name="source">Optional source identifier (script name, class name, etc.).</param>
     /// <param name="priority">Optional priority value.</param>
-    void RecordSubscription(string eventTypeName, int handlerId, string? source = null, int priority = 0);
+    void RecordSubscription(
+        string eventTypeName,
+        int handlerId,
+        string? source = null,
+        int priority = 0
+    );
 
     /// <summary>
     ///     Records a subscription being removed.

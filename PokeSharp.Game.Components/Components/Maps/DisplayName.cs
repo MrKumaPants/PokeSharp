@@ -12,4 +12,3 @@ public struct DisplayName
         Value = value;
     }
 }
-

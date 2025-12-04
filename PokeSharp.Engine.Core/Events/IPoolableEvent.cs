@@ -7,7 +7,6 @@ namespace PokeSharp.Engine.Core.Events;
 ///     Events implementing this interface can be used with EventPool{T}
 ///     to eliminate allocations on hot paths. The Reset() method is called
 ///     when an event is rented from the pool to ensure clean state.
-///
 ///     Usage pattern:
 ///     <code>
 ///     var pool = EventPool{MyEvent}.Shared;

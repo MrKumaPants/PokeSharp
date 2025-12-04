@@ -12,46 +12,6 @@ namespace PokeSharp.Engine.UI.Debug.Components.Controls;
 public class SortableTableHeader<TSort>
     where TSort : struct, Enum
 {
-    private readonly List<Column> _columns = new();
-    private readonly Dictionary<TSort, LayoutRect> _clickRegions = new();
-
-    /// <summary>
-    ///     Current sort mode.
-    /// </summary>
-    public TSort CurrentSort { get; private set; }
-
-    /// <summary>
-    ///     Event raised when sort mode changes.
-    /// </summary>
-    public event Action<TSort>? SortChanged;
-
-    /// <summary>
-    ///     Represents a single column in the table header.
-    /// </summary>
-    public record Column
-    {
-        /// <summary>Label text for the column.</summary>
-        public required string Label { get; init; }
-
-        /// <summary>Sort mode this column represents.</summary>
-        public required TSort SortMode { get; init; }
-
-        /// <summary>X position of the column.</summary>
-        public required float X { get; init; }
-
-        /// <summary>Maximum width of the column (for alignment).</summary>
-        public float? MaxWidth { get; init; }
-
-        /// <summary>Whether to show ascending (↑) or descending (↓) indicator.</summary>
-        public bool Ascending { get; init; } = false;
-
-        /// <summary>Custom sort indicator icon (overrides Ascending).</summary>
-        public string? CustomIcon { get; init; }
-
-        /// <summary>Horizontal alignment of the column.</summary>
-        public HorizontalAlignment Alignment { get; init; } = HorizontalAlignment.Left;
-    }
-
     /// <summary>
     ///     Horizontal alignment options.
     /// </summary>
@@ -62,6 +22,9 @@ public class SortableTableHeader<TSort>
         Right,
     }
 
+    private readonly Dictionary<TSort, LayoutRect> _clickRegions = new();
+    private readonly List<Column> _columns = new();
+
     /// <summary>
     ///     Initializes a new sortable table header.
     /// </summary>
@@ -70,6 +33,16 @@ public class SortableTableHeader<TSort>
     {
         CurrentSort = initialSort;
     }
+
+    /// <summary>
+    ///     Current sort mode.
+    /// </summary>
+    public TSort CurrentSort { get; private set; }
+
+    /// <summary>
+    ///     Event raised when sort mode changes.
+    /// </summary>
+    public event Action<TSort>? SortChanged;
 
     /// <summary>
     ///     Adds a column to the header.
@@ -117,7 +90,7 @@ public class SortableTableHeader<TSort>
         }
 
         Point mousePos = input.MousePosition;
-        foreach (var kvp in _clickRegions)
+        foreach (KeyValuePair<TSort, LayoutRect> kvp in _clickRegions)
         {
             if (kvp.Value.Contains(mousePos))
             {
@@ -147,7 +120,10 @@ public class SortableTableHeader<TSort>
         foreach (Column column in _columns)
         {
             // Build header text with sort indicator
-            bool isActiveSort = EqualityComparer<TSort>.Default.Equals(CurrentSort, column.SortMode);
+            bool isActiveSort = EqualityComparer<TSort>.Default.Equals(
+                CurrentSort,
+                column.SortMode
+            );
             string headerText = column.Label;
 
             if (isActiveSort)
@@ -184,13 +160,8 @@ public class SortableTableHeader<TSort>
             renderer.DrawText(headerText, textX, y, color);
 
             // Store click region
-            float clickWidth = column.MaxWidth ?? (headerWidth + theme.InteractiveClickPadding);
-            var clickRegion = new LayoutRect(
-                column.X,
-                y,
-                clickWidth,
-                lineHeight
-            );
+            float clickWidth = column.MaxWidth ?? headerWidth + theme.InteractiveClickPadding;
+            var clickRegion = new LayoutRect(column.X, y, clickWidth, lineHeight);
             _clickRegions[column.SortMode] = clickRegion;
         }
     }
@@ -215,7 +186,7 @@ public class SortableTableHeader<TSort>
         if (input != null)
         {
             Point mousePos = input.MousePosition;
-            foreach (var kvp in _clickRegions)
+            foreach (KeyValuePair<TSort, LayoutRect> kvp in _clickRegions)
             {
                 if (kvp.Value.Contains(mousePos))
                 {
@@ -236,5 +207,31 @@ public class SortableTableHeader<TSort>
     {
         return _clickRegions.TryGetValue(sortMode, out LayoutRect rect) ? rect : null;
     }
-}
 
+    /// <summary>
+    ///     Represents a single column in the table header.
+    /// </summary>
+    public record Column
+    {
+        /// <summary>Label text for the column.</summary>
+        public required string Label { get; init; }
+
+        /// <summary>Sort mode this column represents.</summary>
+        public required TSort SortMode { get; init; }
+
+        /// <summary>X position of the column.</summary>
+        public required float X { get; init; }
+
+        /// <summary>Maximum width of the column (for alignment).</summary>
+        public float? MaxWidth { get; init; }
+
+        /// <summary>Whether to show ascending (↑) or descending (↓) indicator.</summary>
+        public bool Ascending { get; init; } = false;
+
+        /// <summary>Custom sort indicator icon (overrides Ascending).</summary>
+        public string? CustomIcon { get; init; }
+
+        /// <summary>Horizontal alignment of the column.</summary>
+        public HorizontalAlignment Alignment { get; init; } = HorizontalAlignment.Left;
+    }
+}

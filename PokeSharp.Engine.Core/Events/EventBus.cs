@@ -4,7 +4,6 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using PokeSharp.Engine.Core.Types.Events;
 
 namespace PokeSharp.Engine.Core.Events;
 
@@ -31,13 +30,13 @@ namespace PokeSharp.Engine.Core.Events;
 /// </remarks>
 public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
 {
-    private readonly ConcurrentDictionary<Type, ConcurrentDictionary<int, Delegate>> _handlers = new();
+    // OPTIMIZATION: Pool management for high-frequency events
+    private readonly ConcurrentDictionary<Type, object> _eventPools = new();
 
     // OPTIMIZATION: Cache handler arrays to avoid dictionary enumeration on hot path
     private readonly ConcurrentDictionary<Type, HandlerCache> _handlerCache = new();
-
-    // OPTIMIZATION: Pool management for high-frequency events
-    private readonly ConcurrentDictionary<Type, object> _eventPools = new();
+    private readonly ConcurrentDictionary<Type, ConcurrentDictionary<int, Delegate>> _handlers =
+        new();
 
     private readonly ILogger<EventBus> _logger = logger ?? NullLogger<EventBus>.Instance;
     private int _nextHandlerId;
@@ -51,7 +50,8 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
 
     /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Publish<TEvent>(TEvent eventData) where TEvent : class
+    public void Publish<TEvent>(TEvent eventData)
+        where TEvent : class
     {
         ArgumentNullException.ThrowIfNull(eventData);
 
@@ -74,7 +74,7 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         if (startTicks != 0)
         {
             long elapsedTicks = Stopwatch.GetTimestamp() - startTicks;
-            long elapsedNanoseconds = (elapsedTicks * 1_000_000_000) / Stopwatch.Frequency;
+            long elapsedNanoseconds = elapsedTicks * 1_000_000_000 / Stopwatch.Frequency;
             Metrics?.RecordPublish(eventType.Name, elapsedNanoseconds);
         }
     }
@@ -87,7 +87,7 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         ArgumentNullException.ThrowIfNull(configure);
 
         // Get or create pool for this event type
-        var pool = GetOrCreatePool<TEvent>();
+        EventPool<TEvent> pool = GetOrCreatePool<TEvent>();
 
         // Rent event from pool
         TEvent evt = pool.Rent();
@@ -112,7 +112,7 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
     public TEvent RentEvent<TEvent>()
         where TEvent : class, IPoolableEvent, new()
     {
-        var pool = GetOrCreatePool<TEvent>();
+        EventPool<TEvent> pool = GetOrCreatePool<TEvent>();
         return pool.Rent();
     }
 
@@ -122,45 +122,17 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         where TEvent : class, IPoolableEvent, new()
     {
         if (evt == null)
+        {
             return;
+        }
 
-        var pool = GetOrCreatePool<TEvent>();
+        EventPool<TEvent> pool = GetOrCreatePool<TEvent>();
         pool.Return(evt);
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private void ExecuteHandlers<TEvent>(HandlerInfo[] handlers, TEvent eventData, Type eventType)
-        where TEvent : class
-    {
-        // Execute all handlers with error isolation
-        for (int i = 0; i < handlers.Length; i++)
-        {
-            ref readonly HandlerInfo handlerInfo = ref handlers[i];
-
-            try
-            {
-                long handlerStartTicks = Metrics?.IsEnabled == true ? Stopwatch.GetTimestamp() : 0;
-
-                // OPTIMIZATION 4: Direct delegate invocation - no casting overhead
-                ((Action<TEvent>)handlerInfo.Handler)(eventData);
-
-                if (handlerStartTicks != 0)
-                {
-                    long elapsedTicks = Stopwatch.GetTimestamp() - handlerStartTicks;
-                    long elapsedNanoseconds = (elapsedTicks * 1_000_000_000) / Stopwatch.Frequency;
-                    Metrics?.RecordHandlerInvoke(eventType.Name, handlerInfo.HandlerId, elapsedNanoseconds);
-                }
-            }
-            catch (Exception ex)
-            {
-                // Isolate handler errors - don't let them break event publishing
-                LogHandlerError(ex, eventType.Name);
-            }
-        }
-    }
-
     /// <inheritdoc />
-    public IDisposable Subscribe<TEvent>(Action<TEvent> handler) where TEvent : class
+    public IDisposable Subscribe<TEvent>(Action<TEvent> handler)
+        where TEvent : class
     {
         ArgumentNullException.ThrowIfNull(handler);
 
@@ -183,7 +155,8 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
 
     /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int GetSubscriberCount<TEvent>() where TEvent : class
+    public int GetSubscriberCount<TEvent>()
+        where TEvent : class
     {
         Type eventType = typeof(TEvent);
 
@@ -197,7 +170,8 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
     }
 
     /// <inheritdoc />
-    public void ClearSubscriptions<TEvent>() where TEvent : class
+    public void ClearSubscriptions<TEvent>()
+        where TEvent : class
     {
         Type eventType = typeof(TEvent);
         _handlers.TryRemove(eventType, out _);
@@ -222,11 +196,12 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
     /// <inheritdoc />
     public IReadOnlyCollection<int> GetHandlerIds(Type eventType)
     {
-        if (_handlers.TryGetValue(eventType, out var handlers))
+        if (_handlers.TryGetValue(eventType, out ConcurrentDictionary<int, Delegate>? handlers))
         {
             // OPTIMIZATION: Return keys directly - avoids ToList() allocation
             return (IReadOnlyCollection<int>)handlers.Keys;
         }
+
         return Array.Empty<int>();
     }
 
@@ -236,23 +211,30 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         var stats = new List<EventPoolStatistics>();
 
         // Find all types that implement IPoolableEvent in loaded assemblies
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies()
+        IEnumerable<Assembly> assemblies = AppDomain
+            .CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && a.GetName().Name?.StartsWith("PokeSharp") == true);
 
-        foreach (var assembly in assemblies)
+        foreach (Assembly assembly in assemblies)
         {
             try
             {
-                var poolableTypes = assembly.GetTypes()
-                    .Where(t => t.IsClass && !t.IsAbstract && typeof(IPoolableEvent).IsAssignableFrom(t));
+                IEnumerable<Type> poolableTypes = assembly
+                    .GetTypes()
+                    .Where(t =>
+                        t.IsClass && !t.IsAbstract && typeof(IPoolableEvent).IsAssignableFrom(t)
+                    );
 
-                foreach (var eventType in poolableTypes)
+                foreach (Type eventType in poolableTypes)
                 {
                     try
                     {
                         // Get EventPool<T>.Shared via reflection
                         Type poolType = typeof(EventPool<>).MakeGenericType(eventType);
-                        PropertyInfo? sharedProperty = poolType.GetProperty("Shared", BindingFlags.Public | BindingFlags.Static);
+                        PropertyInfo? sharedProperty = poolType.GetProperty(
+                            "Shared",
+                            BindingFlags.Public | BindingFlags.Static
+                        );
 
                         if (sharedProperty != null)
                         {
@@ -263,7 +245,8 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
                                 MethodInfo? getStatsMethod = poolType.GetMethod("GetStatistics");
                                 if (getStatsMethod != null)
                                 {
-                                    var poolStats = (EventPoolStatistics)getStatsMethod.Invoke(pool, null)!;
+                                    var poolStats = (EventPoolStatistics)
+                                        getStatsMethod.Invoke(pool, null)!;
                                     stats.Add(poolStats);
                                 }
                             }
@@ -282,6 +265,41 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
         }
 
         return stats;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void ExecuteHandlers<TEvent>(HandlerInfo[] handlers, TEvent eventData, Type eventType)
+        where TEvent : class
+    {
+        // Execute all handlers with error isolation
+        for (int i = 0; i < handlers.Length; i++)
+        {
+            ref readonly HandlerInfo handlerInfo = ref handlers[i];
+
+            try
+            {
+                long handlerStartTicks = Metrics?.IsEnabled == true ? Stopwatch.GetTimestamp() : 0;
+
+                // OPTIMIZATION 4: Direct delegate invocation - no casting overhead
+                ((Action<TEvent>)handlerInfo.Handler)(eventData);
+
+                if (handlerStartTicks != 0)
+                {
+                    long elapsedTicks = Stopwatch.GetTimestamp() - handlerStartTicks;
+                    long elapsedNanoseconds = elapsedTicks * 1_000_000_000 / Stopwatch.Frequency;
+                    Metrics?.RecordHandlerInvoke(
+                        eventType.Name,
+                        handlerInfo.HandlerId,
+                        elapsedNanoseconds
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                // Isolate handler errors - don't let them break event publishing
+                LogHandlerError(ex, eventType.Name);
+            }
+        }
     }
 
     /// <summary>
@@ -305,15 +323,16 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
     private void InvalidateCache(Type eventType)
     {
         // Update cache with new handler snapshot
-        if (_handlers.TryGetValue(eventType, out var handlers))
+        if (_handlers.TryGetValue(eventType, out ConcurrentDictionary<int, Delegate>? handlers))
         {
             // OPTIMIZATION: Manual array copy - avoids LINQ allocations (iterator + intermediate enumerable)
             var handlerArray = new HandlerInfo[handlers.Count];
             int index = 0;
-            foreach (var kvp in handlers)
+            foreach (KeyValuePair<int, Delegate> kvp in handlers)
             {
                 handlerArray[index++] = new HandlerInfo(kvp.Key, kvp.Value);
             }
+
             _handlerCache[eventType] = new HandlerCache(handlerArray);
         }
         else
@@ -378,8 +397,8 @@ public class EventBus(ILogger<EventBus>? logger = null) : IEventBus
     /// </summary>
     private sealed class HandlerCache
     {
-        public readonly HandlerInfo[] Handlers;
         public readonly int Count;
+        public readonly HandlerInfo[] Handlers;
         public readonly bool IsEmpty;
 
         public HandlerCache(HandlerInfo[] handlers)

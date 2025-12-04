@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Events.Tile;
 using PokeSharp.Game.Systems.Events;
 
@@ -105,6 +104,7 @@ public abstract class TypeScriptBase
         {
             subscription?.Dispose();
         }
+
         _eventSubscriptions.Clear();
     }
 
@@ -158,7 +158,7 @@ public abstract class TypeScriptBase
             return;
         }
 
-        var subscription = ctx.Events.Subscribe(handler);
+        IDisposable subscription = ctx.Events.Subscribe(handler);
         TrackSubscription(subscription);
     }
 
@@ -172,7 +172,9 @@ public abstract class TypeScriptBase
     ///     Requires Phase 2.1 (ctx.Events) to be implemented.
     /// </remarks>
     protected void OnMovementStarted(ScriptContext ctx, Action<MovementStartedEvent> handler)
-        => On(ctx, handler);
+    {
+        On(ctx, handler);
+    }
 
     /// <summary>
     ///     Subscribe to MovementCompletedEvent with automatic cleanup.
@@ -184,7 +186,9 @@ public abstract class TypeScriptBase
     ///     Requires Phase 2.1 (ctx.Events) to be implemented.
     /// </remarks>
     protected void OnMovementCompleted(ScriptContext ctx, Action<MovementCompletedEvent> handler)
-        => On(ctx, handler);
+    {
+        On(ctx, handler);
+    }
 
     /// <summary>
     ///     Subscribe to CollisionDetectedEvent with automatic cleanup.
@@ -196,7 +200,9 @@ public abstract class TypeScriptBase
     ///     Requires Phase 2.1 (ctx.Events) to be implemented.
     /// </remarks>
     protected void OnCollisionDetected(ScriptContext ctx, Action<CollisionDetectedEvent> handler)
-        => On(ctx, handler);
+    {
+        On(ctx, handler);
+    }
 
     /// <summary>
     ///     Subscribe to TileSteppedOnEvent with automatic cleanup.
@@ -208,5 +214,7 @@ public abstract class TypeScriptBase
     ///     Requires Phase 2.1 (ctx.Events) to be implemented.
     /// </remarks>
     protected void OnTileSteppedOn(ScriptContext ctx, Action<TileSteppedOnEvent> handler)
-        => On(ctx, handler);
+    {
+        On(ctx, handler);
+    }
 }

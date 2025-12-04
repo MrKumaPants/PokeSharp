@@ -1,7 +1,7 @@
 #load "UnifiedScriptBase.cs"
 
-using PokeSharp.Scripting.Unified;
 using Microsoft.Xna.Framework;
+using PokeSharp.Scripting.Unified;
 
 /// <summary>
 /// Ice tile behavior - player slides when stepping on it
@@ -41,24 +41,29 @@ public class IceTileScript : UnifiedScriptBase
         Publish(new PlaySoundEvent { SoundName = "ice_slide" });
 
         // Slide the player in the same direction after a short delay
-        DelayedAction(SLIDE_DELAY_TICKS, () =>
-        {
-            var nextPosition = new Point(
-                evt.ToPosition.X + direction.X,
-                evt.ToPosition.Y + direction.Y
-            );
-
-            // Check if next position is walkable
-            if (World.IsTileWalkable(nextPosition))
+        DelayedAction(
+            SLIDE_DELAY_TICKS,
+            () =>
             {
-                Publish(new ForcePlayerMoveEvent
+                var nextPosition = new Point(
+                    evt.ToPosition.X + direction.X,
+                    evt.ToPosition.Y + direction.Y
+                );
+
+                // Check if next position is walkable
+                if (World.IsTileWalkable(nextPosition))
                 {
-                    TargetPosition = nextPosition,
-                    IsSliding = true,
-                    SpeedMultiplier = SLIDE_SPEED_MULTIPLIER
-                });
+                    Publish(
+                        new ForcePlayerMoveEvent
+                        {
+                            TargetPosition = nextPosition,
+                            IsSliding = true,
+                            SpeedMultiplier = SLIDE_SPEED_MULTIPLIER,
+                        }
+                    );
+                }
             }
-        });
+        );
 
         // Track ice tile steps (for achievements)
         IncrementPlayerStat("ice_tiles_stepped", 1);

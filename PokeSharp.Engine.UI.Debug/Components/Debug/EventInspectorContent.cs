@@ -43,13 +43,19 @@ internal readonly struct ColumnLayout
     public readonly float TotalWidth;
 
     private ColumnLayout(
-        float eventNameX, float eventNameWidth,
-        float barX, float barWidth,
-        float subsX, float subsWidth,
-        float countX, float countWidth,
-        float timeX, float timeWidth,
+        float eventNameX,
+        float eventNameWidth,
+        float barX,
+        float barWidth,
+        float subsX,
+        float subsWidth,
+        float countX,
+        float countWidth,
+        float timeX,
+        float timeWidth,
         bool showBar,
-        float totalWidth)
+        float totalWidth
+    )
     {
         EventNameX = eventNameX;
         EventNameWidth = eventNameWidth;
@@ -75,7 +81,8 @@ internal readonly struct ColumnLayout
         float startX,
         IReadOnlyList<EventTypeInfo> events,
         UIRenderer renderer,
-        UITheme theme)
+        UITheme theme
+    )
     {
         float padding = theme.PaddingMedium;
         float rightPad = theme.PaddingSmall;
@@ -91,7 +98,7 @@ internal readonly struct ColumnLayout
         float maxTimeWidth = timeHeaderWidth;
 
         // Measure content widths from actual data
-        foreach (var evt in events)
+        foreach (EventTypeInfo evt in events)
         {
             // Subs column
             string subsText = evt.SubscriberCount.ToString();
@@ -123,7 +130,8 @@ internal readonly struct ColumnLayout
         // Calculate bar width (fills remaining space)
         // Account for column spacing between Subs->Count and Count->Time
         float columnSpacing = padding;
-        float rightColumnsWidth = maxSubsWidth + columnSpacing + maxCountWidth + columnSpacing + maxTimeWidth;
+        float rightColumnsWidth =
+            maxSubsWidth + columnSpacing + maxCountWidth + columnSpacing + maxTimeWidth;
         float barWidth = availableWidth - eventNameWidth - rightColumnsWidth;
 
         // Determine if we have room for the bar
@@ -165,13 +173,19 @@ internal readonly struct ColumnLayout
         float totalWidth = x - startX;
 
         return new ColumnLayout(
-            eventNameX, eventNameWidth,
-            barX, barWidth,
-            subsX, maxSubsWidth,
-            countX, maxCountWidth,
-            timeX, maxTimeWidth,
+            eventNameX,
+            eventNameWidth,
+            barX,
+            barWidth,
+            subsX,
+            maxSubsWidth,
+            countX,
+            maxCountWidth,
+            timeX,
+            maxTimeWidth,
             showBar,
-            totalWidth);
+            totalWidth
+        );
     }
 
     /// <summary>
@@ -203,7 +217,9 @@ public class EventInspectorContent : UIComponent
     private const float EventNameColWidth = PanelConstants.EventInspector.EventNameColumnWidth; // 200px like Profiler
     private const float SubsColWidth = PanelConstants.EventInspector.SubsColumnWidth;
     private const float CountColWidth = PanelConstants.EventInspector.CountColumnWidth;
+
     private const float TimeColWidth = PanelConstants.EventInspector.TimeColumnWidth;
+
     // Note: Execution Time bar column is DYNAMIC - fills remaining space
 
     // Row and section layout
@@ -219,17 +235,17 @@ public class EventInspectorContent : UIComponent
 
     private readonly ScrollbarComponent _scrollbar = new();
     private readonly SortableTableHeader<EventInspectorSortMode> _tableHeader;
+    private EventInspectorData? _cachedData;
 
     private Func<EventInspectorData>? _dataProvider;
-    private EventInspectorData? _cachedData;
-    private List<EventTypeInfo> _sortedEvents = new();
-    private int _selectedEventIndex = -1;
-    private bool _showSubscriptions = true;
-    private EventInspectorSortMode _sortMode = EventInspectorSortMode.BySubscribers;
 
     // Time-based refresh
     private double _lastUpdateTime;
     private double _refreshIntervalSeconds = 0.5;
+    private int _selectedEventIndex = -1;
+    private bool _showSubscriptions = true;
+    private List<EventTypeInfo> _sortedEvents = new();
+    private EventInspectorSortMode _sortMode = EventInspectorSortMode.BySubscribers;
 
     // Layout tracking
     private float _totalContentHeight;
@@ -244,14 +260,10 @@ public class EventInspectorContent : UIComponent
         Id = "event_inspector_content";
 
         // Initialize sortable table header
-        _tableHeader = new SortableTableHeader<EventInspectorSortMode>(EventInspectorSortMode.BySubscribers);
+        _tableHeader = new SortableTableHeader<EventInspectorSortMode>(
+            EventInspectorSortMode.BySubscribers
+        );
         _tableHeader.SortChanged += OnSortChanged;
-    }
-
-    private void OnSortChanged(EventInspectorSortMode newSort)
-    {
-        _sortMode = newSort;
-        SortEvents();
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -259,6 +271,12 @@ public class EventInspectorContent : UIComponent
     // ═══════════════════════════════════════════════════════════════════════════
 
     public bool HasProvider => _dataProvider != null;
+
+    private void OnSortChanged(EventInspectorSortMode newSort)
+    {
+        _sortMode = newSort;
+        SortEvents();
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // Public Methods
@@ -276,7 +294,10 @@ public class EventInspectorContent : UIComponent
         _refreshIntervalSeconds = Math.Max(0.016, frameInterval / 60.0);
     }
 
-    public int GetRefreshInterval() => (int)(_refreshIntervalSeconds * 60);
+    public int GetRefreshInterval()
+    {
+        return (int)(_refreshIntervalSeconds * 60);
+    }
 
     public void ToggleSubscriptions()
     {
@@ -285,22 +306,31 @@ public class EventInspectorContent : UIComponent
 
     public void SelectNextEvent()
     {
-        if (_sortedEvents.Count == 0) return;
+        if (_sortedEvents.Count == 0)
+        {
+            return;
+        }
 
         _selectedEventIndex = (_selectedEventIndex + 1) % _sortedEvents.Count;
         if (_cachedData != null)
+        {
             _cachedData.SelectedEventType = _sortedEvents[_selectedEventIndex].EventTypeName;
+        }
     }
 
     public void SelectPreviousEvent()
     {
-        if (_sortedEvents.Count == 0) return;
+        if (_sortedEvents.Count == 0)
+        {
+            return;
+        }
 
-        _selectedEventIndex = _selectedEventIndex <= 0
-            ? _sortedEvents.Count - 1
-            : _selectedEventIndex - 1;
+        _selectedEventIndex =
+            _selectedEventIndex <= 0 ? _sortedEvents.Count - 1 : _selectedEventIndex - 1;
         if (_cachedData != null)
+        {
             _cachedData.SelectedEventType = _sortedEvents[_selectedEventIndex].EventTypeName;
+        }
     }
 
     public void Refresh()
@@ -310,16 +340,24 @@ public class EventInspectorContent : UIComponent
 
     public void ScrollUp(int lines = 1)
     {
-        _scrollbar.ScrollOffset = Math.Max(0, _scrollbar.ScrollOffset - lines * RowHeight);
+        _scrollbar.ScrollOffset = Math.Max(0, _scrollbar.ScrollOffset - (lines * RowHeight));
     }
 
     public void ScrollDown(int lines = 1)
     {
         float maxScroll = Math.Max(0, _totalContentHeight - _visibleHeight);
-        _scrollbar.ScrollOffset = Math.Min(maxScroll, _scrollbar.ScrollOffset + lines * RowHeight);
+        _scrollbar.ScrollOffset = Math.Min(
+            maxScroll,
+            _scrollbar.ScrollOffset + (lines * RowHeight)
+        );
     }
 
-    public (int EventCount, int TotalSubscribers, double SlowestEventMs, string SlowestEventName) GetStatistics()
+    public (
+        int EventCount,
+        int TotalSubscribers,
+        double SlowestEventMs,
+        string SlowestEventName
+    ) GetStatistics()
     {
         if (_cachedData == null || _cachedData.Events.Count == 0)
         {
@@ -329,8 +367,8 @@ public class EventInspectorContent : UIComponent
         int eventCount = _cachedData.Events.Count;
         int totalSubscribers = _cachedData.Events.Sum(e => e.SubscriberCount);
 
-        var slowest = _cachedData.Events
-            .Where(e => e.PublishCount > 0)
+        EventTypeInfo? slowest = _cachedData
+            .Events.Where(e => e.PublishCount > 0)
             .OrderByDescending(e => e.AverageTimeMs)
             .FirstOrDefault();
 
@@ -351,21 +389,28 @@ public class EventInspectorContent : UIComponent
             RefreshData();
         }
 
-        return _cachedData ?? new EventInspectorData
-        {
-            Events = new List<EventTypeInfo>(),
-            RecentEvents = new List<EventLogEntry>(),
-            Filters = new EventFilterOptions()
-        };
+        return _cachedData
+            ?? new EventInspectorData
+            {
+                Events = new List<EventTypeInfo>(),
+                RecentEvents = new List<EventLogEntry>(),
+                Filters = new EventFilterOptions(),
+            };
     }
 
-    public EventInspectorSortMode GetSortMode() => _sortMode;
+    public EventInspectorSortMode GetSortMode()
+    {
+        return _sortMode;
+    }
 
     // ═══════════════════════════════════════════════════════════════════════════
     // UIComponent Overrides
     // ═══════════════════════════════════════════════════════════════════════════
 
-    protected override bool IsInteractive() => true;
+    protected override bool IsInteractive()
+    {
+        return true;
+    }
 
     protected override void OnRender(UIContext context)
     {
@@ -401,7 +446,8 @@ public class EventInspectorContent : UIComponent
                 contentX,
                 y,
                 "No data provider configured.",
-                "Waiting for event inspector data...");
+                "Waiting for event inspector data..."
+            );
             return;
         }
 
@@ -413,12 +459,13 @@ public class EventInspectorContent : UIComponent
                 contentX,
                 y,
                 "No events registered.",
-                "Events will appear when the game dispatches them.");
+                "Events will appear when the game dispatches them."
+            );
             return;
         }
 
         // Calculate total content height and scrollbar needs
-        _visibleHeight = Rect.Height - linePadding * 2;
+        _visibleHeight = Rect.Height - (linePadding * 2);
         _totalContentHeight = CalculateTotalContentHeight(lineHeight, theme);
 
         bool needsScrollbar = _totalContentHeight > _visibleHeight;
@@ -433,7 +480,12 @@ public class EventInspectorContent : UIComponent
         }
 
         // Create clip rect for scrollable content
-        LayoutRect clipRect = new(Rect.X, Rect.Y, tableContentWidth + linePadding * 2, Rect.Height);
+        LayoutRect clipRect = new(
+            Rect.X,
+            Rect.Y,
+            tableContentWidth + (linePadding * 2),
+            Rect.Height
+        );
         renderer.PushClip(clipRect);
 
         // Render content with scroll offset
@@ -442,17 +494,39 @@ public class EventInspectorContent : UIComponent
         // ═══════════════════════════════════════════════════════════════════════
         // Section 1: Summary Header (always visible at top)
         // ═══════════════════════════════════════════════════════════════════════
-        renderY = RenderSummaryHeader(renderer, theme, contentX, renderY, tableContentWidth, lineHeight);
+        renderY = RenderSummaryHeader(
+            renderer,
+            theme,
+            contentX,
+            renderY,
+            tableContentWidth,
+            lineHeight
+        );
 
         // ═══════════════════════════════════════════════════════════════════════
         // Section 2: Events Table with Performance Bars
         // ═══════════════════════════════════════════════════════════════════════
-        renderY = RenderEventsTable(renderer, theme, input, contentX, renderY, tableContentWidth, lineHeight);
+        renderY = RenderEventsTable(
+            renderer,
+            theme,
+            input,
+            contentX,
+            renderY,
+            tableContentWidth,
+            lineHeight
+        );
 
         // ═══════════════════════════════════════════════════════════════════════
         // Section 3: Selected Event Subscriptions
         // ═══════════════════════════════════════════════════════════════════════
-        renderY = RenderSubscriptionsSection(renderer, theme, contentX, renderY, tableContentWidth, lineHeight);
+        renderY = RenderSubscriptionsSection(
+            renderer,
+            theme,
+            contentX,
+            renderY,
+            tableContentWidth,
+            lineHeight
+        );
 
         // ═══════════════════════════════════════════════════════════════════════
         // Section 4: Recent Events Log
@@ -465,10 +539,11 @@ public class EventInspectorContent : UIComponent
         if (needsScrollbar)
         {
             LayoutRect scrollbarRect = new(
-                Rect.X + Rect.Width - scrollbarWidth - linePadding / 2,
+                Rect.X + Rect.Width - scrollbarWidth - (linePadding / 2),
                 Rect.Y + linePadding,
                 scrollbarWidth,
-                Rect.Height - linePadding * 2);
+                Rect.Height - (linePadding * 2)
+            );
             _scrollbar.Draw(renderer, theme, scrollbarRect, _totalContentHeight, _visibleHeight);
         }
     }
@@ -490,8 +565,10 @@ public class EventInspectorContent : UIComponent
             {
                 float maxScroll = Math.Max(0, _totalContentHeight - _visibleHeight);
                 _scrollbar.ScrollOffset = Math.Clamp(
-                    _scrollbar.ScrollOffset - wheelDelta * Theme.ScrollWheelSensitivity,
-                    0, maxScroll);
+                    _scrollbar.ScrollOffset - (wheelDelta * Theme.ScrollWheelSensitivity),
+                    0,
+                    maxScroll
+                );
             }
         }
 
@@ -540,11 +617,26 @@ public class EventInspectorContent : UIComponent
     // Rendering Sections
     // ═══════════════════════════════════════════════════════════════════════════
 
-    private float RenderSummaryHeader(UIRenderer renderer, UITheme theme, float x, float y, float width, int lineHeight)
+    private float RenderSummaryHeader(
+        UIRenderer renderer,
+        UITheme theme,
+        float x,
+        float y,
+        float width,
+        int lineHeight
+    )
     {
-        if (_cachedData == null) return y;
+        if (_cachedData == null)
+        {
+            return y;
+        }
 
-        var stats = GetStatistics();
+        (
+            int EventCount,
+            int TotalSubscribers,
+            double SlowestEventMs,
+            string SlowestEventName
+        ) stats = GetStatistics();
 
         // Title line (left) + Sort mode (right) - matches Profiler pattern
         renderer.DrawText("Event Inspector", x, y, theme.Info);
@@ -556,14 +648,14 @@ public class EventInspectorContent : UIComponent
         // Stats line (left) + Slowest event (right) - matches Profiler pattern
         string statsText = $"Events: {stats.EventCount} | Subscribers: {stats.TotalSubscribers}";
         renderer.DrawText(statsText, x, y, theme.TextSecondary);
-        
+
         // Right-aligned slowest event info with color coding
-        Color slowestColor = stats.SlowestEventMs >= 1.0f ? theme.Error
-                           : stats.SlowestEventMs >= 0.5f ? theme.Warning
-                           : theme.Success;
-        string slowestText = stats.SlowestEventMs > 0 
-            ? $"Slowest: {stats.SlowestEventMs:F2}ms"
-            : "No activity";
+        Color slowestColor =
+            stats.SlowestEventMs >= 1.0f ? theme.Error
+            : stats.SlowestEventMs >= 0.5f ? theme.Warning
+            : theme.Success;
+        string slowestText =
+            stats.SlowestEventMs > 0 ? $"Slowest: {stats.SlowestEventMs:F2}ms" : "No activity";
         float slowestWidth = renderer.MeasureText(slowestText).X;
         renderer.DrawText(slowestText, x + width - slowestWidth, y, slowestColor);
         y += lineHeight + theme.SpacingRelaxed;
@@ -571,9 +663,20 @@ public class EventInspectorContent : UIComponent
         return y;
     }
 
-    private float RenderEventsTable(UIRenderer renderer, UITheme theme, InputState? input, float x, float y, float width, int lineHeight)
+    private float RenderEventsTable(
+        UIRenderer renderer,
+        UITheme theme,
+        InputState? input,
+        float x,
+        float y,
+        float width,
+        int lineHeight
+    )
     {
-        if (_cachedData == null) return y;
+        if (_cachedData == null)
+        {
+            return y;
+        }
 
         // Check if panel is too narrow to display meaningfully
         if (width < PanelConstants.EventInspector.MinPanelWidth)
@@ -591,69 +694,77 @@ public class EventInspectorContent : UIComponent
         _tableHeader.ClearColumns();
 
         // Event Type column (always visible, fixed width)
-        _tableHeader.AddColumn(new SortableTableHeader<EventInspectorSortMode>.Column
-        {
-            Label = "Event Type",
-            SortMode = EventInspectorSortMode.ByName,
-            X = layout.EventNameX,
-            MaxWidth = layout.EventNameWidth,
-            Ascending = true,
-        });
+        _tableHeader.AddColumn(
+            new SortableTableHeader<EventInspectorSortMode>.Column
+            {
+                Label = "Event Type",
+                SortMode = EventInspectorSortMode.ByName,
+                X = layout.EventNameX,
+                MaxWidth = layout.EventNameWidth,
+                Ascending = true,
+            }
+        );
 
         // Execution Time bar (visible when space allows)
         if (layout.ShowBar)
         {
-            _tableHeader.AddColumn(new SortableTableHeader<EventInspectorSortMode>.Column
-            {
-                Label = "Execution Time",
-                SortMode = EventInspectorSortMode.ByAvgTime,
-                X = layout.BarX,
-                MaxWidth = layout.BarWidth,
-            });
+            _tableHeader.AddColumn(
+                new SortableTableHeader<EventInspectorSortMode>.Column
+                {
+                    Label = "Execution Time",
+                    SortMode = EventInspectorSortMode.ByAvgTime,
+                    X = layout.BarX,
+                    MaxWidth = layout.BarWidth,
+                }
+            );
         }
 
         // Subscribers column (auto-sized to content)
-        _tableHeader.AddColumn(new SortableTableHeader<EventInspectorSortMode>.Column
-        {
-            Label = "Subs",
-            SortMode = EventInspectorSortMode.BySubscribers,
-            X = layout.SubsX,
-            MaxWidth = layout.SubsWidth,
-            Alignment = SortableTableHeader<EventInspectorSortMode>.HorizontalAlignment.Right,
-        });
+        _tableHeader.AddColumn(
+            new SortableTableHeader<EventInspectorSortMode>.Column
+            {
+                Label = "Subs",
+                SortMode = EventInspectorSortMode.BySubscribers,
+                X = layout.SubsX,
+                MaxWidth = layout.SubsWidth,
+                Alignment = SortableTableHeader<EventInspectorSortMode>.HorizontalAlignment.Right,
+            }
+        );
 
         // Count column (auto-sized to content)
-        _tableHeader.AddColumn(new SortableTableHeader<EventInspectorSortMode>.Column
-        {
-            Label = "Count",
-            SortMode = EventInspectorSortMode.ByCount,
-            X = layout.CountX,
-            MaxWidth = layout.CountWidth,
-            Alignment = SortableTableHeader<EventInspectorSortMode>.HorizontalAlignment.Right,
-        });
+        _tableHeader.AddColumn(
+            new SortableTableHeader<EventInspectorSortMode>.Column
+            {
+                Label = "Count",
+                SortMode = EventInspectorSortMode.ByCount,
+                X = layout.CountX,
+                MaxWidth = layout.CountWidth,
+                Alignment = SortableTableHeader<EventInspectorSortMode>.HorizontalAlignment.Right,
+            }
+        );
 
         // Avg/Max time column (auto-sized to content)
-        _tableHeader.AddColumn(new SortableTableHeader<EventInspectorSortMode>.Column
-        {
-            Label = "Avg/Max",
-            SortMode = EventInspectorSortMode.ByMaxTime,
-            X = layout.TimeX,
-            MaxWidth = layout.TimeWidth,
-            Alignment = SortableTableHeader<EventInspectorSortMode>.HorizontalAlignment.Right,
-        });
+        _tableHeader.AddColumn(
+            new SortableTableHeader<EventInspectorSortMode>.Column
+            {
+                Label = "Avg/Max",
+                SortMode = EventInspectorSortMode.ByMaxTime,
+                X = layout.TimeX,
+                MaxWidth = layout.TimeWidth,
+                Alignment = SortableTableHeader<EventInspectorSortMode>.HorizontalAlignment.Right,
+            }
+        );
 
         _tableHeader.SetSort(_sortMode);
         _tableHeader.DrawWithHover(renderer, theme, input, y, lineHeight);
         y += lineHeight + theme.SpacingTight;
 
         // Header separator
-        renderer.DrawRectangle(
-            new LayoutRect(x, y, width, 1),
-            theme.BorderPrimary);
+        renderer.DrawRectangle(new LayoutRect(x, y, width, 1), theme.BorderPrimary);
         y += theme.SpacingNormal;
 
         // Render event rows
-        foreach (var eventInfo in _sortedEvents)
+        foreach (EventTypeInfo eventInfo in _sortedEvents)
         {
             bool isSelected = eventInfo.EventTypeName == _cachedData.SelectedEventType;
 
@@ -664,7 +775,8 @@ public class EventInspectorContent : UIComponent
                     x - theme.PaddingSmall,
                     y - theme.PaddingTiny,
                     width + (theme.PaddingSmall * 2),
-                    RowHeight);
+                    RowHeight
+                );
                 renderer.DrawRectangle(highlightRect, theme.InputSelection);
             }
 
@@ -674,14 +786,28 @@ public class EventInspectorContent : UIComponent
             // Event name (truncated with ellipsis)
             string displayName = renderer.TruncateWithEllipsis(
                 eventInfo.EventTypeName,
-                layout.EventNameWidth - theme.PaddingMedium);
-            renderer.DrawText(displayName, layout.EventNameX, y, isSelected ? theme.TextPrimary : eventColor);
+                layout.EventNameWidth - theme.PaddingMedium
+            );
+            renderer.DrawText(
+                displayName,
+                layout.EventNameX,
+                y,
+                isSelected ? theme.TextPrimary : eventColor
+            );
 
             // Execution Time bar (only if visible in layout)
             if (layout.ShowBar)
             {
                 float barWidth = layout.BarWidth - theme.PaddingMedium;
-                RenderPerformanceBar(renderer, theme, layout.BarX, y, barWidth, lineHeight, eventInfo);
+                RenderPerformanceBar(
+                    renderer,
+                    theme,
+                    layout.BarX,
+                    y,
+                    barWidth,
+                    lineHeight,
+                    eventInfo
+                );
             }
 
             // Subscribers count (right-aligned, auto-sized to content)
@@ -693,19 +819,27 @@ public class EventInspectorContent : UIComponent
             // Publish count (right-aligned)
             string countText = FormatCount(eventInfo.PublishCount);
             float countTextWidth = renderer.MeasureText(countText).X;
-            float countTextX = layout.CountX + layout.CountWidth - countTextWidth - theme.PaddingSmall;
-            
+            float countTextX =
+                layout.CountX + layout.CountWidth - countTextWidth - theme.PaddingSmall;
+
             // Ensure count text doesn't overflow into next column
-            countText = renderer.TruncateWithEllipsis(countText, layout.CountWidth - theme.PaddingSmall);
+            countText = renderer.TruncateWithEllipsis(
+                countText,
+                layout.CountWidth - theme.PaddingSmall
+            );
             renderer.DrawText(countText, countTextX, y, theme.TextSecondary);
 
             // Avg/Max time (right-aligned)
             string timeText;
             Color timeColor;
-            
+
             if (eventInfo.PublishCount > 0)
             {
-                timeText = FormatTimeRange(eventInfo.AverageTimeMs, eventInfo.MaxTimeMs, layout.TimeWidth);
+                timeText = FormatTimeRange(
+                    eventInfo.AverageTimeMs,
+                    eventInfo.MaxTimeMs,
+                    layout.TimeWidth
+                );
                 timeColor = GetPerformanceColor(eventInfo.MaxTimeMs, theme);
             }
             else
@@ -713,7 +847,7 @@ public class EventInspectorContent : UIComponent
                 timeText = "-/-";
                 timeColor = theme.TextDim;
             }
-            
+
             float timeTextWidth = renderer.MeasureText(timeText).X;
             float timeTextX = layout.TimeX + layout.TimeWidth - timeTextWidth - theme.PaddingSmall;
             renderer.DrawText(timeText, timeTextX, y, timeColor);
@@ -725,7 +859,15 @@ public class EventInspectorContent : UIComponent
         return y;
     }
 
-    private void RenderPerformanceBar(UIRenderer renderer, UITheme theme, float x, float y, float width, int lineHeight, EventTypeInfo eventInfo)
+    private void RenderPerformanceBar(
+        UIRenderer renderer,
+        UITheme theme,
+        float x,
+        float y,
+        float width,
+        int lineHeight,
+        EventTypeInfo eventInfo
+    )
     {
         float barHeight = lineHeight - (theme.ProfilerBarInset * 2);
         float barY = y + theme.ProfilerBarInset;
@@ -738,7 +880,9 @@ public class EventInspectorContent : UIComponent
         if (eventInfo.PublishCount > 0 && eventInfo.AverageTimeMs > 0)
         {
             // Bar fill (matching Profiler pattern: time / maxTime / maxScale)
-            float barPercent = Math.Min((float)(eventInfo.AverageTimeMs / MaxBarTimeMs), theme.ProfilerBarMaxScale) / theme.ProfilerBarMaxScale;
+            float barPercent =
+                Math.Min((float)(eventInfo.AverageTimeMs / MaxBarTimeMs), theme.ProfilerBarMaxScale)
+                / theme.ProfilerBarMaxScale;
             float filledWidth = width * barPercent;
 
             if (filledWidth > 0)
@@ -749,42 +893,58 @@ public class EventInspectorContent : UIComponent
             }
 
             // Warning threshold marker (at 1ms)
-            float warningX = x + (width * (WarningThresholdMs / MaxBarTimeMs / theme.ProfilerBarMaxScale));
+            float warningX =
+                x + (width * (WarningThresholdMs / MaxBarTimeMs / theme.ProfilerBarMaxScale));
             if (warningX > x && warningX < x + width)
             {
                 renderer.DrawRectangle(
                     new LayoutRect(warningX, barY, 1, barHeight),
-                    theme.Warning * theme.ProfilerBudgetLineOpacity);
+                    theme.Warning * theme.ProfilerBudgetLineOpacity
+                );
             }
         }
     }
 
-    private float RenderSubscriptionsSection(UIRenderer renderer, UITheme theme, float x, float y, float width, int lineHeight)
+    private float RenderSubscriptionsSection(
+        UIRenderer renderer,
+        UITheme theme,
+        float x,
+        float y,
+        float width,
+        int lineHeight
+    )
     {
-        if (_cachedData == null || !_showSubscriptions) return y;
-        if (string.IsNullOrEmpty(_cachedData.SelectedEventType)) return y;
+        if (_cachedData == null || !_showSubscriptions)
+        {
+            return y;
+        }
 
-        var selectedEvent = _cachedData.Events
-            .FirstOrDefault(e => e.EventTypeName == _cachedData.SelectedEventType);
+        if (string.IsNullOrEmpty(_cachedData.SelectedEventType))
+        {
+            return y;
+        }
 
-        if (selectedEvent == null || selectedEvent.Subscriptions.Count == 0) return y;
+        EventTypeInfo? selectedEvent = _cachedData.Events.FirstOrDefault(e =>
+            e.EventTypeName == _cachedData.SelectedEventType
+        );
+
+        if (selectedEvent == null || selectedEvent.Subscriptions.Count == 0)
+        {
+            return y;
+        }
 
         // Section header with separator
-        renderer.DrawRectangle(
-            new LayoutRect(x, y, width, 1),
-            theme.BorderPrimary);
+        renderer.DrawRectangle(new LayoutRect(x, y, width, 1), theme.BorderPrimary);
         y += theme.SpacingNormal;
 
-        renderer.DrawText(
-            $"Subscriptions: {selectedEvent.EventTypeName}",
-            x, y, theme.Info);
+        renderer.DrawText($"Subscriptions: {selectedEvent.EventTypeName}", x, y, theme.Info);
         y += lineHeight + theme.SpacingTight;
 
         // Subscription list with tree structure
         var sortedSubs = selectedEvent.Subscriptions.OrderByDescending(s => s.Priority).ToList();
         for (int i = 0; i < sortedSubs.Count; i++)
         {
-            var sub = sortedSubs[i];
+            SubscriptionInfo sub = sortedSubs[i];
             bool isLast = i == sortedSubs.Count - 1;
 
             // Tree connector
@@ -794,20 +954,24 @@ public class EventInspectorContent : UIComponent
                 ? $"Handler #{sub.HandlerId}"
                 : sub.Source;
 
-            Color priorityColor = sub.Priority >= 100 ? theme.Warning :
-                                  sub.Priority >= 50 ? theme.Info : theme.TextPrimary;
+            Color priorityColor =
+                sub.Priority >= 100 ? theme.Warning
+                : sub.Priority >= 50 ? theme.Info
+                : theme.TextPrimary;
 
             renderer.DrawText($"{treePrefix}{NerdFontIcons.TreeHorizontal} ", x, y, theme.TextDim);
             renderer.DrawText(
                 $"[P{sub.Priority}]",
                 x + PanelConstants.EventInspector.TreeIndentLevel1,
                 y,
-                priorityColor);
+                priorityColor
+            );
             renderer.DrawText(
                 source,
                 x + PanelConstants.EventInspector.TreeIndentLevel2,
                 y,
-                theme.TextPrimary);
+                theme.TextPrimary
+            );
 
             // Performance inline
             if (sub.InvocationCount > 0)
@@ -819,7 +983,8 @@ public class EventInspectorContent : UIComponent
                     perfText,
                     x + PanelConstants.EventInspector.TreeIndentLevel2 + sourceWidth,
                     y,
-                    perfColor);
+                    perfColor
+                );
             }
 
             y += RowHeight;
@@ -829,26 +994,33 @@ public class EventInspectorContent : UIComponent
         return y;
     }
 
-    private float RenderRecentEvents(UIRenderer renderer, UITheme theme, float x, float y, float width, int lineHeight)
+    private float RenderRecentEvents(
+        UIRenderer renderer,
+        UITheme theme,
+        float x,
+        float y,
+        float width,
+        int lineHeight
+    )
     {
-        if (_cachedData == null || _cachedData.RecentEvents.Count == 0) return y;
+        if (_cachedData == null || _cachedData.RecentEvents.Count == 0)
+        {
+            return y;
+        }
 
         // Section separator
-        renderer.DrawRectangle(
-            new LayoutRect(x, y, width, 1),
-            theme.BorderPrimary);
+        renderer.DrawRectangle(new LayoutRect(x, y, width, 1), theme.BorderPrimary);
         y += theme.SpacingNormal;
 
         // Section header
         renderer.DrawText("Recent Events (last 10)", x, y, theme.Info);
         y += lineHeight + theme.SpacingTight;
 
-        foreach (var entry in _cachedData.RecentEvents.TakeLast(10))
+        foreach (EventLogEntry entry in _cachedData.RecentEvents.TakeLast(10))
         {
             string timestamp = entry.Timestamp.ToString("HH:mm:ss.fff");
-            string operationIcon = entry.Operation == "Publish"
-                ? NerdFontIcons.ArrowRight
-                : NerdFontIcons.ArrowLeft;
+            string operationIcon =
+                entry.Operation == "Publish" ? NerdFontIcons.ArrowRight : NerdFontIcons.ArrowLeft;
             Color perfColor = GetPerformanceColor(entry.DurationMs, theme);
             string handler = entry.HandlerId.HasValue ? $" #{entry.HandlerId}" : "";
 
@@ -856,8 +1028,20 @@ public class EventInspectorContent : UIComponent
             renderer.DrawText(timestamp, x, y, theme.TextDim);
 
             // Operation icon and event type
-            renderer.DrawText($" {operationIcon} ", x + PanelConstants.EventInspector.TimestampColumnWidth, y, theme.TextSecondary);
-            renderer.DrawText(entry.EventType, x + PanelConstants.EventInspector.TimestampColumnWidth + PanelConstants.EventInspector.OperationIconWidth, y, theme.TextPrimary);
+            renderer.DrawText(
+                $" {operationIcon} ",
+                x + PanelConstants.EventInspector.TimestampColumnWidth,
+                y,
+                theme.TextSecondary
+            );
+            renderer.DrawText(
+                entry.EventType,
+                x
+                    + PanelConstants.EventInspector.TimestampColumnWidth
+                    + PanelConstants.EventInspector.OperationIconWidth,
+                y,
+                theme.TextPrimary
+            );
 
             // Handler and duration
             string suffix = $"{handler} ({entry.DurationMs:F2}ms)";
@@ -876,7 +1060,11 @@ public class EventInspectorContent : UIComponent
 
     private void RefreshData()
     {
-        if (_dataProvider == null) return;
+        if (_dataProvider == null)
+        {
+            return;
+        }
+
         _cachedData = _dataProvider();
         SortEvents();
     }
@@ -891,18 +1079,35 @@ public class EventInspectorContent : UIComponent
 
         _sortedEvents = _sortMode switch
         {
-            EventInspectorSortMode.ByName => _cachedData.Events.OrderBy(e => e.EventTypeName).ToList(),
-            EventInspectorSortMode.BySubscribers => _cachedData.Events.OrderByDescending(e => e.SubscriberCount).ThenBy(e => e.EventTypeName).ToList(),
-            EventInspectorSortMode.ByAvgTime => _cachedData.Events.OrderByDescending(e => e.AverageTimeMs).ThenBy(e => e.EventTypeName).ToList(),
-            EventInspectorSortMode.ByMaxTime => _cachedData.Events.OrderByDescending(e => e.MaxTimeMs).ThenBy(e => e.EventTypeName).ToList(),
-            EventInspectorSortMode.ByCount => _cachedData.Events.OrderByDescending(e => e.PublishCount).ThenBy(e => e.EventTypeName).ToList(),
+            EventInspectorSortMode.ByName => _cachedData
+                .Events.OrderBy(e => e.EventTypeName)
+                .ToList(),
+            EventInspectorSortMode.BySubscribers => _cachedData
+                .Events.OrderByDescending(e => e.SubscriberCount)
+                .ThenBy(e => e.EventTypeName)
+                .ToList(),
+            EventInspectorSortMode.ByAvgTime => _cachedData
+                .Events.OrderByDescending(e => e.AverageTimeMs)
+                .ThenBy(e => e.EventTypeName)
+                .ToList(),
+            EventInspectorSortMode.ByMaxTime => _cachedData
+                .Events.OrderByDescending(e => e.MaxTimeMs)
+                .ThenBy(e => e.EventTypeName)
+                .ToList(),
+            EventInspectorSortMode.ByCount => _cachedData
+                .Events.OrderByDescending(e => e.PublishCount)
+                .ThenBy(e => e.EventTypeName)
+                .ToList(),
             _ => _cachedData.Events.ToList(),
         };
     }
 
     private float CalculateTotalContentHeight(int lineHeight, UITheme theme)
     {
-        if (_cachedData == null) return 0;
+        if (_cachedData == null)
+        {
+            return 0;
+        }
 
         float height = 0;
 
@@ -919,7 +1124,9 @@ public class EventInspectorContent : UIComponent
         // Subscriptions section (if visible and event selected)
         if (_showSubscriptions && !string.IsNullOrEmpty(_cachedData.SelectedEventType))
         {
-            var selected = _cachedData.Events.FirstOrDefault(e => e.EventTypeName == _cachedData.SelectedEventType);
+            EventTypeInfo? selected = _cachedData.Events.FirstOrDefault(e =>
+                e.EventTypeName == _cachedData.SelectedEventType
+            );
             if (selected != null && selected.Subscriptions.Count > 0)
             {
                 height += 1 + theme.SpacingNormal; // separator
@@ -940,7 +1147,6 @@ public class EventInspectorContent : UIComponent
         return height;
     }
 
-
     /// <summary>
     ///     Gets performance color based on time value in milliseconds.
     ///     Uses relative thresholds matching the Profiler panel approach.
@@ -954,13 +1160,19 @@ public class EventInspectorContent : UIComponent
         // - Good: < 0.25ms
 
         if (timeMs >= WarningThresholdMs)
+        {
             return theme.Error; // Critical (>= 1ms)
+        }
 
         if (timeMs >= WarningThresholdMs * theme.ProfilerBarWarningThreshold)
+        {
             return theme.Warning; // Warning (>= 0.5ms with default 0.5 threshold)
+        }
 
         if (timeMs >= WarningThresholdMs * theme.ProfilerBarMildThreshold)
+        {
             return theme.WarningMild; // Mild (>= 0.25ms with default 0.25 threshold)
+        }
 
         return theme.Success; // Good
     }
@@ -1006,7 +1218,7 @@ public class EventInspectorContent : UIComponent
     {
         // Try full format first: "12.34/56.78"
         string fullFormat = $"{avgMs:F2}/{maxMs:F2}";
-        
+
         // If we have plenty of space (or text fits), use full format
         // Assuming average character width of ~8px for our font
         if (availableWidth >= 90f || fullFormat.Length <= 11)

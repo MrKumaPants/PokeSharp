@@ -192,7 +192,7 @@ public class QuestRewardHandler : ScriptBase
         {
             "catch_5_pokemon" => new[] { "First Steps" },
             "defeat_gym_leader" => new[] { "Gym Champion", "Badge Master" },
-            _ => Array.Empty<string>()
+            _ => Array.Empty<string>(),
         };
     }
 
@@ -204,9 +204,9 @@ public class QuestRewardHandler : ScriptBase
             "defeat_gym_leader" => new[]
             {
                 new ContentUnlock { Type = "map", Id = "mt_moon" },
-                new ContentUnlock { Type = "quest", Id = "find_lost_item" }
+                new ContentUnlock { Type = "quest", Id = "find_lost_item" },
             },
-            _ => Array.Empty<ContentUnlock>()
+            _ => Array.Empty<ContentUnlock>(),
         };
     }
 

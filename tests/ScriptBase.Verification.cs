@@ -35,17 +35,23 @@ public class TestScript : ScriptBase
 
         // Test OnEntity<TEvent> method
         var testEntity = new Entity(1, 1);
-        OnEntity<TestEntityEvent>(testEntity, evt =>
-        {
-            Context.Logger.LogInformation("Entity event: {EntityId}", evt.Entity.Id);
-        });
+        OnEntity<TestEntityEvent>(
+            testEntity,
+            evt =>
+            {
+                Context.Logger.LogInformation("Entity event: {EntityId}", evt.Entity.Id);
+            }
+        );
 
         // Test OnTile<TEvent> method
         var tilePos = new Vector2(10, 15);
-        OnTile<TestTileEvent>(tilePos, evt =>
-        {
-            Context.Logger.LogInformation("Tile event at ({X}, {Y})", evt.TileX, evt.TileY);
-        });
+        OnTile<TestTileEvent>(
+            tilePos,
+            evt =>
+            {
+                Context.Logger.LogInformation("Tile event at ({X}, {Y})", evt.TileX, evt.TileY);
+            }
+        );
     }
 
     public override void OnUnload()

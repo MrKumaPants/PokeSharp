@@ -1,5 +1,5 @@
-using PokeSharp.Game.Scripting.Runtime;
 using EnhancedLedges.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 /// <summary>
 ///     Ledge Jump Tracker - tracks player's total ledge jumps and awards achievements.
@@ -26,7 +26,7 @@ public class LedgeJumpTrackerBehavior : ScriptBase
         { "first_jump", 1 },
         { "ledge_enthusiast", 10 },
         { "jump_master", 50 },
-        { "ledge_legend", 100 }
+        { "ledge_legend", 100 },
     };
 
     public override void Initialize(ScriptContext ctx)
@@ -55,60 +55,84 @@ public class LedgeJumpTrackerBehavior : ScriptBase
         }
 
         var totalJumps = ctx.State.GetInt(STATE_TOTAL_JUMPS);
-        Context.Logger.LogInformation("Jump tracker initialized: {TotalJumps} total jumps", totalJumps);
+        Context.Logger.LogInformation(
+            "Jump tracker initialized: {TotalJumps} total jumps",
+            totalJumps
+        );
     }
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         // Track ledge jumps
-        On<LedgeJumpedEvent>((evt) =>
-        {
-            // Increment total jumps
-            var totalJumps = Context.State.GetInt(STATE_TOTAL_JUMPS);
-            totalJumps++;
-            Context.State.SetInt(STATE_TOTAL_JUMPS, totalJumps);
-
-            Context.Logger.LogInformation("Ledge jumped! Total: {TotalJumps}", totalJumps);
-
-            // Track boosted jumps
-            if (evt.IsBoosted)
+        On<LedgeJumpedEvent>(
+            (evt) =>
             {
-                var boostedJumps = Context.State.GetInt(STATE_BOOSTED_JUMPS);
-                boostedJumps++;
-                Context.State.SetInt(STATE_BOOSTED_JUMPS, boostedJumps);
+                // Increment total jumps
+                var totalJumps = Context.State.GetInt(STATE_TOTAL_JUMPS);
+                totalJumps++;
+                Context.State.SetInt(STATE_TOTAL_JUMPS, totalJumps);
 
-                Context.Logger.LogInformation("Boosted jump! Total boosted: {BoostedJumps}", boostedJumps);
-                CheckAchievement("boosted", 1, boostedJumps);
+                Context.Logger.LogInformation("Ledge jumped! Total: {TotalJumps}", totalJumps);
+
+                // Track boosted jumps
+                if (evt.IsBoosted)
+                {
+                    var boostedJumps = Context.State.GetInt(STATE_BOOSTED_JUMPS);
+                    boostedJumps++;
+                    Context.State.SetInt(STATE_BOOSTED_JUMPS, boostedJumps);
+
+                    Context.Logger.LogInformation(
+                        "Boosted jump! Total boosted: {BoostedJumps}",
+                        boostedJumps
+                    );
+                    CheckAchievement("boosted", 1, boostedJumps);
+                }
+
+                // Check jump count achievements
+                CheckJumpAchievements(totalJumps);
+
+                // Display statistics
+                DisplayJumpStats();
             }
-
-            // Check jump count achievements
-            CheckJumpAchievements(totalJumps);
-
-            // Display statistics
-            DisplayJumpStats();
-        });
+        );
 
         // Track ledge crumbles (especially if player was on it)
-        On<LedgeCrumbledEvent>((evt) =>
-        {
-            Context.Logger.LogWarning("Ledge crumbled at ({X}, {Y}) after {TotalJumps} jumps", evt.TileX, evt.TileY, evt.TotalJumps);
-
-            if (evt.WasPlayerOn)
+        On<LedgeCrumbledEvent>(
+            (evt) =>
             {
-                var survivedCrumbles = Context.State.GetInt(STATE_SURVIVED_CRUMBLES);
-                survivedCrumbles++;
-                Context.State.SetInt(STATE_SURVIVED_CRUMBLES, survivedCrumbles);
+                Context.Logger.LogWarning(
+                    "Ledge crumbled at ({X}, {Y}) after {TotalJumps} jumps",
+                    evt.TileX,
+                    evt.TileY,
+                    evt.TotalJumps
+                );
 
-                Context.Logger.LogInformation("Survived crumble! Total survived: {SurvivedCrumbles}", survivedCrumbles);
-                CheckAchievement("survivor", 1, survivedCrumbles);
+                if (evt.WasPlayerOn)
+                {
+                    var survivedCrumbles = Context.State.GetInt(STATE_SURVIVED_CRUMBLES);
+                    survivedCrumbles++;
+                    Context.State.SetInt(STATE_SURVIVED_CRUMBLES, survivedCrumbles);
+
+                    Context.Logger.LogInformation(
+                        "Survived crumble! Total survived: {SurvivedCrumbles}",
+                        survivedCrumbles
+                    );
+                    CheckAchievement("survivor", 1, survivedCrumbles);
+                }
             }
-        });
+        );
 
         // Track jump boosts
-        On<JumpBoostActivatedEvent>((evt) =>
-        {
-            Context.Logger.LogInformation("Jump boost activated: {Multiplier}x for {Duration}s", evt.BoostMultiplier, evt.DurationSeconds);
-        });
+        On<JumpBoostActivatedEvent>(
+            (evt) =>
+            {
+                Context.Logger.LogInformation(
+                    "Jump boost activated: {Multiplier}x for {Duration}s",
+                    evt.BoostMultiplier,
+                    evt.DurationSeconds
+                );
+            }
+        );
     }
 
     private void CheckJumpAchievements(int totalJumps)
@@ -133,7 +157,9 @@ public class LedgeJumpTrackerBehavior : ScriptBase
     private void AwardAchievement(string key, string name)
     {
         var achievements = Context.State.GetString(STATE_ACHIEVEMENTS);
-        var achievementList = achievements.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+        var achievementList = achievements
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .ToList();
 
         if (achievementList.Contains(key))
         {
@@ -158,7 +184,7 @@ public class LedgeJumpTrackerBehavior : ScriptBase
             "ledge_legend" => "Ledge Legend - Jump over 100 ledges",
             "boosted" => "Boosted - Perform a boosted jump",
             "survivor" => "Survivor - Be on a ledge when it crumbles",
-            _ => key
+            _ => key,
         };
     }
 
@@ -168,14 +194,16 @@ public class LedgeJumpTrackerBehavior : ScriptBase
         var boostedJumps = Context.State.GetInt(STATE_BOOSTED_JUMPS);
         var survivedCrumbles = Context.State.GetInt(STATE_SURVIVED_CRUMBLES);
         var achievements = Context.State.GetString(STATE_ACHIEVEMENTS);
-        var achievementCount = achievements.Split(',', StringSplitOptions.RemoveEmptyEntries).Length;
+        var achievementCount = achievements
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Length;
 
         Context.Logger.LogDebug(
-            $"Jump Statistics:\n" +
-            $"  Total Jumps: {totalJumps}\n" +
-            $"  Boosted Jumps: {boostedJumps}\n" +
-            $"  Survived Crumbles: {survivedCrumbles}\n" +
-            $"  Achievements: {achievementCount}/{_achievementThresholds.Count + 2}"
+            $"Jump Statistics:\n"
+                + $"  Total Jumps: {totalJumps}\n"
+                + $"  Boosted Jumps: {boostedJumps}\n"
+                + $"  Survived Crumbles: {survivedCrumbles}\n"
+                + $"  Achievements: {achievementCount}/{_achievementThresholds.Count + 2}"
         );
     }
 }

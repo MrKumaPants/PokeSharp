@@ -82,7 +82,9 @@ public class WanderBehavior : ScriptBase
                     Direction.West,
                     Direction.East,
                 };
-                state.CurrentDirection = directions[Context.GameState.RandomRange(0, directions.Length)];
+                state.CurrentDirection = directions[
+                    Context.GameState.RandomRange(0, directions.Length)
+                ];
                 state.StartPosition = new Point(position.X, position.Y);
                 state.IsMoving = true;
                 state.MovingTimer = 0f; // Reset timer when picking new direction
@@ -139,7 +141,12 @@ public class WanderBehavior : ScriptBase
 
             // If blocked (not moving but didn't reach target), try a new random direction
             // BUT: Only check after giving MovementSystem time to process (0.1 seconds minimum)
-            if (state.IsMoving && !gridMovement.IsMoving && !movedOneTitle && state.MovingTimer > 0.1f)
+            if (
+                state.IsMoving
+                && !gridMovement.IsMoving
+                && !movedOneTitle
+                && state.MovingTimer > 0.1f
+            )
             {
                 state.BlockedAttempts++;
 
@@ -164,7 +171,9 @@ public class WanderBehavior : ScriptBase
                     // Deactivate movement request
                     if (Context.World.Has<MovementRequest>(Context.Entity.Value))
                     {
-                        ref var request = ref Context.World.Get<MovementRequest>(Context.Entity.Value);
+                        ref var request = ref Context.World.Get<MovementRequest>(
+                            Context.Entity.Value
+                        );
                         request.Active = false;
                     }
 
@@ -179,7 +188,9 @@ public class WanderBehavior : ScriptBase
                     Direction.West,
                     Direction.East,
                 };
-                state.CurrentDirection = directions[Context.GameState.RandomRange(0, directions.Length)];
+                state.CurrentDirection = directions[
+                    Context.GameState.RandomRange(0, directions.Length)
+                ];
                 state.StartPosition = new Point(position.X, position.Y);
                 state.MovingTimer = 0f; // Reset timer for new direction
                 // Stay in IsMoving state, no wait timer
@@ -211,7 +222,10 @@ public class WanderBehavior : ScriptBase
                 }
                 else
                 {
-                    Context.World.Add(Context.Entity.Value, new MovementRequest(state.CurrentDirection));
+                    Context.World.Add(
+                        Context.Entity.Value,
+                        new MovementRequest(state.CurrentDirection)
+                    );
                 }
             }
         });

@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -8,7 +7,6 @@
     <IsTestProject>true</IsTestProject>
     <RootNamespace>PokeSharp.EcsEvents.Tests</RootNamespace>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
@@ -19,7 +17,6 @@
     <PackageReference Include="BenchmarkDotNet" Version="0.13.10" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\PokeSharp.Engine.Core\PokeSharp.Engine.Core.csproj" />
     <ProjectReference Include="..\..\PokeSharp.Engine.Systems\PokeSharp.Engine.Systems.csproj" />
@@ -27,11 +24,9 @@
     <ProjectReference Include="..\..\PokeSharp.Game.Components\PokeSharp.Game.Components.csproj" />
     <ProjectReference Include="..\..\PokeSharp.Game.Scripting\PokeSharp.Game.Scripting.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <Using Include="NUnit.Framework" />
     <Using Include="NSubstitute" />
     <Using Include="FluentAssertions" />
   </ItemGroup>
-
 </Project>

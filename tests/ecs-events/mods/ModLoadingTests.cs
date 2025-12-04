@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security;
-using NUnit.Framework;
 using FluentAssertions;
+using NUnit.Framework;
 
 namespace PokeSharp.EcsEvents.Tests.Mods;
 
@@ -106,7 +106,8 @@ public class ModLoadingTests
 
         // Act & Assert
         Action act = () => _modLoader.LoadAllMods(_testModsDirectory);
-        act.Should().Throw<InvalidOperationException>()
+        act.Should()
+            .Throw<InvalidOperationException>()
             .WithMessage("*circular*", "circular dependencies should be detected");
     }
 
@@ -118,15 +119,17 @@ public class ModLoadingTests
     public void Mod_CannotAccessFileSystem()
     {
         // Arrange
-        var mod = CreateEvilMod("filesystem-access", () =>
-        {
-            File.ReadAllText("C:/secrets.txt");
-        });
+        var mod = CreateEvilMod(
+            "filesystem-access",
+            () =>
+            {
+                File.ReadAllText("C:/secrets.txt");
+            }
+        );
 
         // Act & Assert
         Action act = () => mod.Execute(new ModContext());
-        act.Should().Throw<SecurityException>(
-            "mod should not be able to access file system");
+        act.Should().Throw<SecurityException>("mod should not be able to access file system");
     }
 
     [Test]
@@ -149,10 +152,13 @@ public class ModLoadingTests
     public void Mod_CrashDoesNotCrashGame()
     {
         // Arrange
-        var crashingMod = CreateEvilMod("crashing", () =>
-        {
-            throw new Exception("Mod crashed!");
-        });
+        var crashingMod = CreateEvilMod(
+            "crashing",
+            () =>
+            {
+                throw new Exception("Mod crashed!");
+            }
+        );
 
         var stableMod = CreateTestModInstance("stable");
         var modRunner = new ModRunner();
@@ -169,38 +175,42 @@ public class ModLoadingTests
     public void Mod_ExcessiveMemory_TerminatedSafely()
     {
         // Arrange
-        var memoryHog = CreateEvilMod("memory-hog", () =>
-        {
-            var lists = new List<byte[]>();
-            for (int i = 0; i < 10000; i++)
+        var memoryHog = CreateEvilMod(
+            "memory-hog",
+            () =>
             {
-                lists.Add(new byte[1024 * 1024]); // 1MB each = 10GB total
+                var lists = new List<byte[]>();
+                for (int i = 0; i < 10000; i++)
+                {
+                    lists.Add(new byte[1024 * 1024]); // 1MB each = 10GB total
+                }
             }
-        });
+        );
 
         var modRunner = new ModRunner(maxMemoryMB: 100);
 
         // Act & Assert
         Action act = () => modRunner.ExecuteMod(memoryHog);
-        act.Should().Throw<OutOfMemoryException>(
-            "excessive memory allocation should be prevented");
+        act.Should().Throw<OutOfMemoryException>("excessive memory allocation should be prevented");
     }
 
     [Test]
     public void Mod_InfiniteLoop_TimesOut()
     {
         // Arrange
-        var infiniteLoop = CreateEvilMod("infinite-loop", () =>
-        {
-            while (true) { }
-        });
+        var infiniteLoop = CreateEvilMod(
+            "infinite-loop",
+            () =>
+            {
+                while (true) { }
+            }
+        );
 
         var modRunner = new ModRunner(timeout: TimeSpan.FromMilliseconds(100));
 
         // Act & Assert
         Action act = () => modRunner.ExecuteMod(infiniteLoop);
-        act.Should().Throw<TimeoutException>(
-            "infinite loops should be terminated");
+        act.Should().Throw<TimeoutException>("infinite loops should be terminated");
     }
 
     #endregion
@@ -274,10 +284,7 @@ public class ModLoadingTests
     {
         // Arrange
         var mod = CreateTestModInstance("api-user");
-        var context = new ModContext
-        {
-            GameAPI = new TestGameAPI()
-        };
+        var context = new ModContext { GameAPI = new TestGameAPI() };
 
         // Act & Assert
         Action act = () =>
@@ -294,24 +301,24 @@ public class ModLoadingTests
     {
         // Arrange
         var mod = CreateTestModInstance("restricted-access");
-        var context = new ModContext
-        {
-            GameAPI = new TestGameAPI()
-        };
+        var context = new ModContext { GameAPI = new TestGameAPI() };
 
         // Act & Assert
         Action act = () => context.GameAPI.ShutdownGame(); // Restricted method
 
-        act.Should().Throw<SecurityException>(
-            "restricted API methods should not be accessible");
+        act.Should().Throw<SecurityException>("restricted API methods should not be accessible");
     }
 
     #endregion
 
     #region Helper Methods
 
-    private void CreateTestMod(string name, string[]? dependencies = null,
-        bool withManifest = true, bool hasErrors = false)
+    private void CreateTestMod(
+        string name,
+        string[]? dependencies = null,
+        bool withManifest = true,
+        bool hasErrors = false
+    )
     {
         dependencies ??= Array.Empty<string>();
 
@@ -325,13 +332,13 @@ public class ModLoadingTests
                 name = name,
                 version = "1.0.0",
                 author = "Test",
-                dependencies = dependencies
+                dependencies = dependencies,
             };
 
-            var json = System.Text.Json.JsonSerializer.Serialize(manifest, new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            var json = System.Text.Json.JsonSerializer.Serialize(
+                manifest,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true }
+            );
 
             File.WriteAllText(Path.Combine(modPath, "mod.json"), json);
         }
@@ -449,7 +456,8 @@ public interface IMod
     string Name { get; }
     void Initialize(EventBus eventBus);
     void Execute(ModContext context);
-    void SubscribeToEvent<T>(Action<T> handler) where T : IEvent;
+    void SubscribeToEvent<T>(Action<T> handler)
+        where T : IEvent;
     void PublishEvent(IEvent evt);
     void SetState<T>(string key, T value);
     T? TryGetState<T>(string key);
@@ -465,7 +473,8 @@ public class TestMod : IMod
 
     public void Execute(ModContext context) { }
 
-    public void SubscribeToEvent<T>(Action<T> handler) where T : IEvent
+    public void SubscribeToEvent<T>(Action<T> handler)
+        where T : IEvent
     {
         _eventBus?.Subscribe<T>(handler.Invoke);
     }
@@ -489,9 +498,13 @@ public class EvilMod : IMod
 
     public void Execute(ModContext context) => EvilAction();
 
-    public void SubscribeToEvent<T>(Action<T> handler) where T : IEvent { }
+    public void SubscribeToEvent<T>(Action<T> handler)
+        where T : IEvent { }
+
     public void PublishEvent(IEvent evt) { }
+
     public void SetState<T>(string key, T value) { }
+
     public T? TryGetState<T>(string key) => default;
 }
 
@@ -522,11 +535,9 @@ public class ModLoadResult
     public IMod? Mod { get; set; }
     public string Error { get; set; } = string.Empty;
 
-    public static ModLoadResult Success(IMod mod) =>
-        new() { Success = true, Mod = mod };
+    public static ModLoadResult Success(IMod mod) => new() { Success = true, Mod = mod };
 
-    public static ModLoadResult Failure(string error) =>
-        new() { Success = false, Error = error };
+    public static ModLoadResult Failure(string error) => new() { Success = false, Error = error };
 }
 
 public class ModManifest

@@ -12,4 +12,3 @@ public struct MapType
         Value = value;
     }
 }
-

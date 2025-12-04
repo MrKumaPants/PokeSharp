@@ -48,7 +48,8 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
     )
     {
         _events = events ?? throw new ArgumentNullException(nameof(events));
-        _collisionService = collisionService ?? throw new ArgumentNullException(nameof(collisionService));
+        _collisionService =
+            collisionService ?? throw new ArgumentNullException(nameof(collisionService));
         _spatialQuery = spatialQuery;
         _logger = logger;
 
@@ -76,10 +77,19 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
     {
         world.Query(
             in EcsQueries.MovementRequests,
-            (Entity entity, ref Position position, ref GridMovement movement, ref MovementRequest request) =>
+            (
+                Entity entity,
+                ref Position position,
+                ref GridMovement movement,
+                ref MovementRequest request
+            ) =>
             {
-                if (request.Active && !movement.IsMoving && !movement.MovementLocked
-                    && movement.RunningState != RunningState.TurnDirection)
+                if (
+                    request.Active
+                    && !movement.IsMoving
+                    && !movement.MovementLocked
+                    && movement.RunningState != RunningState.TurnDirection
+                )
                 {
                     // Fire MovementRequestedEvent (PRE-EVENT, can be cancelled by mods)
                     var evt = new MovementRequestedEvent
@@ -88,7 +98,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
                         Direction = request.Direction,
                         Timestamp = (float)world.Time,
                         SpeedMultiplier = 1.0f,
-                        IsForcedMovement = false
+                        IsForcedMovement = false,
                     };
 
                     _events.Publish(ref evt);
@@ -96,14 +106,23 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
                     // Check if event was cancelled
                     if (evt.IsCancelled)
                     {
-                        _logger?.LogDebug("Movement cancelled by event handler: {Reason}",
-                            evt.CancellationReason ?? "No reason");
+                        _logger?.LogDebug(
+                            "Movement cancelled by event handler: {Reason}",
+                            evt.CancellationReason ?? "No reason"
+                        );
                         request.Active = false;
                         return;
                     }
 
                     // Process the movement (applies speed multiplier from event)
-                    ProcessMovementRequest(world, entity, ref position, ref movement, evt.Direction, evt.SpeedMultiplier);
+                    ProcessMovementRequest(
+                        world,
+                        entity,
+                        ref position,
+                        ref movement,
+                        evt.Direction,
+                        evt.SpeedMultiplier
+                    );
 
                     request.Active = false;
                 }
@@ -133,17 +152,33 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
         // Calculate target position
         switch (direction)
         {
-            case Direction.North: targetY--; break;
-            case Direction.South: targetY++; break;
-            case Direction.West: targetX--; break;
-            case Direction.East: targetX++; break;
-            default: return;
+            case Direction.North:
+                targetY--;
+                break;
+            case Direction.South:
+                targetY++;
+                break;
+            case Direction.West:
+                targetX--;
+                break;
+            case Direction.East:
+                targetX++;
+                break;
+            default:
+                return;
         }
 
         // Check map boundaries
         if (!IsWithinMapBounds(world, position.MapId, targetX, targetY))
         {
-            PublishMovementBlocked(entity, direction, BlockReason.OutOfBounds, position, targetX, targetY);
+            PublishMovementBlocked(
+                entity,
+                direction,
+                BlockReason.OutOfBounds,
+                position,
+                targetX,
+                targetY
+            );
             return;
         }
 
@@ -152,8 +187,13 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             : Elevation.Default;
 
         // Check collision and behaviors
-        var (isJumpTile, allowedJumpDir, isTargetWalkable) =
-            _collisionService.GetTileCollisionInfo(position.MapId, targetX, targetY, entityElevation, direction);
+        var (isJumpTile, allowedJumpDir, isTargetWalkable) = _collisionService.GetTileCollisionInfo(
+            position.MapId,
+            targetX,
+            targetY,
+            entityElevation,
+            direction
+        );
 
         // Fire MovementValidatedEvent (PRE-EVENT, last chance to cancel)
         var validatedEvt = new MovementValidatedEvent
@@ -163,33 +203,67 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             Timestamp = (float)world.Time,
             TargetPosition = (targetX, targetY),
             IsJump = isJumpTile && direction == allowedJumpDir,
-            Distance = (isJumpTile && direction == allowedJumpDir) ? 2 : 1
+            Distance = (isJumpTile && direction == allowedJumpDir) ? 2 : 1,
         };
 
         _events.Publish(ref validatedEvt);
 
         if (validatedEvt.IsCancelled)
         {
-            PublishMovementBlocked(entity, direction, BlockReason.Custom, position, targetX, targetY);
+            PublishMovementBlocked(
+                entity,
+                direction,
+                BlockReason.Custom,
+                position,
+                targetX,
+                targetY
+            );
             return;
         }
 
         // Handle jump
         if (isJumpTile && direction == allowedJumpDir)
         {
-            StartJumpMovement(world, entity, ref position, ref movement, direction, targetX, targetY, tileSize, speedMultiplier);
+            StartJumpMovement(
+                world,
+                entity,
+                ref position,
+                ref movement,
+                direction,
+                targetX,
+                targetY,
+                tileSize,
+                speedMultiplier
+            );
             return;
         }
 
         // Check walkability
         if (!isTargetWalkable)
         {
-            PublishMovementBlocked(entity, direction, BlockReason.Collision, position, targetX, targetY);
+            PublishMovementBlocked(
+                entity,
+                direction,
+                BlockReason.Collision,
+                position,
+                targetX,
+                targetY
+            );
             return;
         }
 
         // Start normal movement
-        StartNormalMovement(world, entity, ref position, ref movement, direction, targetX, targetY, tileSize, speedMultiplier);
+        StartNormalMovement(
+            world,
+            entity,
+            ref position,
+            ref movement,
+            direction,
+            targetX,
+            targetY,
+            tileSize,
+            speedMultiplier
+        );
     }
 
     #endregion
@@ -229,7 +303,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
         {
             StartTime = (float)world.Time,
             Duration = duration,
-            BaseSpeed = baseSpeed
+            BaseSpeed = baseSpeed,
         };
 
         // Restore base speed
@@ -244,7 +318,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             StartPosition = startPixels,
             TargetPosition = targetPixels,
             Duration = duration,
-            IsJump = false
+            IsJump = false,
         };
         _events.Publish(ref evt);
     }
@@ -262,8 +336,20 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
     )
     {
         // Calculate landing position (2 tiles)
-        int landX = jumpTileX + (direction == Direction.East ? 1 : direction == Direction.West ? -1 : 0);
-        int landY = jumpTileY + (direction == Direction.South ? 1 : direction == Direction.North ? -1 : 0);
+        int landX =
+            jumpTileX
+            + (
+                direction == Direction.East ? 1
+                : direction == Direction.West ? -1
+                : 0
+            );
+        int landY =
+            jumpTileY
+            + (
+                direction == Direction.South ? 1
+                : direction == Direction.North ? -1
+                : 0
+            );
 
         var jumpStart = new Vector2(position.PixelX, position.PixelY);
         Vector2 mapOffset = GetMapWorldOffset(world, position.MapId);
@@ -281,7 +367,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
         {
             StartTime = (float)world.Time,
             Duration = duration,
-            BaseSpeed = movement.MovementSpeed
+            BaseSpeed = movement.MovementSpeed,
         };
 
         // Fire MovementStartedEvent with jump flag
@@ -293,7 +379,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             StartPosition = jumpStart,
             TargetPosition = jumpEnd,
             Duration = duration,
-            IsJump = true
+            IsJump = true,
         };
         _events.Publish(ref evt);
     }
@@ -308,7 +394,8 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             in EcsQueries.Movement,
             (Entity entity, ref Position position, ref GridMovement movement) =>
             {
-                if (!movement.IsMoving) return;
+                if (!movement.IsMoving)
+                    return;
 
                 // Update progress
                 movement.MovementProgress += movement.MovementSpeed * deltaTime;
@@ -320,7 +407,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
                     Direction = movement.MovementDirection,
                     Timestamp = (float)world.Time,
                     Progress = movement.MovementProgress,
-                    CurrentPosition = new Vector2(position.PixelX, position.PixelY)
+                    CurrentPosition = new Vector2(position.PixelX, position.PixelY),
                 };
                 _events.Publish(ref progressEvt);
 
@@ -377,7 +464,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             Timestamp = (float)world.Time,
             FinalPosition = (position.X, position.Y),
             MapId = position.MapId,
-            TotalTime = totalTime
+            TotalTime = totalTime,
         };
         _events.Publish(ref evt);
 
@@ -390,7 +477,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             NewPosition = (position.X, position.Y),
             PreviousMapId = position.MapId,
             NewMapId = position.MapId,
-            WasMovement = true
+            WasMovement = true,
         };
         _events.Publish(ref posEvt);
 
@@ -427,7 +514,7 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             Timestamp = (float)World.Time,
             Reason = reason,
             BlockingEntity = null,
-            BlockedPosition = (targetX, targetY)
+            BlockedPosition = (targetX, targetY),
         };
         _events.Publish(ref evt);
     }
@@ -438,11 +525,14 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             return cachedSize;
 
         int tileSize = 16;
-        world.Query(in EcsQueries.MapInfo, (ref MapInfo mapInfo) =>
-        {
-            if (mapInfo.MapId == mapId)
-                tileSize = mapInfo.TileSize;
-        });
+        world.Query(
+            in EcsQueries.MapInfo,
+            (ref MapInfo mapInfo) =>
+            {
+                if (mapInfo.MapId == mapId)
+                    tileSize = mapInfo.TileSize;
+            }
+        );
 
         _tileSizeCache[mapId] = tileSize;
         return tileSize;
@@ -454,11 +544,14 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
             return cachedOffset;
 
         Vector2 worldOffset = Vector2.Zero;
-        world.Query(in EcsQueries.MapInfo, (ref MapInfo mapInfo, ref MapWorldPosition worldPos) =>
-        {
-            if (mapInfo.MapId == mapId)
-                worldOffset = worldPos.WorldOrigin;
-        });
+        world.Query(
+            in EcsQueries.MapInfo,
+            (ref MapInfo mapInfo, ref MapWorldPosition worldPos) =>
+            {
+                if (mapInfo.MapId == mapId)
+                    worldOffset = worldPos.WorldOrigin;
+            }
+        );
 
         _mapWorldOffsetCache[mapId] = worldOffset;
         return worldOffset;
@@ -468,18 +561,26 @@ public class EventDrivenMovementSystem : SystemBase, IUpdateSystem
     {
         bool? withinBounds = null;
 
-        world.Query(in EcsQueries.MapInfo, (ref MapInfo mapInfo) =>
-        {
-            if (mapInfo.MapId == mapId)
+        world.Query(
+            in EcsQueries.MapInfo,
+            (ref MapInfo mapInfo) =>
             {
-                if (tileX >= 0 && tileX < mapInfo.Width && tileY >= 0 && tileY < mapInfo.Height)
-                    withinBounds = true;
-                else if (tileX >= -1 && tileX <= mapInfo.Width && tileY >= -1 && tileY <= mapInfo.Height)
-                    withinBounds = true;
-                else
-                    withinBounds = false;
+                if (mapInfo.MapId == mapId)
+                {
+                    if (tileX >= 0 && tileX < mapInfo.Width && tileY >= 0 && tileY < mapInfo.Height)
+                        withinBounds = true;
+                    else if (
+                        tileX >= -1
+                        && tileX <= mapInfo.Width
+                        && tileY >= -1
+                        && tileY <= mapInfo.Height
+                    )
+                        withinBounds = true;
+                    else
+                        withinBounds = false;
+                }
             }
-        });
+        );
 
         return withinBounds ?? true;
     }

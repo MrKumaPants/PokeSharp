@@ -28,7 +28,7 @@ public abstract class DebugPanelBase : Panel
         StatusBar = statusBar;
 
         // Standard panel configuration using theme
-        var theme = ThemeManager.Current;
+        UITheme theme = ThemeManager.Current;
         BorderThickness = theme.BorderWidth;
         Constraint.Padding = theme.PaddingMedium;
 

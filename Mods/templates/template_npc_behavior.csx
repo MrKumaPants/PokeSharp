@@ -1,7 +1,7 @@
 using Arch.Core;
 using Microsoft.Xna.Framework;
-using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Engine.Core.Events.Movement;
+using PokeSharp.Engine.Core.Events.System;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Scripting.Runtime;
 
@@ -291,7 +291,8 @@ public class TemplateNpcBehavior : ScriptBase
 
         On<MovementCompletedEvent>(evt =>
         {
-            if (evt.Entity != Context.Entity.Value) return;
+            if (evt.Entity != Context.Entity.Value)
+                return;
 
             Context.Logger.LogDebug(
                 "NPC completed movement from ({PrevX}, {PrevY}) to ({CurrX}, {CurrY})",
@@ -389,13 +390,21 @@ public class TemplateNpcBehavior : ScriptBase
         switch (facing)
         {
             case Direction.North:
-                return playerPos.X == npcPos.X && playerPos.Y < npcPos.Y && (npcPos.Y - playerPos.Y) <= range;
+                return playerPos.X == npcPos.X
+                    && playerPos.Y < npcPos.Y
+                    && (npcPos.Y - playerPos.Y) <= range;
             case Direction.South:
-                return playerPos.X == npcPos.X && playerPos.Y > npcPos.Y && (playerPos.Y - npcPos.Y) <= range;
+                return playerPos.X == npcPos.X
+                    && playerPos.Y > npcPos.Y
+                    && (playerPos.Y - npcPos.Y) <= range;
             case Direction.West:
-                return playerPos.Y == npcPos.Y && playerPos.X < npcPos.X && (npcPos.X - playerPos.X) <= range;
+                return playerPos.Y == npcPos.Y
+                    && playerPos.X < npcPos.X
+                    && (npcPos.X - playerPos.X) <= range;
             case Direction.East:
-                return playerPos.Y == npcPos.Y && playerPos.X > npcPos.X && (playerPos.X - npcPos.X) <= range;
+                return playerPos.Y == npcPos.Y
+                    && playerPos.X > npcPos.X
+                    && (playerPos.X - npcPos.X) <= range;
             default:
                 return false;
         }

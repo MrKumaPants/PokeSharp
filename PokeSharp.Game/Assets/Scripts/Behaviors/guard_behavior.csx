@@ -39,7 +39,11 @@ public class GuardBehavior : ScriptBase
                     }
                 );
 
-                Context.Logger.LogInformation("Guard activated at position ({X}, {Y})", initPos.X, initPos.Y);
+                Context.Logger.LogInformation(
+                    "Guard activated at position ({X}, {Y})",
+                    initPos.X,
+                    initPos.Y
+                );
                 return; // Skip first tick after initialization
             }
 

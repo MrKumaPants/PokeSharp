@@ -2,6 +2,7 @@ using Arch.Core;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
 using PokeSharp.Engine.Common.Logging;
+using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Services;
 using PokeSharp.Engine.Input.Systems;
 using PokeSharp.Engine.Rendering.Assets;
@@ -14,7 +15,6 @@ using PokeSharp.Game.Infrastructure.Configuration;
 using PokeSharp.Game.Infrastructure.Services;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Warps;
-using PokeSharp.Engine.Core.Events;
 
 namespace PokeSharp.Game.Initialization.Initializers;
 
@@ -132,7 +132,11 @@ public class GameInitializer(
         // Register CollisionService (not a system, but a service used by MovementSystem)
         ILogger<CollisionService> collisionServiceLogger =
             loggerFactory.CreateLogger<CollisionService>();
-        CollisionService = new CollisionService(SpatialHashSystem, eventBus, collisionServiceLogger);
+        CollisionService = new CollisionService(
+            SpatialHashSystem,
+            eventBus,
+            collisionServiceLogger
+        );
         CollisionService.SetWorld(world);
 
         // Register MovementSystem (Priority: 100, handles movement and collision checking)

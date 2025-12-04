@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Arch.Core;
+using FluentAssertions;
 using Microsoft.Xna.Framework;
 using NUnit.Framework;
-using FluentAssertions;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Types.Events;
 using PokeSharp.Game.Components.Movement;
@@ -129,7 +129,7 @@ public class EventFilteringAndPriorityTests
         {
             ["(10,10)"] = 0,
             ["(20,20)"] = 0,
-            ["(30,30)"] = 0
+            ["(30,30)"] = 0,
         };
 
         _eventBus.Subscribe<MovementStartedEvent>(e =>
@@ -202,12 +202,14 @@ public class EventFilteringAndPriorityTests
 
         // Act
         PublishMovementEvent(entity, new Vector2(1, 1));
-        _eventBus.Publish(new DialogueRequestedEvent
-        {
-            TypeId = "dialogue",
-            Timestamp = 0f,
-            Message = "Hello"
-        });
+        _eventBus.Publish(
+            new DialogueRequestedEvent
+            {
+                TypeId = "dialogue",
+                Timestamp = 0f,
+                Message = "Hello",
+            }
+        );
         PublishMovementEvent(entity, new Vector2(2, 2));
 
         // Assert
@@ -229,32 +231,40 @@ public class EventFilteringAndPriorityTests
 
         // Act
         PublishMovementEvent(entity, new Vector2(1, 1));
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            TypeId = "tile",
-            Timestamp = 0f,
-            Entity = entity,
-            TilePosition = new TilePosition(5, 5),
-            TileType = "grass"
-        });
-        _eventBus.Publish(new DialogueRequestedEvent
-        {
-            TypeId = "dialogue",
-            Timestamp = 0f,
-            Message = "Test"
-        });
-        _eventBus.Publish(new MovementCompletedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            OldPosition = (0, 0),
-            NewPosition = (1, 1),
-            Direction = Direction.Up
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                TypeId = "tile",
+                Timestamp = 0f,
+                Entity = entity,
+                TilePosition = new TilePosition(5, 5),
+                TileType = "grass",
+            }
+        );
+        _eventBus.Publish(
+            new DialogueRequestedEvent
+            {
+                TypeId = "dialogue",
+                Timestamp = 0f,
+                Message = "Test",
+            }
+        );
+        _eventBus.Publish(
+            new MovementCompletedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                OldPosition = (0, 0),
+                NewPosition = (1, 1),
+                Direction = Direction.Up,
+            }
+        );
 
         // Assert
-        eventTypesReceived.Should().ContainInOrder("Movement", "TileStep", "Dialogue", "Completed");
+        eventTypesReceived
+            .Should()
+            .ContainInOrder("Movement", "TileStep", "Dialogue", "Completed");
         eventTypesReceived.Should().HaveCount(4, "each event type should be received exactly once");
     }
 
@@ -392,11 +402,11 @@ public class EventFilteringAndPriorityTests
         });
 
         // Act
-        PublishMovementEvent(playerEntity, new Vector2(50, 50));  // Wrong position
-        PublishMovementEvent(npcEntity, triggerPosition);          // Wrong entity
-        PublishMovementEvent(playerEntity, triggerPosition);       // MATCH!
-        PublishMovementEvent(playerEntity, new Vector2(75, 75));  // Wrong position
-        PublishMovementEvent(playerEntity, triggerPosition);       // MATCH!
+        PublishMovementEvent(playerEntity, new Vector2(50, 50)); // Wrong position
+        PublishMovementEvent(npcEntity, triggerPosition); // Wrong entity
+        PublishMovementEvent(playerEntity, triggerPosition); // MATCH!
+        PublishMovementEvent(playerEntity, new Vector2(75, 75)); // Wrong position
+        PublishMovementEvent(playerEntity, triggerPosition); // MATCH!
 
         // Assert
         triggerCount.Should().Be(2, "only player movements to trigger position should count");
@@ -412,24 +422,28 @@ public class EventFilteringAndPriorityTests
         _eventBus.Subscribe<MovementStartedEvent>(e =>
         {
             // Short-circuit: Check cheap condition first
-            if (e.TargetPosition.X < 0) return; // Quick rejection
+            if (e.TargetPosition.X < 0)
+                return; // Quick rejection
 
             // Expensive check only if needed
             expensiveCheckCount++;
             var distance = Vector2.Distance(e.TargetPosition, e.StartPosition);
-            if (distance > 100) return;
+            if (distance > 100)
+                return;
 
             // Process event
         });
 
         // Act
-        PublishMovementEvent(entity, new Vector2(-10, 5));  // Rejected by cheap check
-        PublishMovementEvent(entity, new Vector2(-5, 10));  // Rejected by cheap check
-        PublishMovementEvent(entity, new Vector2(10, 5));   // Passes cheap, runs expensive
-        PublishMovementEvent(entity, new Vector2(20, 10));  // Passes cheap, runs expensive
+        PublishMovementEvent(entity, new Vector2(-10, 5)); // Rejected by cheap check
+        PublishMovementEvent(entity, new Vector2(-5, 10)); // Rejected by cheap check
+        PublishMovementEvent(entity, new Vector2(10, 5)); // Passes cheap, runs expensive
+        PublishMovementEvent(entity, new Vector2(20, 10)); // Passes cheap, runs expensive
 
         // Assert
-        expensiveCheckCount.Should().Be(2, "expensive check should only run for events that pass cheap filter");
+        expensiveCheckCount
+            .Should()
+            .Be(2, "expensive check should only run for events that pass cheap filter");
     }
 
     #endregion
@@ -438,15 +452,17 @@ public class EventFilteringAndPriorityTests
 
     private void PublishMovementEvent(Entity entity, Vector2 targetPosition)
     {
-        _eventBus.Publish(new MovementStartedEvent
-        {
-            TypeId = "movement",
-            Timestamp = 0f,
-            Entity = entity,
-            TargetPosition = targetPosition,
-            Direction = Direction.Up,
-            StartPosition = Vector2.Zero
-        });
+        _eventBus.Publish(
+            new MovementStartedEvent
+            {
+                TypeId = "movement",
+                Timestamp = 0f,
+                Entity = entity,
+                TargetPosition = targetPosition,
+                Direction = Direction.Up,
+                StartPosition = Vector2.Zero,
+            }
+        );
     }
 
     #endregion

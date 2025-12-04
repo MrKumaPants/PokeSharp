@@ -1,5 +1,3 @@
-using PokeSharp.Engine.Core.Types.Events;
-
 namespace PokeSharp.Engine.Core.Events;
 
 /// <summary>
@@ -35,7 +33,6 @@ public interface IEventBus
     /// <remarks>
     ///     Use this for high-frequency notification events (published 10+ times per second).
     ///     For cancellable events that need to check handler modifications, use RentEvent/Publish/ReturnEvent instead.
-    ///
     ///     Example:
     ///     <code>
     ///     // For notification events (no need to check modifications)
@@ -57,7 +54,6 @@ public interface IEventBus
     /// <remarks>
     ///     Use this for cancellable events where you need to check handler modifications.
     ///     Always call ReturnEvent() after publishing, preferably in a finally block.
-    ///
     ///     Example:
     ///     <code>
     ///     var evt = eventBus.RentEvent&lt;MovementStartedEvent&gt;();

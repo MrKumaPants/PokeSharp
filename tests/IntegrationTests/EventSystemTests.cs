@@ -54,41 +54,49 @@ public class EventSystemTests : IDisposable
         var grassScriptTriggered = false;
 
         // Simulate ice script
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            if (evt.TileType == "ice")
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
             {
-                iceScriptTriggered = true;
-                _output.WriteLine($"[IceScript] Triggered at ({evt.TileX}, {evt.TileY})");
-            }
-        }));
+                if (evt.TileType == "ice")
+                {
+                    iceScriptTriggered = true;
+                    _output.WriteLine($"[IceScript] Triggered at ({evt.TileX}, {evt.TileY})");
+                }
+            })
+        );
 
         // Simulate tall grass script
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            if (evt.TileType == "tall_grass")
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
             {
-                grassScriptTriggered = true;
-                _output.WriteLine($"[GrassScript] Triggered at ({evt.TileX}, {evt.TileY})");
-            }
-        }));
+                if (evt.TileType == "tall_grass")
+                {
+                    grassScriptTriggered = true;
+                    _output.WriteLine($"[GrassScript] Triggered at ({evt.TileX}, {evt.TileY})");
+                }
+            })
+        );
 
         // Act - Step on tile with both behaviors
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = entity,
-            TileX = 10,
-            TileY = 10,
-            TileType = "ice"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = entity,
+                TileX = 10,
+                TileY = 10,
+                TileType = "ice",
+            }
+        );
 
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = entity,
-            TileX = 10,
-            TileY = 10,
-            TileType = "tall_grass"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = entity,
+                TileX = 10,
+                TileY = 10,
+                TileType = "tall_grass",
+            }
+        );
 
         // Assert
         iceScriptTriggered.Should().BeTrue("ice script should receive event");
@@ -103,27 +111,33 @@ public class EventSystemTests : IDisposable
         var executionOrder = new List<string>();
 
         // High priority script (executes first)
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            executionOrder.Add("HighPriority");
-            _output.WriteLine("[HighPriority] Handler executed");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
+            {
+                executionOrder.Add("HighPriority");
+                _output.WriteLine("[HighPriority] Handler executed");
+            })
+        );
 
         // Low priority script (executes second)
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            executionOrder.Add("LowPriority");
-            _output.WriteLine("[LowPriority] Handler executed");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
+            {
+                executionOrder.Add("LowPriority");
+                _output.WriteLine("[LowPriority] Handler executed");
+            })
+        );
 
         // Act
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = entity,
-            TileX = 5,
-            TileY = 5,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = entity,
+                TileX = 5,
+                TileY = 5,
+                TileType = "test",
+            }
+        );
 
         // Assert - Note: Current EventBus executes in registration order
         // When priority is fully implemented, high priority should execute first
@@ -186,17 +200,17 @@ public class EventSystemTests : IDisposable
         RainStartedEvent? receivedEvent = null;
 
         // Weather mod publishes event
-        _subscriptions.Add(_eventBus.Subscribe<RainStartedEvent>(evt =>
-        {
-            receivedEvent = evt;
-            _output.WriteLine($"[EnhancedLedges] Received rain event: Intensity={evt.Intensity}");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<RainStartedEvent>(evt =>
+            {
+                receivedEvent = evt;
+                _output.WriteLine(
+                    $"[EnhancedLedges] Received rain event: Intensity={evt.Intensity}"
+                );
+            })
+        );
 
-        var publishedEvent = new RainStartedEvent
-        {
-            Intensity = 75,
-            MapId = "route_1"
-        };
+        var publishedEvent = new RainStartedEvent { Intensity = 75, MapId = "route_1" };
 
         // Act
         _eventBus.Publish(publishedEvent);
@@ -216,30 +230,34 @@ public class EventSystemTests : IDisposable
         var subscriber2Received = false;
         var subscriber3Received = false;
 
-        _subscriptions.Add(_eventBus.Subscribe<QuestCompletedEvent>(_ =>
-        {
-            subscriber1Received = true;
-            _output.WriteLine("[UI Mod] Quest notification displayed");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<QuestCompletedEvent>(_ =>
+            {
+                subscriber1Received = true;
+                _output.WriteLine("[UI Mod] Quest notification displayed");
+            })
+        );
 
-        _subscriptions.Add(_eventBus.Subscribe<QuestCompletedEvent>(_ =>
-        {
-            subscriber2Received = true;
-            _output.WriteLine("[Achievement Mod] Checking for achievements");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<QuestCompletedEvent>(_ =>
+            {
+                subscriber2Received = true;
+                _output.WriteLine("[Achievement Mod] Checking for achievements");
+            })
+        );
 
-        _subscriptions.Add(_eventBus.Subscribe<QuestCompletedEvent>(_ =>
-        {
-            subscriber3Received = true;
-            _output.WriteLine("[Stats Mod] Updating player statistics");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<QuestCompletedEvent>(_ =>
+            {
+                subscriber3Received = true;
+                _output.WriteLine("[Stats Mod] Updating player statistics");
+            })
+        );
 
         // Act
-        _eventBus.Publish(new QuestCompletedEvent
-        {
-            QuestId = "tutorial_quest",
-            PlayerEntity = _world.Create()
-        });
+        _eventBus.Publish(
+            new QuestCompletedEvent { QuestId = "tutorial_quest", PlayerEntity = _world.Create() }
+        );
 
         // Assert
         subscriber1Received.Should().BeTrue("UI mod should receive event");
@@ -279,7 +297,9 @@ public class EventSystemTests : IDisposable
         countAfterUnload.Should().Be(0, "zero subscriptions after unload");
         countAfterReload.Should().Be(1, "one subscription after reload");
 
-        _output.WriteLine($"Subscription count: Load={countAfterLoad}, Unload={countAfterUnload}, Reload={countAfterReload}");
+        _output.WriteLine(
+            $"Subscription count: Load={countAfterLoad}, Unload={countAfterUnload}, Reload={countAfterReload}"
+        );
 
         subscription2.Dispose();
     }
@@ -304,13 +324,15 @@ public class EventSystemTests : IDisposable
             newVersionTriggered = true;
         });
 
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 1,
-            TileY = 1,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 1,
+                TileY = 1,
+                TileType = "test",
+            }
+        );
 
         // Assert
         oldVersionTriggered.Should().BeFalse("old handler should not execute after disposal");
@@ -348,26 +370,32 @@ public class EventSystemTests : IDisposable
         var handler2Executed = false;
         var handler2SawCancellation = false;
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            handler1Executed = true;
-            evt.PreventDefault("Script A blocked movement");
-            _output.WriteLine("[Script A] Cancelled event");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
+            {
+                handler1Executed = true;
+                evt.PreventDefault("Script A blocked movement");
+                _output.WriteLine("[Script A] Cancelled event");
+            })
+        );
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            handler2Executed = true;
-            handler2SawCancellation = evt.IsCancelled;
-            _output.WriteLine($"[Script B] IsCancelled={evt.IsCancelled}, Reason={evt.CancellationReason}");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
+            {
+                handler2Executed = true;
+                handler2SawCancellation = evt.IsCancelled;
+                _output.WriteLine(
+                    $"[Script B] IsCancelled={evt.IsCancelled}, Reason={evt.CancellationReason}"
+                );
+            })
+        );
 
         var evt = new TileSteppedOnEvent
         {
             Entity = _world.Create(),
             TileX = 10,
             TileY = 10,
-            TileType = "test"
+            TileType = "test",
         };
 
         // Act
@@ -386,31 +414,39 @@ public class EventSystemTests : IDisposable
         // Arrange
         var reasons = new List<string?>();
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            evt.PreventDefault("First cancellation reason");
-            reasons.Add(evt.CancellationReason);
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
+            {
+                evt.PreventDefault("First cancellation reason");
+                reasons.Add(evt.CancellationReason);
+            })
+        );
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            reasons.Add(evt.CancellationReason);
-            // Second handler respects first cancellation
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
+            {
+                reasons.Add(evt.CancellationReason);
+                // Second handler respects first cancellation
+            })
+        );
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(evt =>
-        {
-            reasons.Add(evt.CancellationReason);
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(evt =>
+            {
+                reasons.Add(evt.CancellationReason);
+            })
+        );
 
         // Act
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 5,
-            TileY = 5,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 5,
+                TileY = 5,
+                TileType = "test",
+            }
+        );
 
         // Assert
         reasons.Should().HaveCount(3);
@@ -426,31 +462,36 @@ public class EventSystemTests : IDisposable
             Entity = _world.Create(),
             TileX = 1,
             TileY = 1,
-            TileType = "test"
+            TileType = "test",
         };
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(e =>
-        {
-            if (!e.IsCancelled)
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(e =>
             {
-                e.PreventDefault("First reason");
-            }
-        }));
+                if (!e.IsCancelled)
+                {
+                    e.PreventDefault("First reason");
+                }
+            })
+        );
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(e =>
-        {
-            if (!e.IsCancelled)
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(e =>
             {
-                e.PreventDefault("Second reason (should not override)");
-            }
-        }));
+                if (!e.IsCancelled)
+                {
+                    e.PreventDefault("Second reason (should not override)");
+                }
+            })
+        );
 
         // Act
         _eventBus.Publish(evt);
 
         // Assert
         evt.IsCancelled.Should().BeTrue();
-        evt.CancellationReason.Should().Be("First reason", "first cancellation reason should be preserved");
+        evt.CancellationReason.Should()
+            .Be("First reason", "first cancellation reason should be preserved");
     }
 
     #endregion
@@ -471,20 +512,24 @@ public class EventSystemTests : IDisposable
         // Act
         for (int i = 0; i < eventCount; i++)
         {
-            _eventBus.Publish(new TileSteppedOnEvent
-            {
-                Entity = entity,
-                TileX = i % 100,
-                TileY = i / 100,
-                TileType = "test"
-            });
+            _eventBus.Publish(
+                new TileSteppedOnEvent
+                {
+                    Entity = entity,
+                    TileX = i % 100,
+                    TileY = i / 100,
+                    TileType = "test",
+                }
+            );
         }
 
         sw.Stop();
 
         // Assert
         var avgLatency = sw.Elapsed.TotalMilliseconds / eventCount;
-        _output.WriteLine($"Published {eventCount} events in {sw.ElapsedMilliseconds}ms (avg: {avgLatency:F3}ms per event)");
+        _output.WriteLine(
+            $"Published {eventCount} events in {sw.ElapsedMilliseconds}ms (avg: {avgLatency:F3}ms per event)"
+        );
 
         avgLatency.Should().BeLessThan(1.0, "average latency should be under 1ms per event");
     }
@@ -513,13 +558,15 @@ public class EventSystemTests : IDisposable
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < 1000; i++)
             {
-                _eventBus.Publish(new TileSteppedOnEvent
-                {
-                    Entity = entity,
-                    TileX = 10,
-                    TileY = 10,
-                    TileType = "test"
-                });
+                _eventBus.Publish(
+                    new TileSteppedOnEvent
+                    {
+                        Entity = entity,
+                        TileX = 10,
+                        TileY = 10,
+                        TileType = "test",
+                    }
+                );
             }
             sw.Stop();
 
@@ -528,7 +575,9 @@ public class EventSystemTests : IDisposable
         }
 
         // Assert - Performance should scale roughly linearly
-        results[20].Should().BeLessThan(results[1] * 30, "performance should scale reasonably with handler count");
+        results[20]
+            .Should()
+            .BeLessThan(results[1] * 30, "performance should scale reasonably with handler count");
     }
 
     [Fact]
@@ -547,13 +596,15 @@ public class EventSystemTests : IDisposable
             // Publish events
             for (int i = 0; i < 100; i++)
             {
-                _eventBus.Publish(new TileSteppedOnEvent
-                {
-                    Entity = entity,
-                    TileX = i,
-                    TileY = i,
-                    TileType = "test"
-                });
+                _eventBus.Publish(
+                    new TileSteppedOnEvent
+                    {
+                        Entity = entity,
+                        TileX = i,
+                        TileY = i,
+                        TileType = "test",
+                    }
+                );
             }
 
             // Cleanup
@@ -568,7 +619,9 @@ public class EventSystemTests : IDisposable
         var memoryIncrease = (finalMemory - initialMemory) / 1024.0 / 1024.0;
 
         // Assert
-        _output.WriteLine($"Memory: {initialMemory / 1024.0 / 1024.0:F2}MB -> {finalMemory / 1024.0 / 1024.0:F2}MB (Δ {memoryIncrease:F2}MB)");
+        _output.WriteLine(
+            $"Memory: {initialMemory / 1024.0 / 1024.0:F2}MB -> {finalMemory / 1024.0 / 1024.0:F2}MB (Δ {memoryIncrease:F2}MB)"
+        );
         memoryIncrease.Should().BeLessThan(10.0, "memory increase should be minimal (<10MB)");
     }
 
@@ -584,29 +637,37 @@ public class EventSystemTests : IDisposable
         var handler2Executed = false;
         var handler3Executed = false;
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(_ =>
-        {
-            handler1Executed = true;
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(_ =>
+            {
+                handler1Executed = true;
+            })
+        );
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(_ =>
-        {
-            throw new InvalidOperationException("Handler 2 threw exception");
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(_ =>
+            {
+                throw new InvalidOperationException("Handler 2 threw exception");
+            })
+        );
 
-        _subscriptions.Add(_eventBus.Subscribe<TileSteppedOnEvent>(_ =>
-        {
-            handler3Executed = true;
-        }));
+        _subscriptions.Add(
+            _eventBus.Subscribe<TileSteppedOnEvent>(_ =>
+            {
+                handler3Executed = true;
+            })
+        );
 
         // Act
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 1,
-            TileY = 1,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 1,
+                TileY = 1,
+                TileType = "test",
+            }
+        );
 
         // Assert
         handler1Executed.Should().BeTrue("handler 1 should execute");

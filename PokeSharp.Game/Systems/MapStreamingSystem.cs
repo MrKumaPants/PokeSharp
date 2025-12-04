@@ -214,7 +214,7 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
 
         // Find the map entity by its map name
         Entity? foundEntity = null;
-        var query = new QueryDescription().WithAll<MapInfo>();
+        QueryDescription query = new QueryDescription().WithAll<MapInfo>();
         World.Query(
             in query,
             (Entity entity, ref MapInfo info) =>
@@ -618,7 +618,7 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
 
         // Find the current map entity using ECS query
         Entity? currentMapEntity = null;
-        var query = new QueryDescription().WithAll<MapInfo>();
+        QueryDescription query = new QueryDescription().WithAll<MapInfo>();
         world.Query(
             in query,
             (Entity entity, ref MapInfo mapInfo) =>
@@ -765,8 +765,9 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
                     // If it has children, collect them all
                     if (entity.HasRelationship<ParentOf>())
                     {
-                        ref var mapChildren = ref entity.GetRelationships<ParentOf>();
-                        foreach (var kvp in mapChildren)
+                        ref Relationship<ParentOf> mapChildren =
+                            ref entity.GetRelationships<ParentOf>();
+                        foreach (KeyValuePair<Entity, ParentOf> kvp in mapChildren)
                         {
                             Entity childEntity = kvp.Key;
                             if (world.IsAlive(childEntity))

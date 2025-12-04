@@ -56,13 +56,15 @@ public class HotReloadTests : IDisposable
         });
 
         // Trigger event with old handler
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 1,
-            TileY = 1,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 1,
+                TileY = 1,
+                TileType = "test",
+            }
+        );
 
         // Act - Hot-reload (dispose old, register new)
         subscription.Dispose();
@@ -74,13 +76,15 @@ public class HotReloadTests : IDisposable
         });
 
         // Trigger event with new handler
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 2,
-            TileY = 2,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 2,
+                TileY = 2,
+                TileType = "test",
+            }
+        );
 
         // Assert
         oldHandlerCalled.Should().Be(1, "old handler should only execute once");
@@ -142,13 +146,15 @@ public class HotReloadTests : IDisposable
         {
             for (int i = 0; i < 100; i++)
             {
-                _eventBus.Publish(new TileSteppedOnEvent
-                {
-                    Entity = _world.Create(),
-                    TileX = i,
-                    TileY = i,
-                    TileType = "test"
-                });
+                _eventBus.Publish(
+                    new TileSteppedOnEvent
+                    {
+                        Entity = _world.Create(),
+                        TileX = i,
+                        TileY = i,
+                        TileType = "test",
+                    }
+                );
             }
         });
 
@@ -182,13 +188,15 @@ public class HotReloadTests : IDisposable
             // Publish some events
             for (int j = 0; j < 10; j++)
             {
-                _eventBus.Publish(new TileSteppedOnEvent
-                {
-                    Entity = _world.Create(),
-                    TileX = j,
-                    TileY = j,
-                    TileType = "test"
-                });
+                _eventBus.Publish(
+                    new TileSteppedOnEvent
+                    {
+                        Entity = _world.Create(),
+                        TileX = j,
+                        TileY = j,
+                        TileType = "test",
+                    }
+                );
             }
 
             // Unload (hot-reload)
@@ -208,8 +216,12 @@ public class HotReloadTests : IDisposable
         var memoryIncrease = (finalMemory - initialMemory) / 1024.0 / 1024.0;
 
         // Assert
-        _output.WriteLine($"Memory: {initialMemory / 1024.0 / 1024.0:F2}MB -> {finalMemory / 1024.0 / 1024.0:F2}MB (Δ {memoryIncrease:F2}MB)");
-        memoryIncrease.Should().BeLessThan(20.0, "memory increase should be under 20MB after 1000 reloads");
+        _output.WriteLine(
+            $"Memory: {initialMemory / 1024.0 / 1024.0:F2}MB -> {finalMemory / 1024.0 / 1024.0:F2}MB (Δ {memoryIncrease:F2}MB)"
+        );
+        memoryIncrease
+            .Should()
+            .BeLessThan(20.0, "memory increase should be under 20MB after 1000 reloads");
     }
 
     [Fact]
@@ -233,7 +245,9 @@ public class HotReloadTests : IDisposable
         GC.Collect();
 
         // Assert
-        weakRef.IsAlive.Should().BeFalse("subscription should be garbage collected after disposal");
+        weakRef
+            .IsAlive.Should()
+            .BeFalse("subscription should be garbage collected after disposal");
     }
 
     #endregion
@@ -260,7 +274,8 @@ public class HotReloadTests : IDisposable
             totalReloadTime += sw.ElapsedTicks;
         }
 
-        var avgReloadTimeMs = (totalReloadTime / (double)reloadCount) * 1000.0 / Stopwatch.Frequency;
+        var avgReloadTimeMs =
+            (totalReloadTime / (double)reloadCount) * 1000.0 / Stopwatch.Frequency;
 
         // Assert
         _output.WriteLine($"Average hot-reload time: {avgReloadTimeMs:F3}ms");
@@ -284,13 +299,15 @@ public class HotReloadTests : IDisposable
         {
             for (int i = 0; i < 10000; i++)
             {
-                _eventBus.Publish(new TileSteppedOnEvent
-                {
-                    Entity = entity,
-                    TileX = i % 100,
-                    TileY = i / 100,
-                    TileType = "test"
-                });
+                _eventBus.Publish(
+                    new TileSteppedOnEvent
+                    {
+                        Entity = entity,
+                        TileX = i % 100,
+                        TileY = i / 100,
+                        TileType = "test",
+                    }
+                );
 
                 // Hot-reload every 100 events
                 if (i % 100 == 0)
@@ -338,7 +355,9 @@ public class HotReloadTests : IDisposable
         });
 
         // Assert
-        stateAfterReload.Should().Be(stateBeforeReload, "state should be preserved across hot-reload");
+        stateAfterReload
+            .Should()
+            .Be(stateBeforeReload, "state should be preserved across hot-reload");
 
         sub.Dispose();
     }
@@ -355,13 +374,15 @@ public class HotReloadTests : IDisposable
         });
 
         // Process some events
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 1,
-            TileY = 1,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 1,
+                TileY = 1,
+                TileType = "test",
+            }
+        );
 
         // Act - Hot-reload
         sub.Dispose();
@@ -372,13 +393,15 @@ public class HotReloadTests : IDisposable
         });
 
         // Process more events
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 2,
-            TileY = 2,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 2,
+                TileY = 2,
+                TileType = "test",
+            }
+        );
 
         // Assert
         eventsProcessed.Should().ContainInOrder("v1-(1,1)", "v2-(2,2)");
@@ -408,13 +431,15 @@ public class HotReloadTests : IDisposable
         sub2 = _eventBus.Subscribe<TileSteppedOnEvent>(_ => mod2Count++);
 
         // Publish event
-        _eventBus.Publish(new TileSteppedOnEvent
-        {
-            Entity = _world.Create(),
-            TileX = 1,
-            TileY = 1,
-            TileType = "test"
-        });
+        _eventBus.Publish(
+            new TileSteppedOnEvent
+            {
+                Entity = _world.Create(),
+                TileX = 1,
+                TileY = 1,
+                TileType = "test",
+            }
+        );
 
         // Assert
         mod1Count.Should().Be(1, "mod1 should still work");

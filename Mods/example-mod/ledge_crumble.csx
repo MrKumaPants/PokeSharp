@@ -3,8 +3,8 @@
  * Makes ledges crumble after being jumped over multiple times.
  */
 
-using PokeSharp.Game.Scripting.Runtime;
 using PokeSharp.Engine.Core.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 public class CrumblingLedgeScript : ScriptBase
 {
@@ -30,7 +30,9 @@ public class CrumblingLedgeScript : ScriptBase
         ledgeJumpCounts[position]++;
         int jumps = ledgeJumpCounts[position];
 
-        Context.Logger.LogInformation($"Ledge at ({evt.X}, {evt.Y}) jumped {jumps}/{MaxJumps} times");
+        Context.Logger.LogInformation(
+            $"Ledge at ({evt.X}, {evt.Y}) jumped {jumps}/{MaxJumps} times"
+        );
 
         if (jumps >= MaxJumps)
         {

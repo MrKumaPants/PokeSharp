@@ -6,7 +6,6 @@ using PokeSharp.Engine.Core.Types;
 using PokeSharp.Engine.Systems.Queries;
 using PokeSharp.Game.Components.Maps;
 using PokeSharp.Game.Components.Movement;
-using PokeSharp.Game.Components.Player;
 using PokeSharp.Game.Components.Rendering;
 using PokeSharp.Game.Components.Warps;
 

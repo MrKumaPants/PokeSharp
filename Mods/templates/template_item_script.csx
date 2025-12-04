@@ -33,12 +33,12 @@ public class TemplateItemScript : ScriptBase
     // Item category (determines when it can be used)
     private enum ItemCategory
     {
-        Medicine,      // HP/status restoration
-        StatBooster,   // Permanent stat increases
-        Evolution,     // Causes Pokemon evolution
-        Battle,        // Usable in battle only
-        KeyItem,       // Cannot be consumed, special purpose
-        Ball           // Pokemon capture
+        Medicine, // HP/status restoration
+        StatBooster, // Permanent stat increases
+        Evolution, // Causes Pokemon evolution
+        Battle, // Usable in battle only
+        KeyItem, // Cannot be consumed, special purpose
+        Ball, // Pokemon capture
     }
 
     private const ItemCategory ITEM_TYPE = ItemCategory.Medicine;

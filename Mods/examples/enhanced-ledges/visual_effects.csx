@@ -1,5 +1,5 @@
-using PokeSharp.Game.Scripting.Runtime;
 using EnhancedLedges.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 /// <summary>
 ///     Visual Effects Handler - manages animations, particles, and sounds for ledge interactions.
@@ -30,67 +30,77 @@ public class VisualEffectsBehavior : ScriptBase
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         // Jump arc animation and landing effects
-        On<LedgeJumpedEvent>((evt) =>
-        {
-            Context.Logger.LogDebug($"Playing jump effects at ({evt.TileX}, {evt.TileY})");
-
-            // Play jump arc animation
-            PlayJumpArcAnimation(evt.Entity, evt.Direction, evt.JumpHeight);
-
-            // Schedule landing effects (after animation completes)
-            ScheduleLandingEffects(evt.Entity, JUMP_DURATION);
-
-            // Play jump sound
-            PlaySound("ledge_jump", volume: 0.7f);
-
-            // Show boost glow if boosted
-            if (evt.IsBoosted)
+        On<LedgeJumpedEvent>(
+            (evt) =>
             {
-                ShowBoostGlowEffect(evt.Entity);
-                PlaySound("jump_boost", volume: 0.6f);
+                Context.Logger.LogDebug($"Playing jump effects at ({evt.TileX}, {evt.TileY})");
+
+                // Play jump arc animation
+                PlayJumpArcAnimation(evt.Entity, evt.Direction, evt.JumpHeight);
+
+                // Schedule landing effects (after animation completes)
+                ScheduleLandingEffects(evt.Entity, JUMP_DURATION);
+
+                // Play jump sound
+                PlaySound("ledge_jump", volume: 0.7f);
+
+                // Show boost glow if boosted
+                if (evt.IsBoosted)
+                {
+                    ShowBoostGlowEffect(evt.Entity);
+                    PlaySound("jump_boost", volume: 0.6f);
+                }
             }
-        });
+        );
 
         // Crumble visual effects
-        On<LedgeCrumbledEvent>((evt) =>
-        {
-            Context.Logger.LogDebug($"Playing crumble effects at ({evt.TileX}, {evt.TileY})");
-
-            // Play crumble animation
-            PlayCrumbleAnimation(evt.TileX, evt.TileY);
-
-            // Spawn falling debris particles
-            SpawnCrumbleParticles(evt.TileX, evt.TileY);
-
-            // Play crumble sound
-            PlaySound("ledge_crumble", volume: 0.8f);
-
-            // Camera shake if player was on it
-            if (evt.WasPlayerOn)
+        On<LedgeCrumbledEvent>(
+            (evt) =>
             {
-                TriggerCameraShake(intensity: 0.3f, duration: 0.4f);
+                Context.Logger.LogDebug($"Playing crumble effects at ({evt.TileX}, {evt.TileY})");
+
+                // Play crumble animation
+                PlayCrumbleAnimation(evt.TileX, evt.TileY);
+
+                // Spawn falling debris particles
+                SpawnCrumbleParticles(evt.TileX, evt.TileY);
+
+                // Play crumble sound
+                PlaySound("ledge_crumble", volume: 0.8f);
+
+                // Camera shake if player was on it
+                if (evt.WasPlayerOn)
+                {
+                    TriggerCameraShake(intensity: 0.3f, duration: 0.4f);
+                }
             }
-        });
+        );
 
         // Boost activation effects
-        On<JumpBoostActivatedEvent>((evt) =>
-        {
-            Context.Logger.LogDebug($"Playing boost activation effects for entity {evt.Entity.Id}");
+        On<JumpBoostActivatedEvent>(
+            (evt) =>
+            {
+                Context.Logger.LogDebug(
+                    $"Playing boost activation effects for entity {evt.Entity.Id}"
+                );
 
-            // Show boost aura effect
-            ShowBoostAura(evt.Entity, evt.DurationSeconds);
+                // Show boost aura effect
+                ShowBoostAura(evt.Entity, evt.DurationSeconds);
 
-            // Play buff sound
-            PlaySound("buff_activated", volume: 0.65f);
+                // Play buff sound
+                PlaySound("buff_activated", volume: 0.65f);
 
-            // Show boost icon in UI
-            ShowBoostStatusIcon(evt.Entity, evt.ExpiresAt);
-        });
+                // Show boost icon in UI
+                ShowBoostStatusIcon(evt.Entity, evt.ExpiresAt);
+            }
+        );
     }
 
     private void PlayJumpArcAnimation(Entity entity, int direction, float jumpHeight)
     {
-        Context.Logger.LogDebug($"Jump arc: entity={entity.Id}, dir={direction}, height={jumpHeight}x");
+        Context.Logger.LogDebug(
+            $"Jump arc: entity={entity.Id}, dir={direction}, height={jumpHeight}x"
+        );
 
         // Would calculate parabolic arc based on:
         // - Start position (current entity position)
@@ -100,7 +110,9 @@ public class VisualEffectsBehavior : ScriptBase
 
         // Animation system would interpolate position along arc curve
         var arcHeight = JUMP_ARC_HEIGHT * jumpHeight;
-        Context.Logger.LogDebug($"Animating jump arc: height={arcHeight}px, duration={JUMP_DURATION}s");
+        Context.Logger.LogDebug(
+            $"Animating jump arc: height={arcHeight}px, duration={JUMP_DURATION}s"
+        );
     }
 
     private void ScheduleLandingEffects(Entity entity, float delay)
@@ -137,7 +149,9 @@ public class VisualEffectsBehavior : ScriptBase
 
     private void SpawnCrumbleParticles(int x, int y)
     {
-        Context.Logger.LogDebug($"Spawning {CRUMBLE_PARTICLE_COUNT} crumble particles at ({x}, {y})");
+        Context.Logger.LogDebug(
+            $"Spawning {CRUMBLE_PARTICLE_COUNT} crumble particles at ({x}, {y})"
+        );
 
         // Would spawn falling debris particles:
         // - Random stone fragments

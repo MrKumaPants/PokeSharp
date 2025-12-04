@@ -12,4 +12,3 @@ public struct BattleScene
         Value = value;
     }
 }
-

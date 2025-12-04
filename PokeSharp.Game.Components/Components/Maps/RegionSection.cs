@@ -12,4 +12,3 @@ public struct RegionSection
         Value = value;
     }
 }
-

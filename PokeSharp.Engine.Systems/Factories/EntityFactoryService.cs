@@ -96,8 +96,8 @@ public sealed class EntityFactoryService(
             {
                 case PoolAcquireFailureReason.PoolNotFound:
                     _logger.LogWarning(
-                        "Pool '{PoolName}' not found for template '{TemplateId}'. " +
-                        "Creating entity normally. Consider registering pool or updating template configuration.",
+                        "Pool '{PoolName}' not found for template '{TemplateId}'. "
+                            + "Creating entity normally. Consider registering pool or updating template configuration.",
                         poolName,
                         templateId
                     );
@@ -106,16 +106,16 @@ public sealed class EntityFactoryService(
 
                 case PoolAcquireFailureReason.PoolExhausted:
                     _logger.LogError(
-                        "Pool '{PoolName}' exhausted ({PoolSize} entities) for template '{TemplateId}'. " +
-                        "Increase maxSize or release entities more aggressively.",
+                        "Pool '{PoolName}' exhausted ({PoolSize} entities) for template '{TemplateId}'. "
+                            + "Increase maxSize or release entities more aggressively.",
                         poolName,
                         poolResult.PoolSize,
                         templateId
                     );
                     // Fail fast to reveal the problem - don't fall back to world.Create()
                     throw new InvalidOperationException(
-                        $"Entity pool '{poolName}' exhausted (size: {poolResult.PoolSize}). " +
-                        $"Cannot spawn template '{templateId}'."
+                        $"Entity pool '{poolName}' exhausted (size: {poolResult.PoolSize}). "
+                            + $"Cannot spawn template '{templateId}'."
                     );
 
                 default:

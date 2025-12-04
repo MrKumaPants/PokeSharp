@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Systems;
+using PokeSharp.Engine.Core.Types;
 using PokeSharp.Game.Components;
 using PokeSharp.Game.Components.Interfaces;
 using PokeSharp.Game.Components.Maps;
@@ -40,15 +41,20 @@ public class MovementSystem : SystemBase, IUpdateSystem
     };
 
     // PERFORMANCE: Cached event pools to eliminate dictionary lookups (50% faster pooling)
-    private static readonly EventPool<MovementStartedEvent> _startedEventPool = EventPool<MovementStartedEvent>.Shared;
-    private static readonly EventPool<MovementCompletedEvent> _completedEventPool = EventPool<MovementCompletedEvent>.Shared;
-    private static readonly EventPool<MovementBlockedEvent> _blockedEventPool = EventPool<MovementBlockedEvent>.Shared;
+    private static readonly EventPool<MovementStartedEvent> _startedEventPool =
+        EventPool<MovementStartedEvent>.Shared;
+
+    private static readonly EventPool<MovementCompletedEvent> _completedEventPool =
+        EventPool<MovementCompletedEvent>.Shared;
+
+    private static readonly EventPool<MovementBlockedEvent> _blockedEventPool =
+        EventPool<MovementBlockedEvent>.Shared;
 
     private readonly ICollisionService _collisionService;
-    private readonly IEventBus? _eventBus;
 
     // Cache for entities to remove (reused across frames to avoid allocation)
     private readonly List<Entity> _entitiesToRemove = new(32);
+    private readonly IEventBus? _eventBus;
     private readonly ILogger<MovementSystem>? _logger;
 
     // Cache for map world offsets (reduces redundant queries)
@@ -57,12 +63,12 @@ public class MovementSystem : SystemBase, IUpdateSystem
 
     // Cache for tile sizes per map (reduces redundant queries)
     private readonly Dictionary<int, int> _tileSizeCache = new();
+    private int _eventPublishCount;
 
     private ITileBehaviorSystem? _tileBehaviorSystem;
 
     // Performance tracking for event overhead
     private float _totalEventTime;
-    private int _eventPublishCount;
 
     /// <summary>
     ///     Creates a new MovementSystem with required collision service and optional logger.
@@ -130,7 +136,13 @@ public class MovementSystem : SystemBase, IUpdateSystem
                 }
                 else
                 {
-                    ProcessMovementNoAnimation(world, entity, ref position, ref movement, deltaTime);
+                    ProcessMovementNoAnimation(
+                        world,
+                        entity,
+                        ref position,
+                        ref movement,
+                        deltaTime
+                    );
                 }
             }
         );
@@ -227,17 +239,17 @@ public class MovementSystem : SystemBase, IUpdateSystem
                 // PHASE 1.2: Publish MovementCompletedEvent AFTER successful movement (using pooling)
                 if (_eventBus != null)
                 {
-                    var startTime = DateTime.UtcNow;
+                    DateTime startTime = DateTime.UtcNow;
 
                     // Copy ref parameter values before using
-                    var newX = position.X;
-                    var newY = position.Y;
-                    var mapId = position.MapId;
-                    var direction = movement.FacingDirection;
-                    var movementSpeed = movement.MovementSpeed;
+                    int newX = position.X;
+                    int newY = position.Y;
+                    MapRuntimeId mapId = position.MapId;
+                    Direction direction = movement.FacingDirection;
+                    float movementSpeed = movement.MovementSpeed;
 
                     // Use cached pool directly (50% faster than EventBus lookup)
-                    var completedEvent = _completedEventPool.Rent();
+                    MovementCompletedEvent completedEvent = _completedEventPool.Rent();
                     try
                     {
                         completedEvent.TypeId = "MovementCompleted";
@@ -257,7 +269,7 @@ public class MovementSystem : SystemBase, IUpdateSystem
                     }
 
                     // Track performance overhead
-                    var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                    double elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
                     _totalEventTime += (float)elapsed;
                     _eventPublishCount++;
                 }
@@ -286,7 +298,7 @@ public class MovementSystem : SystemBase, IUpdateSystem
                 {
                     // Changing animation (e.g., from idle or different direction)
                     // Don't force restart - let animation continue from current frame if already walking
-                    animation.ChangeAnimation(expectedAnimation, forceRestart: false);
+                    animation.ChangeAnimation(expectedAnimation);
                 }
             }
         }
@@ -369,17 +381,17 @@ public class MovementSystem : SystemBase, IUpdateSystem
                 // PHASE 1.2: Publish MovementCompletedEvent AFTER successful movement (using pooling)
                 if (_eventBus != null)
                 {
-                    var startTime = DateTime.UtcNow;
+                    DateTime startTime = DateTime.UtcNow;
 
                     // Copy ref parameter values before using
-                    var newX = position.X;
-                    var newY = position.Y;
-                    var mapId = position.MapId;
-                    var direction = movement.FacingDirection;
-                    var movementSpeed = movement.MovementSpeed;
+                    int newX = position.X;
+                    int newY = position.Y;
+                    MapRuntimeId mapId = position.MapId;
+                    Direction direction = movement.FacingDirection;
+                    float movementSpeed = movement.MovementSpeed;
 
                     // Use cached pool directly (50% faster than EventBus lookup)
-                    var completedEvent = _completedEventPool.Rent();
+                    MovementCompletedEvent completedEvent = _completedEventPool.Rent();
                     try
                     {
                         completedEvent.TypeId = "MovementCompleted";
@@ -399,7 +411,7 @@ public class MovementSystem : SystemBase, IUpdateSystem
                     }
 
                     // Track performance overhead
-                    var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                    double elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
                     _totalEventTime += (float)elapsed;
                     _eventPublishCount++;
                 }
@@ -524,15 +536,15 @@ public class MovementSystem : SystemBase, IUpdateSystem
         // Using pooled events to eliminate allocations (100+ NPCs = hundreds of events/sec)
         if (_eventBus != null)
         {
-            var startTime = DateTime.UtcNow;
+            DateTime startTime = DateTime.UtcNow;
 
             // Copy ref parameter values before using in event
-            var startPixelX = position.PixelX;
-            var startPixelY = position.PixelY;
-            var mapId = position.MapId;
+            float startPixelX = position.PixelX;
+            float startPixelY = position.PixelY;
+            MapRuntimeId mapId = position.MapId;
 
             // IMPORTANT: Use cached pool directly (eliminates dictionary lookup overhead)
-            var startEvent = _startedEventPool.Rent();
+            MovementStartedEvent startEvent = _startedEventPool.Rent();
             try
             {
                 startEvent.TypeId = "MovementStarted";
@@ -545,7 +557,7 @@ public class MovementSystem : SystemBase, IUpdateSystem
                 _eventBus.Publish(startEvent);
 
                 // Track performance overhead
-                var elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                double elapsed = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 _totalEventTime += (float)elapsed;
                 _eventPublishCount++;
 
@@ -553,13 +565,14 @@ public class MovementSystem : SystemBase, IUpdateSystem
                 if (startEvent.IsCancelled)
                 {
                     // Movement blocked by event handler (use cached pool)
-                    var blockedEvent = _blockedEventPool.Rent();
+                    MovementBlockedEvent blockedEvent = _blockedEventPool.Rent();
                     try
                     {
                         blockedEvent.TypeId = "MovementBlocked";
                         blockedEvent.Timestamp = (float)DateTime.UtcNow.TimeOfDay.TotalSeconds;
                         blockedEvent.Entity = entity;
-                        blockedEvent.BlockReason = startEvent.CancellationReason ?? "Cancelled by event handler";
+                        blockedEvent.BlockReason =
+                            startEvent.CancellationReason ?? "Cancelled by event handler";
                         blockedEvent.TargetPosition = (targetX, targetY);
                         blockedEvent.Direction = direction;
                         blockedEvent.MapId = mapId;
@@ -593,9 +606,9 @@ public class MovementSystem : SystemBase, IUpdateSystem
             if (_eventBus != null)
             {
                 // Copy ref parameter value
-                var mapId = position.MapId;
+                MapRuntimeId mapId = position.MapId;
 
-                var blockedEvent = _blockedEventPool.Rent();
+                MovementBlockedEvent blockedEvent = _blockedEventPool.Rent();
                 try
                 {
                     blockedEvent.TypeId = "MovementBlocked";

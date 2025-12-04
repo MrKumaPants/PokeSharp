@@ -1,5 +1,4 @@
 using Arch.Core;
-using Arch.Core.Extensions;
 using Arch.Relationships;
 using PokeSharp.Game.Components.Relationships;
 
@@ -50,7 +49,7 @@ public static class RelationshipExtensions
         }
 
         // Use Arch.Relationships API - this automatically creates bidirectional relationship
-        parent.AddRelationship<ParentOf>(child, new ParentOf());
+        parent.AddRelationship(child, new ParentOf());
     }
 
     /// <summary>
@@ -71,7 +70,7 @@ public static class RelationshipExtensions
 
         // Find parent by iterating through all entities that have this child as a relationship
         // This is less efficient but works with Arch.Relationships API
-        var parent = GetParent(child, world);
+        Entity? parent = GetParent(child, world);
         if (parent.HasValue && world.IsAlive(parent.Value))
         {
             parent.Value.RemoveRelationship<ParentOf>(child);
@@ -104,7 +103,7 @@ public static class RelationshipExtensions
         Entity? parentEntity = null;
         world.Query(
             new QueryDescription(),
-            (Entity entity) =>
+            entity =>
             {
                 if (entity.HasRelationship<ParentOf>(child))
                 {
@@ -141,10 +140,10 @@ public static class RelationshipExtensions
         }
 
         // Use Arch.Relationships API to iterate children
-        ref var relationships = ref parent.GetRelationships<ParentOf>();
+        ref Relationship<ParentOf> relationships = ref parent.GetRelationships<ParentOf>();
         var children = new List<Entity>();
-        
-        foreach (var kvp in relationships)
+
+        foreach (KeyValuePair<Entity, ParentOf> kvp in relationships)
         {
             Entity child = kvp.Key;
             if (world.IsAlive(child))
@@ -211,7 +210,7 @@ public static class RelationshipExtensions
         }
 
         // Use Arch.Relationships API - this automatically creates bidirectional relationship
-        owner.AddRelationship<OwnerOf>(owned, new OwnerOf(ownershipType));
+        owner.AddRelationship(owned, new OwnerOf(ownershipType));
     }
 
     /// <summary>
@@ -230,7 +229,7 @@ public static class RelationshipExtensions
         }
 
         // Find owner and remove relationship
-        var owner = GetOwner(owned, world);
+        Entity? owner = GetOwner(owned, world);
         if (owner.HasValue && world.IsAlive(owner.Value))
         {
             owner.Value.RemoveRelationship<OwnerOf>(owned);
@@ -263,7 +262,7 @@ public static class RelationshipExtensions
         Entity? ownerEntity = null;
         world.Query(
             new QueryDescription(),
-            (Entity entity) =>
+            entity =>
             {
                 if (entity.HasRelationship<OwnerOf>(owned))
                 {
@@ -292,10 +291,10 @@ public static class RelationshipExtensions
         }
 
         // Use Arch.Relationships API to iterate owned entities
-        ref var relationships = ref owner.GetRelationships<OwnerOf>();
+        ref Relationship<OwnerOf> relationships = ref owner.GetRelationships<OwnerOf>();
         var ownedEntities = new List<Entity>();
-        
-        foreach (var kvp in relationships)
+
+        foreach (KeyValuePair<Entity, OwnerOf> kvp in relationships)
         {
             Entity entity = kvp.Key;
             if (world.IsAlive(entity))
@@ -327,7 +326,7 @@ public static class RelationshipExtensions
             return null;
         }
 
-        var ownerOfData = owner.Value.GetRelationship<OwnerOf>(owned);
+        OwnerOf ownerOfData = owner.Value.GetRelationship<OwnerOf>(owned);
         return ownerOfData.Type;
     }
 

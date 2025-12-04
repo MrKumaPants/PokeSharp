@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Reflection;
 using System.Text;
 using Arch.Core;
@@ -27,6 +28,7 @@ using PokeSharp.Engine.UI.Debug.Core;
 using PokeSharp.Engine.UI.Debug.Models;
 using PokeSharp.Engine.UI.Debug.Scenes;
 using PokeSharp.Engine.UI.Debug.Utilities;
+using PokeSharp.Game.Components.Relationships;
 using PokeSharp.Game.Scripting.Api;
 
 namespace PokeSharp.Engine.Debug.Systems;
@@ -74,11 +76,11 @@ public class ConsoleSystem : IUpdateSystem
     private ConsoleScene? _consoleScene;
     private ConsoleDocumentationProvider _documentationProvider = null!;
 
-    // Event Inspector integration
-    private EventInspectorAdapter? _eventInspectorAdapter;
-
     // Core console components (shared between console features)
     private ConsoleScriptEvaluator _evaluator = null!;
+
+    // Event Inspector integration
+    private EventInspectorAdapter? _eventInspectorAdapter;
     private ConsoleGlobals _globals = null!;
     private bool _isConsoleOpen;
     private bool _isMultiLineMode;
@@ -370,22 +372,29 @@ public class ConsoleSystem : IUpdateSystem
         // Set up Event Inspector provider for the Events panel
         try
         {
-            var eventBus = _services.GetRequiredService<IEventBus>();
+            IEventBus eventBus = _services.GetRequiredService<IEventBus>();
             if (eventBus is EventBus concreteEventBus)
             {
                 var eventMetrics = new EventMetrics { IsEnabled = true }; // Enabled for Phase 6 testing
-                _eventInspectorAdapter = new EventInspectorAdapter(concreteEventBus, eventMetrics, maxLogEntries: 100);
-                _consoleScene?.SetEventInspectorProvider(() => _eventInspectorAdapter.GetInspectorData());
+                _eventInspectorAdapter = new EventInspectorAdapter(concreteEventBus, eventMetrics);
+                _consoleScene?.SetEventInspectorProvider(() =>
+                    _eventInspectorAdapter.GetInspectorData()
+                );
                 _logger.LogDebug("Event Inspector initialized successfully");
             }
             else
             {
-                _logger.LogWarning("EventBus is not the concrete type, Event Inspector will not be available");
+                _logger.LogWarning(
+                    "EventBus is not the concrete type, Event Inspector will not be available"
+                );
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to initialize Event Inspector - feature will be unavailable");
+            _logger.LogWarning(
+                ex,
+                "Failed to initialize Event Inspector - feature will be unavailable"
+            );
         }
 
         // Welcome message - use theme colors
@@ -1359,7 +1368,7 @@ public class ConsoleSystem : IUpdateSystem
 
             // Pool stats (via reflection to avoid direct reference)
             TryPopulatePoolStats(stats);
-            
+
             // Event pool stats (via reflection to avoid direct reference)
             TryPopulateEventPoolStats(stats);
 
@@ -1446,7 +1455,7 @@ public class ConsoleSystem : IUpdateSystem
         try
         {
             // Get IEventBus from services
-            var eventBus = _services.GetService<IEventBus>();
+            IEventBus? eventBus = _services.GetService<IEventBus>();
             if (eventBus == null)
             {
                 return;
@@ -1466,7 +1475,7 @@ public class ConsoleSystem : IUpdateSystem
             }
 
             // poolStatsObj should be IReadOnlyList<EventPoolStatistics>
-            if (poolStatsObj is not System.Collections.IEnumerable enumerable)
+            if (poolStatsObj is not IEnumerable enumerable)
             {
                 return;
             }
@@ -1480,13 +1489,20 @@ public class ConsoleSystem : IUpdateSystem
 
             foreach (object? statObj in enumerable)
             {
-                if (statObj == null) continue;
+                if (statObj == null)
+                {
+                    continue;
+                }
 
                 Type statType = statObj.GetType();
                 string? eventType = statType.GetProperty("EventType")?.GetValue(statObj) as string;
                 long rented = (long)(statType.GetProperty("TotalRented")?.GetValue(statObj) ?? 0L);
-                long created = (long)(statType.GetProperty("TotalCreated")?.GetValue(statObj) ?? 0L);
-                long inUse = (long)(statType.GetProperty("CurrentlyInUse")?.GetValue(statObj) ?? 0L);
+                long created = (long)(
+                    statType.GetProperty("TotalCreated")?.GetValue(statObj) ?? 0L
+                );
+                long inUse = (long)(
+                    statType.GetProperty("CurrentlyInUse")?.GetValue(statObj) ?? 0L
+                );
 
                 totalRented += rented;
                 totalCreated += created;
@@ -1505,7 +1521,8 @@ public class ConsoleSystem : IUpdateSystem
             stats.EventPoolTotalRented = totalRented;
             stats.EventPoolTotalCreated = totalCreated;
             stats.EventPoolCurrentlyInUse = totalInUse;
-            stats.EventPoolAvgReuseRate = totalRented > 0 ? 1.0 - ((double)totalCreated / totalRented) : 0.0;
+            stats.EventPoolAvgReuseRate =
+                totalRented > 0 ? 1.0 - ((double)totalCreated / totalRented) : 0.0;
             stats.MostUsedEventType = hotEventType;
             stats.MostUsedEventRented = hotEventRented;
         }
@@ -1531,8 +1548,8 @@ public class ConsoleSystem : IUpdateSystem
 
             // PERFORMANCE FIX: Build caches and inverse relationship indexes in single pass
             // This reduces O(N²) to O(N) by avoiding per-entity world queries
-            var entityCache = BuildEntityCache(entities);
-            var inverseRelationships = BuildInverseRelationshipIndex(entities);
+            Dictionary<int, EntityCacheEntry> entityCache = BuildEntityCache(entities);
+            InverseRelationshipIndex inverseRelationships = BuildInverseRelationshipIndex(entities);
 
             foreach (Entity entity in entities)
             {
@@ -1569,21 +1586,17 @@ public class ConsoleSystem : IUpdateSystem
 
             try
             {
-                var components = DetectEntityComponents(entity);
-                var name = DetermineEntityName(entity, components);
+                List<string> components = DetectEntityComponents(entity);
+                string name = DetermineEntityName(entity, components);
 
-                cache[entity.Id] = new EntityCacheEntry
-                {
-                    Name = name,
-                    Components = components
-                };
+                cache[entity.Id] = new EntityCacheEntry { Name = name, Components = components };
             }
             catch
             {
                 cache[entity.Id] = new EntityCacheEntry
                 {
                     Name = $"Entity_{entity.Id}",
-                    Components = new List<string>()
+                    Components = new List<string>(),
                 };
             }
         }
@@ -1609,10 +1622,10 @@ public class ConsoleSystem : IUpdateSystem
             try
             {
                 // Index ParentOf relationships (forward: parent → children)
-                if (entity.HasRelationship<PokeSharp.Game.Components.Relationships.ParentOf>())
+                if (entity.HasRelationship<ParentOf>())
                 {
-                    ref var children = ref entity.GetRelationships<PokeSharp.Game.Components.Relationships.ParentOf>();
-                    foreach (var kvp in children)
+                    ref Relationship<ParentOf> children = ref entity.GetRelationships<ParentOf>();
+                    foreach (KeyValuePair<Entity, ParentOf> kvp in children)
                     {
                         Entity childEntity = kvp.Key;
                         if (!_world.IsAlive(childEntity))
@@ -1625,15 +1638,17 @@ public class ConsoleSystem : IUpdateSystem
                         {
                             index.ParentOf[childEntity.Id] = new List<Entity>();
                         }
+
                         index.ParentOf[childEntity.Id].Add(entity);
                     }
                 }
 
                 // Index OwnerOf relationships (forward: owner → owned)
-                if (entity.HasRelationship<PokeSharp.Game.Components.Relationships.OwnerOf>())
+                if (entity.HasRelationship<OwnerOf>())
                 {
-                    ref var ownedEntities = ref entity.GetRelationships<PokeSharp.Game.Components.Relationships.OwnerOf>();
-                    foreach (var kvp in ownedEntities)
+                    ref Relationship<OwnerOf> ownedEntities =
+                        ref entity.GetRelationships<OwnerOf>();
+                    foreach (KeyValuePair<Entity, OwnerOf> kvp in ownedEntities)
                     {
                         Entity ownedEntity = kvp.Key;
                         if (!_world.IsAlive(ownedEntity))
@@ -1646,6 +1661,7 @@ public class ConsoleSystem : IUpdateSystem
                         {
                             index.OwnerOf[ownedEntity.Id] = new List<Entity>();
                         }
+
                         index.OwnerOf[ownedEntity.Id].Add(entity);
                     }
                 }
@@ -1663,37 +1679,13 @@ public class ConsoleSystem : IUpdateSystem
     }
 
     /// <summary>
-    ///     Cache entry for entity metadata to avoid repeated expensive lookups.
-    /// </summary>
-    private class EntityCacheEntry
-    {
-        public string Name { get; set; } = string.Empty;
-        public List<string> Components { get; set; } = new();
-    }
-
-    /// <summary>
-    ///     Inverse relationship index for efficient lookups without O(N²) world queries.
-    /// </summary>
-    /// <remarks>
-    ///     Only includes relationships where inverse lookup is needed.
-    ///     MapContains is bidirectional in Arch.Relationships, so no index needed.
-    /// </remarks>
-    private class InverseRelationshipIndex
-    {
-        // Maps child entity ID → list of parent entities
-        public Dictionary<int, List<Entity>> ParentOf { get; } = new();
-
-        // Maps owned entity ID → list of owner entities
-        public Dictionary<int, List<Entity>> OwnerOf { get; } = new();
-    }
-
-    /// <summary>
     ///     Converts an Arch Entity to an EntityInfo for display.
     /// </summary>
     private EntityInfo ConvertEntityToInfo(
         Entity entity,
         Dictionary<int, EntityCacheEntry> entityCache,
-        InverseRelationshipIndex inverseRelationships)
+        InverseRelationshipIndex inverseRelationships
+    )
     {
         var info = new EntityInfo
         {
@@ -1710,7 +1702,11 @@ public class ConsoleSystem : IUpdateSystem
             // Use cached component detection
             EntityCacheEntry cacheEntry = entityCache.GetValueOrDefault(
                 entity.Id,
-                new EntityCacheEntry { Name = $"Entity_{entity.Id}", Components = new List<string>() }
+                new EntityCacheEntry
+                {
+                    Name = $"Entity_{entity.Id}",
+                    Components = new List<string>(),
+                }
             );
 
             info.Components = cacheEntry.Components;
@@ -1720,7 +1716,7 @@ public class ConsoleSystem : IUpdateSystem
             // Get properties (simple flattened view)
             info.Properties = GetEntityProperties(entity, cacheEntry.Components);
             info.Properties["Components"] = cacheEntry.Components.Count.ToString();
-            
+
             // Get component data (structured by component name) using Arch's built-in inspection
             info.ComponentData = _componentRegistry.GetComponentData(entity);
 
@@ -1769,15 +1765,16 @@ public class ConsoleSystem : IUpdateSystem
         Entity entity,
         EntityInfo info,
         Dictionary<int, EntityCacheEntry> entityCache,
-        InverseRelationshipIndex inverseRelationships)
+        InverseRelationshipIndex inverseRelationships
+    )
     {
         // Extract ParentOf relationships (forward: this entity → children)
-        if (entity.HasRelationship<PokeSharp.Game.Components.Relationships.ParentOf>())
+        if (entity.HasRelationship<ParentOf>())
         {
             var parentOfList = new List<EntityRelationship>();
-            ref var children = ref entity.GetRelationships<PokeSharp.Game.Components.Relationships.ParentOf>();
-            
-            foreach (var kvp in children)
+            ref Relationship<ParentOf> children = ref entity.GetRelationships<ParentOf>();
+
+            foreach (KeyValuePair<Entity, ParentOf> kvp in children)
             {
                 Entity childEntity = kvp.Key;
                 if (!_world.IsAlive(childEntity))
@@ -1789,14 +1786,18 @@ public class ConsoleSystem : IUpdateSystem
                 {
                     EntityId = childEntity.Id,
                     // Use cached name instead of expensive DetectEntityComponents call
-                    EntityName = entityCache.GetValueOrDefault(childEntity.Id)?.Name ?? $"Entity_{childEntity.Id}",
+                    EntityName =
+                        entityCache.GetValueOrDefault(childEntity.Id)?.Name
+                        ?? $"Entity_{childEntity.Id}",
                     IsValid = true,
-                    Metadata = new Dictionary<string, string>()
+                    Metadata = new Dictionary<string, string>(),
                 };
 
                 // Get relationship data
-                var relationshipData = entity.GetRelationship<PokeSharp.Game.Components.Relationships.ParentOf>(childEntity);
-                rel.Metadata["EstablishedAt"] = relationshipData.EstablishedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                ParentOf relationshipData = entity.GetRelationship<ParentOf>(childEntity);
+                rel.Metadata["EstablishedAt"] = relationshipData.EstablishedAt.ToString(
+                    "yyyy-MM-dd HH:mm:ss"
+                );
                 if (!string.IsNullOrEmpty(relationshipData.Metadata))
                 {
                     rel.Metadata["Info"] = relationshipData.Metadata;
@@ -1812,12 +1813,12 @@ public class ConsoleSystem : IUpdateSystem
         }
 
         // Extract OwnerOf relationships (forward: this entity → owned entities)
-        if (entity.HasRelationship<PokeSharp.Game.Components.Relationships.OwnerOf>())
+        if (entity.HasRelationship<OwnerOf>())
         {
             var ownerOfList = new List<EntityRelationship>();
-            ref var ownedEntities = ref entity.GetRelationships<PokeSharp.Game.Components.Relationships.OwnerOf>();
-            
-            foreach (var kvp in ownedEntities)
+            ref Relationship<OwnerOf> ownedEntities = ref entity.GetRelationships<OwnerOf>();
+
+            foreach (KeyValuePair<Entity, OwnerOf> kvp in ownedEntities)
             {
                 Entity ownedEntity = kvp.Key;
                 if (!_world.IsAlive(ownedEntity))
@@ -1828,15 +1829,19 @@ public class ConsoleSystem : IUpdateSystem
                 var rel = new EntityRelationship
                 {
                     EntityId = ownedEntity.Id,
-                    EntityName = entityCache.GetValueOrDefault(ownedEntity.Id)?.Name ?? $"Entity_{ownedEntity.Id}",
+                    EntityName =
+                        entityCache.GetValueOrDefault(ownedEntity.Id)?.Name
+                        ?? $"Entity_{ownedEntity.Id}",
                     IsValid = true,
-                    Metadata = new Dictionary<string, string>()
+                    Metadata = new Dictionary<string, string>(),
                 };
 
                 // Get relationship data
-                var relationshipData = entity.GetRelationship<PokeSharp.Game.Components.Relationships.OwnerOf>(ownedEntity);
+                OwnerOf relationshipData = entity.GetRelationship<OwnerOf>(ownedEntity);
                 rel.Metadata["Type"] = relationshipData.Type.ToString();
-                rel.Metadata["AcquiredAt"] = relationshipData.AcquiredAt.ToString("yyyy-MM-dd HH:mm:ss");
+                rel.Metadata["AcquiredAt"] = relationshipData.AcquiredAt.ToString(
+                    "yyyy-MM-dd HH:mm:ss"
+                );
                 if (!string.IsNullOrEmpty(relationshipData.Metadata))
                 {
                     rel.Metadata["Info"] = relationshipData.Metadata;
@@ -1856,7 +1861,7 @@ public class ConsoleSystem : IUpdateSystem
 
         // PERFORMANCE FIX: Use inverse index instead of O(N) world query
         // Find parent relationships (where this entity is a child)
-        if (inverseRelationships.ParentOf.TryGetValue(entity.Id, out var parents))
+        if (inverseRelationships.ParentOf.TryGetValue(entity.Id, out List<Entity>? parents))
         {
             var parentList = new List<EntityRelationship>();
 
@@ -1870,13 +1875,17 @@ public class ConsoleSystem : IUpdateSystem
                 var rel = new EntityRelationship
                 {
                     EntityId = potentialParent.Id,
-                    EntityName = entityCache.GetValueOrDefault(potentialParent.Id)?.Name ?? $"Entity_{potentialParent.Id}",
+                    EntityName =
+                        entityCache.GetValueOrDefault(potentialParent.Id)?.Name
+                        ?? $"Entity_{potentialParent.Id}",
                     IsValid = true,
-                    Metadata = new Dictionary<string, string>()
+                    Metadata = new Dictionary<string, string>(),
                 };
 
-                var relationshipData = potentialParent.GetRelationship<PokeSharp.Game.Components.Relationships.ParentOf>(entity);
-                rel.Metadata["EstablishedAt"] = relationshipData.EstablishedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                ParentOf relationshipData = potentialParent.GetRelationship<ParentOf>(entity);
+                rel.Metadata["EstablishedAt"] = relationshipData.EstablishedAt.ToString(
+                    "yyyy-MM-dd HH:mm:ss"
+                );
                 if (!string.IsNullOrEmpty(relationshipData.Metadata))
                 {
                     rel.Metadata["Info"] = relationshipData.Metadata;
@@ -1893,7 +1902,7 @@ public class ConsoleSystem : IUpdateSystem
 
         // PERFORMANCE FIX: Use inverse index instead of O(N) world query
         // Find owner relationships (where this entity is owned)
-        if (inverseRelationships.OwnerOf.TryGetValue(entity.Id, out var owners))
+        if (inverseRelationships.OwnerOf.TryGetValue(entity.Id, out List<Entity>? owners))
         {
             var ownerList = new List<EntityRelationship>();
 
@@ -1907,14 +1916,18 @@ public class ConsoleSystem : IUpdateSystem
                 var rel = new EntityRelationship
                 {
                     EntityId = potentialOwner.Id,
-                    EntityName = entityCache.GetValueOrDefault(potentialOwner.Id)?.Name ?? $"Entity_{potentialOwner.Id}",
+                    EntityName =
+                        entityCache.GetValueOrDefault(potentialOwner.Id)?.Name
+                        ?? $"Entity_{potentialOwner.Id}",
                     IsValid = true,
-                    Metadata = new Dictionary<string, string>()
+                    Metadata = new Dictionary<string, string>(),
                 };
 
-                var relationshipData = potentialOwner.GetRelationship<PokeSharp.Game.Components.Relationships.OwnerOf>(entity);
+                OwnerOf relationshipData = potentialOwner.GetRelationship<OwnerOf>(entity);
                 rel.Metadata["Type"] = relationshipData.Type.ToString();
-                rel.Metadata["AcquiredAt"] = relationshipData.AcquiredAt.ToString("yyyy-MM-dd HH:mm:ss");
+                rel.Metadata["AcquiredAt"] = relationshipData.AcquiredAt.ToString(
+                    "yyyy-MM-dd HH:mm:ss"
+                );
                 if (!string.IsNullOrEmpty(relationshipData.Metadata))
                 {
                     rel.Metadata["Info"] = relationshipData.Metadata;
@@ -1948,5 +1961,30 @@ public class ConsoleSystem : IUpdateSystem
             // Ignore errors reading properties
             return new Dictionary<string, string>();
         }
+    }
+
+    /// <summary>
+    ///     Cache entry for entity metadata to avoid repeated expensive lookups.
+    /// </summary>
+    private class EntityCacheEntry
+    {
+        public string Name { get; set; } = string.Empty;
+        public List<string> Components { get; set; } = new();
+    }
+
+    /// <summary>
+    ///     Inverse relationship index for efficient lookups without O(N²) world queries.
+    /// </summary>
+    /// <remarks>
+    ///     Only includes relationships where inverse lookup is needed.
+    ///     MapContains is bidirectional in Arch.Relationships, so no index needed.
+    /// </remarks>
+    private class InverseRelationshipIndex
+    {
+        // Maps child entity ID → list of parent entities
+        public Dictionary<int, List<Entity>> ParentOf { get; } = new();
+
+        // Maps owned entity ID → list of owner entities
+        public Dictionary<int, List<Entity>> OwnerOf { get; } = new();
     }
 }

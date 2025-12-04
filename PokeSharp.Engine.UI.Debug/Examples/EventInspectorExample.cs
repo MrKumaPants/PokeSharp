@@ -1,7 +1,8 @@
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.UI.Debug.Components.Debug;
 using PokeSharp.Engine.UI.Debug.Core;
-using PokeSharp.Engine.UI.Debug.Layout;
+using PokeSharp.Engine.UI.Debug.Models;
+using Timer = System.Timers.Timer;
 
 namespace PokeSharp.Engine.UI.Debug.Examples;
 
@@ -18,19 +19,17 @@ public static class EventInspectorExample
     /// <returns>Configured EventInspectorPanel ready to add to a scene.</returns>
     public static (EventInspectorPanel Panel, EventInspectorAdapter Adapter) CreateEventInspector(
         EventBus eventBus,
-        bool enabledByDefault = false)
+        bool enabledByDefault = false
+    )
     {
         // Step 1: Create the metrics collector
-        var metrics = new EventMetrics
-        {
-            IsEnabled = enabledByDefault
-        };
+        var metrics = new EventMetrics { IsEnabled = enabledByDefault };
 
         // Step 2: Create the adapter that bridges EventBus and UI
-        var adapter = new EventInspectorAdapter(eventBus, metrics, maxLogEntries: 100);
+        var adapter = new EventInspectorAdapter(eventBus, metrics, 100);
 
         // Step 3: Build the UI panel
-        var panel = new EventInspectorPanelBuilder()
+        EventInspectorPanel panel = new EventInspectorPanelBuilder()
             .WithDataProvider(() => adapter.GetInspectorData())
             .WithRefreshInterval(2) // Update every 2 frames (~30 FPS at 60 FPS base)
             .Build();
@@ -51,7 +50,8 @@ public static class EventInspectorExample
     public static void SetupToggleKey(
         EventInspectorPanel panel,
         EventInspectorAdapter adapter,
-        Action<Action> onKeyF9Pressed)
+        Action<Action> onKeyF9Pressed
+    )
     {
         onKeyF9Pressed(() =>
         {
@@ -72,11 +72,9 @@ public static class EventInspectorExample
     /// <summary>
     ///     Example of periodic metric cleanup to prevent memory buildup.
     /// </summary>
-    public static void SetupPeriodicCleanup(
-        EventInspectorAdapter adapter,
-        TimeSpan cleanupInterval)
+    public static void SetupPeriodicCleanup(EventInspectorAdapter adapter, TimeSpan cleanupInterval)
     {
-        var timer = new System.Timers.Timer(cleanupInterval.TotalMilliseconds);
+        var timer = new Timer(cleanupInterval.TotalMilliseconds);
         timer.Elapsed += (sender, e) =>
         {
             if (adapter.IsEnabled)
@@ -93,7 +91,7 @@ public static class EventInspectorExample
     /// </summary>
     public static EventInspectorPanel CreateDebugOnlyInspector(EventBus eventBus)
     {
-        var (panel, adapter) = CreateEventInspector(eventBus);
+        (EventInspectorPanel panel, EventInspectorAdapter adapter) = CreateEventInspector(eventBus);
 
 #if DEBUG
         adapter.IsEnabled = true;
@@ -111,16 +109,20 @@ public static class EventInspectorExample
     /// </summary>
     public static void SetupDynamicRefreshRate(
         EventInspectorPanel panel,
-        EventInspectorAdapter adapter)
+        EventInspectorAdapter adapter
+    )
     {
         // Check every second if we should adjust refresh rate
-        var timer = new System.Timers.Timer(1000);
+        var timer = new Timer(1000);
         timer.Elapsed += (sender, e) =>
         {
-            if (!adapter.IsEnabled) return;
+            if (!adapter.IsEnabled)
+            {
+                return;
+            }
 
-            var data = adapter.GetInspectorData();
-            var totalPublishCount = data.Events.Sum(e => e.PublishCount);
+            EventInspectorData data = adapter.GetInspectorData();
+            long totalPublishCount = data.Events.Sum(e => e.PublishCount);
 
             // High activity: update more frequently
             if (totalPublishCount > 1000)
@@ -147,7 +149,7 @@ public static class EventInspectorExample
     /// </summary>
     public static void ExportMetricsToLog(EventInspectorAdapter adapter, string logPath)
     {
-        var data = adapter.GetInspectorData();
+        EventInspectorData data = adapter.GetInspectorData();
 
         using var writer = new StreamWriter(logPath);
         writer.WriteLine($"Event Inspector Report - {DateTime.Now}");
@@ -161,7 +163,7 @@ public static class EventInspectorExample
         writer.WriteLine("Event Performance Metrics:");
         writer.WriteLine(new string('-', 80));
 
-        foreach (var evt in data.Events.OrderByDescending(e => e.AverageTimeMs))
+        foreach (EventTypeInfo evt in data.Events.OrderByDescending(e => e.AverageTimeMs))
         {
             writer.WriteLine($"{evt.EventTypeName}:");
             writer.WriteLine($"  Subscribers: {evt.SubscriberCount}");
@@ -172,14 +174,19 @@ public static class EventInspectorExample
             if (evt.Subscriptions.Any())
             {
                 writer.WriteLine("  Handlers:");
-                foreach (var sub in evt.Subscriptions.OrderByDescending(s => s.AverageTimeMs))
+                foreach (
+                    SubscriptionInfo sub in evt.Subscriptions.OrderByDescending(s =>
+                        s.AverageTimeMs
+                    )
+                )
                 {
                     writer.WriteLine(
-                        $"    [#{sub.HandlerId}] {sub.Source ?? "Unknown"} - " +
-                        $"{sub.AverageTimeMs:F3}ms avg ({sub.InvocationCount} calls)"
+                        $"    [#{sub.HandlerId}] {sub.Source ?? "Unknown"} - "
+                            + $"{sub.AverageTimeMs:F3}ms avg ({sub.InvocationCount} calls)"
                     );
                 }
             }
+
             writer.WriteLine();
         }
 
@@ -187,11 +194,11 @@ public static class EventInspectorExample
         writer.WriteLine("Recent Events:");
         writer.WriteLine(new string('-', 80));
 
-        foreach (var entry in data.RecentEvents.TakeLast(50))
+        foreach (EventLogEntry entry in data.RecentEvents.TakeLast(50))
         {
             writer.WriteLine(
-                $"[{entry.Timestamp:HH:mm:ss.fff}] {entry.Operation} " +
-                $"{entry.EventType} - {entry.DurationMs:F3}ms"
+                $"[{entry.Timestamp:HH:mm:ss.fff}] {entry.Operation} "
+                    + $"{entry.EventType} - {entry.DurationMs:F3}ms"
             );
         }
     }

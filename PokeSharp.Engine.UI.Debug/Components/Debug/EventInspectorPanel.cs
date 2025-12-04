@@ -113,8 +113,12 @@ public class EventInspectorPanel : DebugPanelBase, IEventInspectorOperations
     /// <summary>
     ///     Gets consolidated statistics about tracked events.
     /// </summary>
-    public (int EventCount, int TotalSubscribers, double SlowestEventMs, string SlowestEventName)
-        GetStatistics()
+    public (
+        int EventCount,
+        int TotalSubscribers,
+        double SlowestEventMs,
+        string SlowestEventName
+    ) GetStatistics()
     {
         return _content.GetStatistics();
     }
@@ -132,14 +136,19 @@ public class EventInspectorPanel : DebugPanelBase, IEventInspectorOperations
     /// </summary>
     public string ExportToString()
     {
-        var stats = _content.GetStatistics();
+        (
+            int EventCount,
+            int TotalSubscribers,
+            double SlowestEventMs,
+            string SlowestEventName
+        ) stats = _content.GetStatistics();
         var sb = new StringBuilder();
         sb.AppendLine($"# Event Inspector Export - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"# Total Events: {stats.EventCount}");
         sb.AppendLine($"# Total Subscribers: {stats.TotalSubscribers}");
         sb.AppendLine($"# Slowest Event: {stats.SlowestEventName} ({stats.SlowestEventMs:F3}ms)");
         sb.AppendLine();
-        sb.AppendLine($"{"Event Type",-50} {"Subscribers",12} {"Avg (ms)",12} {"Max (ms)",12}");
+        sb.AppendLine($"{"Event Type", -50} {"Subscribers", 12} {"Avg (ms)", 12} {"Max (ms)", 12}");
         sb.AppendLine(new string('-', 88));
 
         // Note: Full event list would require caching in content
@@ -154,7 +163,12 @@ public class EventInspectorPanel : DebugPanelBase, IEventInspectorOperations
     /// </summary>
     public string ExportToCsv()
     {
-        var stats = _content.GetStatistics();
+        (
+            int EventCount,
+            int TotalSubscribers,
+            double SlowestEventMs,
+            string SlowestEventName
+        ) stats = _content.GetStatistics();
         var sb = new StringBuilder();
         sb.AppendLine("Metric,Value");
         sb.AppendLine($"TotalEvents,{stats.EventCount}");
@@ -188,7 +202,12 @@ public class EventInspectorPanel : DebugPanelBase, IEventInspectorOperations
             return;
         }
 
-        var stats = _content.GetStatistics();
+        (
+            int EventCount,
+            int TotalSubscribers,
+            double SlowestEventMs,
+            string SlowestEventName
+        ) stats = _content.GetStatistics();
         UITheme theme = ThemeManager.Current;
 
         // Determine health indicator based on slowest event time
@@ -212,7 +231,8 @@ public class EventInspectorPanel : DebugPanelBase, IEventInspectorOperations
             isHealthy = false;
         }
 
-        string statsText = $"{statusIndicator} Events: {stats.EventCount} | Subscribers: {stats.TotalSubscribers}";
+        string statsText =
+            $"{statusIndicator} Events: {stats.EventCount} | Subscribers: {stats.TotalSubscribers}";
 
         if (stats.SlowestEventMs > 0)
         {
@@ -220,7 +240,8 @@ public class EventInspectorPanel : DebugPanelBase, IEventInspectorOperations
         }
 
         int refreshRate = 60 / _content.GetRefreshInterval();
-        string hints = $"Click headers to sort | {_content.GetSortMode()} | Tab: Details | ~{refreshRate}fps";
+        string hints =
+            $"Click headers to sort | {_content.GetSortMode()} | Tab: Details | ~{refreshRate}fps";
 
         SetStatusBar(statsText, hints);
         SetStatusBarHealthColor(isHealthy, isWarning);

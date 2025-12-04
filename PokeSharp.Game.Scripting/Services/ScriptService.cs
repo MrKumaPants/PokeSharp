@@ -30,9 +30,9 @@ public class ScriptService : IAsyncDisposable
     private readonly ScriptCompiler _compiler;
     private readonly IEventBus _eventBus;
     private readonly ILogger<ScriptService> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly string _scriptsBasePath;
     private readonly World _world;
-    private readonly ILoggerFactory _loggerFactory;
 
     private ModLoader? _modLoader;
 
@@ -426,5 +426,8 @@ public class ScriptService : IAsyncDisposable
     /// <summary>
     ///     Gets the ModLoader instance for advanced mod management.
     /// </summary>
-    public ModLoader? GetModLoader() => _modLoader;
+    public ModLoader? GetModLoader()
+    {
+        return _modLoader;
+    }
 }

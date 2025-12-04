@@ -1,7 +1,7 @@
 using Arch.Core;
 using Microsoft.Xna.Framework;
-using PokeSharp.Game.Components.Movement;
 using PokeSharp.Engine.Core.Types.Events;
+using PokeSharp.Game.Components.Movement;
 
 namespace PokeSharp.Game.Systems.Events;
 
@@ -25,7 +25,7 @@ public abstract record MovementEventBase : TypeEventBase
 ///     Can be cancelled by handlers (e.g., for cutscenes, menus, mods).
 ///     This is the FIRST event in the movement pipeline.
 /// </summary>
-public record MovementStartedEvent : MovementEventBase
+public record MovementStartedEvent : MovementEventBase, PokeSharp.Engine.Core.Events.ICancellableEvent
 {
     /// <summary>
     ///     Target grid position where entity will move to.
@@ -53,6 +53,46 @@ public record MovementStartedEvent : MovementEventBase
     ///     Starting pixel position (for interpolation tracking).
     /// </summary>
     public Vector2 StartPosition { get; set; }
+
+    /// <summary>
+    ///     Unique identifier for this event instance (required by IGameEvent).
+    /// </summary>
+    public Guid EventId { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    ///     UTC timestamp when this event was created (required by IGameEvent).
+    ///     Note: TypeEventBase also has a float Timestamp property for game time.
+    /// </summary>
+    DateTime PokeSharp.Engine.Core.Events.IGameEvent.Timestamp { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    ///     Cancels this movement event.
+    /// </summary>
+    public void PreventDefault(string? reason = null)
+    {
+        IsCancelled = true;
+        CancellationReason = reason;
+    }
+
+    /// <summary>
+    ///     Resets the event to a clean state for pool reuse.
+    ///     Overrides base Reset() to also clear movement-specific fields.
+    /// </summary>
+    /// <remarks>
+    ///     PERFORMANCE: Does NOT reset EventId or Timestamp to avoid allocations.
+    ///     EventId is only used for debugging, and Timestamp is set by callers.
+    ///     This maintains zero-GC pooling!
+    /// </remarks>
+    public override void Reset()
+    {
+        base.Reset();
+        Entity = default;
+        TargetPosition = default;
+        Direction = Direction.None;
+        IsCancelled = false;
+        CancellationReason = null;
+        StartPosition = default;
+    }
 }
 
 /// <summary>

@@ -1,9 +1,9 @@
 // Tall Grass Script - Example Test Mod
 // Triggers random wild Pokemon encounters in tall grass
 
-using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Engine.Core.Events.Tile;
 using PokeSharp.Engine.Core.Events;
+using PokeSharp.Engine.Core.Events.Tile;
+using PokeSharp.Game.Scripting.Runtime;
 
 public class TallGrassScript : ScriptBase
 {
@@ -20,37 +20,42 @@ public class TallGrassScript : ScriptBase
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        On<TileSteppedOnEvent>(evt =>
-        {
-            if (evt.TileType == "tall_grass")
+        On<TileSteppedOnEvent>(
+            evt =>
             {
-                Context.Logger?.LogInformation(
-                    "[TallGrassScript] Player in tall grass at ({X}, {Y})",
-                    evt.TileX,
-                    evt.TileY
-                );
-
-                // Roll for encounter
-                var encounterRate = 0.10f; // 10% chance
-                var roll = Random.Shared.NextDouble();
-
-                if (roll < encounterRate)
+                if (evt.TileType == "tall_grass")
                 {
                     Context.Logger?.LogInformation(
-                        "[TallGrassScript] Wild Pokemon encounter! (rolled {Roll:F3})",
-                        roll
+                        "[TallGrassScript] Player in tall grass at ({X}, {Y})",
+                        evt.TileX,
+                        evt.TileY
                     );
 
-                    // Publish custom event for other systems to handle
-                    Publish(new WildEncounterTriggeredEvent
+                    // Roll for encounter
+                    var encounterRate = 0.10f; // 10% chance
+                    var roll = Random.Shared.NextDouble();
+
+                    if (roll < encounterRate)
                     {
-                        PlayerEntity = evt.Entity,
-                        TileX = evt.TileX,
-                        TileY = evt.TileY,
-                        EncounterRate = encounterRate
-                    });
+                        Context.Logger?.LogInformation(
+                            "[TallGrassScript] Wild Pokemon encounter! (rolled {Roll:F3})",
+                            roll
+                        );
+
+                        // Publish custom event for other systems to handle
+                        Publish(
+                            new WildEncounterTriggeredEvent
+                            {
+                                PlayerEntity = evt.Entity,
+                                TileX = evt.TileX,
+                                TileY = evt.TileY,
+                                EncounterRate = encounterRate,
+                            }
+                        );
+                    }
                 }
-            }
-        }, priority: 500);
+            },
+            priority: 500
+        );
     }
 }

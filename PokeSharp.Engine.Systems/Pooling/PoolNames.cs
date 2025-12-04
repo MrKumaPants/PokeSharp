@@ -108,4 +108,3 @@ public static class PoolNames
     /// </remarks>
     public const string Pokemon = "pokemon";
 }
-

@@ -33,7 +33,10 @@ public class PatrolBehavior : ScriptBase
                 ref var initPath = ref Context.World.Get<MovementRoute>(Context.Entity.Value);
 
                 // Log all waypoints for debugging
-                var waypointStr = string.Join(", ", initPath.Waypoints.Select(p => $"({p.X},{p.Y})"));
+                var waypointStr = string.Join(
+                    ", ",
+                    initPath.Waypoints.Select(p => $"({p.X},{p.Y})")
+                );
                 Context.Logger.LogInformation(
                     "Patrol initialized | waypoints: {Count}, loop: {Loop}, path: {Path}",
                     initPath.Waypoints.Length,

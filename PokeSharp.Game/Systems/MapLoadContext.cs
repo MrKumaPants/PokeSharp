@@ -64,25 +64,25 @@ public readonly record struct MapLoadContext(
     {
         if (MapEntity.Has<NorthConnection>())
         {
-            var conn = MapEntity.Get<NorthConnection>();
+            NorthConnection conn = MapEntity.Get<NorthConnection>();
             yield return new ConnectionInfo(conn.MapId, conn.Offset, Direction.North);
         }
 
         if (MapEntity.Has<SouthConnection>())
         {
-            var conn = MapEntity.Get<SouthConnection>();
+            SouthConnection conn = MapEntity.Get<SouthConnection>();
             yield return new ConnectionInfo(conn.MapId, conn.Offset, Direction.South);
         }
 
         if (MapEntity.Has<EastConnection>())
         {
-            var conn = MapEntity.Get<EastConnection>();
+            EastConnection conn = MapEntity.Get<EastConnection>();
             yield return new ConnectionInfo(conn.MapId, conn.Offset, Direction.East);
         }
 
         if (MapEntity.Has<WestConnection>())
         {
-            var conn = MapEntity.Get<WestConnection>();
+            WestConnection conn = MapEntity.Get<WestConnection>();
             yield return new ConnectionInfo(conn.MapId, conn.Offset, Direction.West);
         }
     }

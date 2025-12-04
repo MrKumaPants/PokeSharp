@@ -3,11 +3,11 @@
 // Triggers random wild Pokemon encounters when player steps on grass
 // Uses ScriptBase for unified event handling
 
-using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Scripting.Events;
-using PokeSharp.Core.Components;
 using System;
 using System.Numerics;
+using PokeSharp.Core.Components;
+using PokeSharp.Game.Scripting.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 public class TallGrassScript : ScriptBase
 {
@@ -21,9 +21,11 @@ public class TallGrassScript : ScriptBase
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        On<TileSteppedOnEvent>(evt => {
+        On<TileSteppedOnEvent>(evt =>
+        {
             // Only trigger for player
-            if (!ctx.Player.IsPlayerEntity(evt.Entity)) {
+            if (!ctx.Player.IsPlayerEntity(evt.Entity))
+            {
                 return;
             }
 
@@ -40,7 +42,8 @@ public class TallGrassScript : ScriptBase
     private void CheckWildEncounter(TileSteppedOnEvent evt)
     {
         // Random encounter check
-        if (random.NextDouble() < encounterRate) {
+        if (random.NextDouble() < encounterRate)
+        {
             ctx.Logger.Info("Tall grass: Wild encounter triggered!");
             TriggerWildBattle(evt.Entity, evt.TilePosition);
         }

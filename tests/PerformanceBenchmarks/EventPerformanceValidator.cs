@@ -60,7 +60,9 @@ public class EventPerformanceValidator
 
         Console.WriteLine($"  Events processed: 10,000");
         Console.WriteLine($"  Total time: {elapsedMs:F3}ms");
-        Console.WriteLine($"  Per event: {elapsedMs / 10_000:F6}ms ({(elapsedMs * 1000) / 10_000:F3}μs)");
+        Console.WriteLine(
+            $"  Per event: {elapsedMs / 10_000:F6}ms ({(elapsedMs * 1000) / 10_000:F3}μs)"
+        );
         Console.WriteLine($"  Target: <{target}ms");
         Console.WriteLine($"  Frame budget remaining: {16.67 - elapsedMs:F2}ms @ 60fps");
         Console.WriteLine($"  Status: {(passed ? "✓ PASS" : "✗ FAIL")}\n");
@@ -71,7 +73,7 @@ public class EventPerformanceValidator
             EventsProcessed = 10_000,
             AverageTimePerEventUs = (elapsedMs * 1000) / 10_000,
             TargetMs = target,
-            Passed = passed
+            Passed = passed,
         };
     }
 
@@ -115,9 +117,13 @@ public class EventPerformanceValidator
         Console.WriteLine($"  Iterations: {iterations:N0}");
         Console.WriteLine($"  Total time: {totalMs:F2}ms");
         Console.WriteLine($"  Avg publish: {avgUs:F3}μs");
-        Console.WriteLine($"  Handlers invoked: {handler1Count + handler2Count + handler3Count:N0}");
+        Console.WriteLine(
+            $"  Handlers invoked: {handler1Count + handler2Count + handler3Count:N0}"
+        );
         Console.WriteLine($"  Strict target (<1μs): {(meetsStrict ? "✓ PASS" : "✗ FAIL")}");
-        Console.WriteLine($"  Acceptable target (<10μs): {(meetsAcceptable ? "✓ PASS" : "✗ FAIL")}\n");
+        Console.WriteLine(
+            $"  Acceptable target (<10μs): {(meetsAcceptable ? "✓ PASS" : "✗ FAIL")}\n"
+        );
 
         return new PublishTimeResult
         {
@@ -127,7 +133,7 @@ public class EventPerformanceValidator
             StrictTargetUs = strictTarget,
             AcceptableTargetUs = acceptableTarget,
             MeetsStrictTarget = meetsStrict,
-            MeetsAcceptableTarget = meetsAcceptable
+            MeetsAcceptableTarget = meetsAcceptable,
         };
     }
 
@@ -169,7 +175,9 @@ public class EventPerformanceValidator
         Console.WriteLine($"  Avg invoke: {avgNs:F0}ns ({avgUs:F3}μs)");
         Console.WriteLine($"  Handler calls: {count:N0}");
         Console.WriteLine($"  Strict target (<0.5μs): {(meetsStrict ? "✓ PASS" : "✗ FAIL")}");
-        Console.WriteLine($"  Acceptable target (<5μs): {(meetsAcceptable ? "✓ PASS" : "✗ FAIL")}\n");
+        Console.WriteLine(
+            $"  Acceptable target (<5μs): {(meetsAcceptable ? "✓ PASS" : "✗ FAIL")}\n"
+        );
 
         return new InvokeTimeResult
         {
@@ -180,7 +188,7 @@ public class EventPerformanceValidator
             StrictTargetUs = strictTarget,
             AcceptableTargetUs = acceptableTarget,
             MeetsStrictTarget = meetsStrict,
-            MeetsAcceptableTarget = meetsAcceptable
+            MeetsAcceptableTarget = meetsAcceptable,
         };
     }
 
@@ -234,7 +242,7 @@ public class EventPerformanceValidator
             BytesAllocated = allocatedBytes,
             Gen0Collections = gen0Collections,
             TargetBytes = target,
-            Passed = passed
+            Passed = passed,
         };
     }
 
@@ -273,22 +281,30 @@ public class EventPerformanceValidator
 
             var totalMs = stopwatch.Elapsed.TotalMilliseconds;
             var usPerEvent = (totalMs * 1000) / iterations;
-            measurements.Add(new ScalingMeasurement
-            {
-                SubscriberCount = subCount,
-                TotalTimeMs = totalMs,
-                MicrosecondsPerEvent = usPerEvent,
-                HandlerCalls = subCount * iterations
-            });
+            measurements.Add(
+                new ScalingMeasurement
+                {
+                    SubscriberCount = subCount,
+                    TotalTimeMs = totalMs,
+                    MicrosecondsPerEvent = usPerEvent,
+                    HandlerCalls = subCount * iterations,
+                }
+            );
         }
 
         // Print table
-        Console.WriteLine($"  {"Subscribers",-12} | {"Total Time",-11} | {"μs/event",-10} | {"Handler Calls",-15}");
-        Console.WriteLine($"  {new string('─', 12)} | {new string('─', 11)} | {new string('─', 10)} | {new string('─', 15)}");
+        Console.WriteLine(
+            $"  {"Subscribers", -12} | {"Total Time", -11} | {"μs/event", -10} | {"Handler Calls", -15}"
+        );
+        Console.WriteLine(
+            $"  {new string('─', 12)} | {new string('─', 11)} | {new string('─', 10)} | {new string('─', 15)}"
+        );
 
         foreach (var m in measurements)
         {
-            Console.WriteLine($"  {m.SubscriberCount,12:N0} | {m.TotalTimeMs,9:F2}ms | {m.MicrosecondsPerEvent,8:F3}μs | {m.HandlerCalls,15:N0}");
+            Console.WriteLine(
+                $"  {m.SubscriberCount, 12:N0} | {m.TotalTimeMs, 9:F2}ms | {m.MicrosecondsPerEvent, 8:F3}μs | {m.HandlerCalls, 15:N0}"
+            );
         }
 
         // Assert linear scaling
@@ -307,7 +323,7 @@ public class EventPerformanceValidator
             Measurements = measurements,
             SubscriberRatio = subscriberRatio,
             TimeRatio = timeRatio,
-            LinearScaling = linearScaling
+            LinearScaling = linearScaling,
         };
     }
 
@@ -323,24 +339,38 @@ public class EventPerformanceValidator
         Console.WriteLine("├───────────────────────────────────────────────────────────────┤");
 
         // Stress test
-        Console.WriteLine($"│ 10K Events/Frame          │ <5.0ms      │ {results.StressTestResult.TotalTimeMs,7:F3}ms │ {(results.StressTestResult.Passed ? "✓ PASS" : "✗ FAIL")} │");
+        Console.WriteLine(
+            $"│ 10K Events/Frame          │ <5.0ms      │ {results.StressTestResult.TotalTimeMs, 7:F3}ms │ {(results.StressTestResult.Passed ? "✓ PASS" : "✗ FAIL")} │"
+        );
 
         // Publish time
-        var publishStatus = results.PublishTimeResult.MeetsStrictTarget ? "✓ PASS" :
-                           results.PublishTimeResult.MeetsAcceptableTarget ? "~ PASS" : "✗ FAIL";
-        Console.WriteLine($"│ Event Publish Time        │ <1.0μs      │ {results.PublishTimeResult.AverageTimeUs,7:F3}μs │ {publishStatus} │");
+        var publishStatus =
+            results.PublishTimeResult.MeetsStrictTarget ? "✓ PASS"
+            : results.PublishTimeResult.MeetsAcceptableTarget ? "~ PASS"
+            : "✗ FAIL";
+        Console.WriteLine(
+            $"│ Event Publish Time        │ <1.0μs      │ {results.PublishTimeResult.AverageTimeUs, 7:F3}μs │ {publishStatus} │"
+        );
 
         // Invoke time
-        var invokeStatus = results.InvokeTimeResult.MeetsStrictTarget ? "✓ PASS" :
-                          results.InvokeTimeResult.MeetsAcceptableTarget ? "~ PASS" : "✗ FAIL";
-        Console.WriteLine($"│ Handler Invoke Time       │ <0.5μs      │ {results.InvokeTimeResult.AverageTimeUs,7:F3}μs │ {invokeStatus} │");
+        var invokeStatus =
+            results.InvokeTimeResult.MeetsStrictTarget ? "✓ PASS"
+            : results.InvokeTimeResult.MeetsAcceptableTarget ? "~ PASS"
+            : "✗ FAIL";
+        Console.WriteLine(
+            $"│ Handler Invoke Time       │ <0.5μs      │ {results.InvokeTimeResult.AverageTimeUs, 7:F3}μs │ {invokeStatus} │"
+        );
 
         // Memory
         var memKB = results.MemoryAllocationResult.BytesAllocated / 1024.0;
-        Console.WriteLine($"│ Memory Allocations        │ <100KB      │ {memKB,7:F2}KB │ {(results.MemoryAllocationResult.Passed ? "✓ PASS" : "✗ FAIL")} │");
+        Console.WriteLine(
+            $"│ Memory Allocations        │ <100KB      │ {memKB, 7:F2}KB │ {(results.MemoryAllocationResult.Passed ? "✓ PASS" : "✗ FAIL")} │"
+        );
 
         // Scaling
-        Console.WriteLine($"│ Linear Scaling            │ Linear      │ {results.ScalingResult.TimeRatio,7:F2}x │ {(results.ScalingResult.LinearScaling ? "✓ PASS" : "✗ FAIL")} │");
+        Console.WriteLine(
+            $"│ Linear Scaling            │ Linear      │ {results.ScalingResult.TimeRatio, 7:F2}x │ {(results.ScalingResult.LinearScaling ? "✓ PASS" : "✗ FAIL")} │"
+        );
 
         Console.WriteLine("└───────────────────────────────────────────────────────────────┘\n");
 
@@ -350,9 +380,15 @@ public class EventPerformanceValidator
         var worstCaseOverhead = results.StressTestResult.TotalTimeMs;
 
         Console.WriteLine("Frame Overhead Analysis:");
-        Console.WriteLine($"  Typical gameplay (50 events/frame): {typicalOverhead:F3}ms ({typicalOverhead / 16.67 * 100:F2}% of 60fps budget)");
-        Console.WriteLine($"  Worst case (10,000 events/frame): {worstCaseOverhead:F3}ms ({worstCaseOverhead / 16.67 * 100:F2}% of 60fps budget)");
-        Console.WriteLine($"  Target overhead: <0.1ms per frame ({0.1 / 16.67 * 100:F2}% of budget)\n");
+        Console.WriteLine(
+            $"  Typical gameplay (50 events/frame): {typicalOverhead:F3}ms ({typicalOverhead / 16.67 * 100:F2}% of 60fps budget)"
+        );
+        Console.WriteLine(
+            $"  Worst case (10,000 events/frame): {worstCaseOverhead:F3}ms ({worstCaseOverhead / 16.67 * 100:F2}% of 60fps budget)"
+        );
+        Console.WriteLine(
+            $"  Target overhead: <0.1ms per frame ({0.1 / 16.67 * 100:F2}% of budget)\n"
+        );
 
         // Thread safety note
         Console.WriteLine("Thread Safety:");
@@ -377,7 +413,9 @@ public class EventPerformanceValidator
             Console.WriteLine("  ⚠ Some targets not met, but system may be acceptable:");
             Console.WriteLine($"    - Debug builds typically 5-10x slower than release");
             Console.WriteLine($"    - JIT compilation affects initial runs");
-            Console.WriteLine($"    - Recommend testing in release mode for production validation\n");
+            Console.WriteLine(
+                $"    - Recommend testing in release mode for production validation\n"
+            );
         }
     }
 
@@ -392,11 +430,11 @@ public class EventPerformanceValidator
         public ScalingResult ScalingResult { get; set; } = null!;
 
         public bool AllTargetsMet =>
-            StressTestResult.Passed &&
-            (PublishTimeResult.MeetsStrictTarget || PublishTimeResult.MeetsAcceptableTarget) &&
-            (InvokeTimeResult.MeetsStrictTarget || InvokeTimeResult.MeetsAcceptableTarget) &&
-            MemoryAllocationResult.Passed &&
-            ScalingResult.LinearScaling;
+            StressTestResult.Passed
+            && (PublishTimeResult.MeetsStrictTarget || PublishTimeResult.MeetsAcceptableTarget)
+            && (InvokeTimeResult.MeetsStrictTarget || InvokeTimeResult.MeetsAcceptableTarget)
+            && MemoryAllocationResult.Passed
+            && ScalingResult.LinearScaling;
     }
 
     private class StressTestResult

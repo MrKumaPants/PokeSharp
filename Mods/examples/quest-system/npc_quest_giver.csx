@@ -26,13 +26,16 @@ public class QuestGiverBehavior : ScriptBase
                     HasOfferedQuest = false,
                     QuestCompleted = false,
                     ShowIndicator = true,
-                    DialogueState = DialogueState.Idle
+                    DialogueState = DialogueState.Idle,
                 }
             );
         }
 
-        Context.Logger.LogInformation("Quest giver NPC initialized at position ({X}, {Y})",
-            Context.Position.X, Context.Position.Y);
+        Context.Logger.LogInformation(
+            "Quest giver NPC initialized at position ({X}, {Y})",
+            Context.Position.X,
+            Context.Position.Y
+        );
     }
 
     public override void RegisterEventHandlers(ScriptContext ctx)
@@ -62,8 +65,10 @@ public class QuestGiverBehavior : ScriptBase
                 state.ShowIndicator = false;
                 state.DialogueState = DialogueState.QuestActive;
 
-                Context.Logger.LogInformation("Player accepted quest from NPC: {QuestId}",
-                    state.QuestId);
+                Context.Logger.LogInformation(
+                    "Player accepted quest from NPC: {QuestId}",
+                    state.QuestId
+                );
             }
         });
 
@@ -79,8 +84,10 @@ public class QuestGiverBehavior : ScriptBase
                 state.ShowIndicator = true; // Show gold ! for turn-in
                 state.DialogueState = DialogueState.QuestComplete;
 
-                Context.Logger.LogInformation("Quest ready for turn-in at NPC: {QuestId}",
-                    state.QuestId);
+                Context.Logger.LogInformation(
+                    "Quest ready for turn-in at NPC: {QuestId}",
+                    state.QuestId
+                );
             }
         });
     }
@@ -116,7 +123,9 @@ public class QuestGiverBehavior : ScriptBase
         if (!playerEntity.HasValue)
             return;
 
-        ref var playerPos = ref Context.World.Get<PokeSharp.Game.Components.Movement.Position>(playerEntity.Value);
+        ref var playerPos = ref Context.World.Get<PokeSharp.Game.Components.Movement.Position>(
+            playerEntity.Value
+        );
         ref var npcPos = ref Context.Position;
 
         // Check if player is adjacent (within 1 tile)
@@ -160,12 +169,14 @@ public class QuestGiverBehavior : ScriptBase
         Context.Logger.LogInformation("NPC offering quest: {QuestId}", state.QuestId);
 
         // Publish quest offered event
-        Publish(new QuestOfferedEvent
-        {
-            Entity = Context.Entity.Value,
-            QuestId = state.QuestId,
-            PlayerId = player
-        });
+        Publish(
+            new QuestOfferedEvent
+            {
+                Entity = Context.Entity.Value,
+                QuestId = state.QuestId,
+                PlayerId = player,
+            }
+        );
 
         // Show dialogue: "Would you like to help me catch 5 Pokémon?"
         // In real implementation, this would trigger dialogue UI
@@ -177,17 +188,12 @@ public class QuestGiverBehavior : ScriptBase
     private void AcceptQuest(ref QuestGiverState state, Entity player)
     {
         // Publish quest accepted event
-        Publish(new QuestAcceptedEvent
-        {
-            Entity = player,
-            QuestId = state.QuestId
-        });
+        Publish(new QuestAcceptedEvent { Entity = player, QuestId = state.QuestId });
     }
 
     private void ShowQuestProgress(ref QuestGiverState state)
     {
-        Context.Logger.LogInformation("NPC showing quest progress for: {QuestId}",
-            state.QuestId);
+        Context.Logger.LogInformation("NPC showing quest progress for: {QuestId}", state.QuestId);
 
         // Show dialogue: "Keep working on it! You're doing great!"
         // In real implementation, check actual progress and show specific feedback
@@ -236,10 +242,10 @@ public struct QuestGiverState
 
 public enum DialogueState
 {
-    Idle,           // Not interacted yet
-    QuestActive,    // Quest given, not completed
-    QuestComplete,  // Quest done, ready for turn-in
-    Finished        // Reward given, done
+    Idle, // Not interacted yet
+    QuestActive, // Quest given, not completed
+    QuestComplete, // Quest done, ready for turn-in
+    Finished, // Reward given, done
 }
 
 return new QuestGiverBehavior();

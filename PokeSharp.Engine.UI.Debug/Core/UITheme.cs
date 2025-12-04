@@ -410,7 +410,6 @@ public class UITheme
             EventInspectorMarkerOpacity = 0.5f,
             EventInspectorWarningThreshold = 0.5f,
             EventInspectorMildThreshold = 0.25f,
-
             DragThreshold = 5f,
             DoubleClickMaxDistance = 5f,
             DoubleClickThreshold = 0.5f,
@@ -572,7 +571,6 @@ public class UITheme
             EventInspectorMarkerOpacity = 0.5f,
             EventInspectorWarningThreshold = 0.5f,
             EventInspectorMildThreshold = 0.25f,
-
             DragThreshold = 5f,
             DoubleClickMaxDistance = 5f,
             DoubleClickThreshold = 0.5f,
@@ -734,7 +732,6 @@ public class UITheme
             EventInspectorMarkerOpacity = 0.5f,
             EventInspectorWarningThreshold = 0.5f,
             EventInspectorMildThreshold = 0.25f,
-
             DragThreshold = 5f,
             DoubleClickMaxDistance = 5f,
             DoubleClickThreshold = 0.5f,
@@ -896,7 +893,6 @@ public class UITheme
             EventInspectorMarkerOpacity = 0.5f,
             EventInspectorWarningThreshold = 0.5f,
             EventInspectorMildThreshold = 0.25f,
-
             DragThreshold = 5f,
             DoubleClickMaxDistance = 5f,
             DoubleClickThreshold = 0.5f,
@@ -1058,7 +1054,6 @@ public class UITheme
             EventInspectorMarkerOpacity = 0.5f,
             EventInspectorWarningThreshold = 0.5f,
             EventInspectorMildThreshold = 0.25f,
-
             DragThreshold = 5f,
             DoubleClickMaxDistance = 5f,
             DoubleClickThreshold = 0.5f,
@@ -1265,7 +1260,6 @@ public class UITheme
             EventInspectorMarkerOpacity = 0.5f,
             EventInspectorWarningThreshold = 0.5f,
             EventInspectorMildThreshold = 0.25f,
-
             DragThreshold = 5f,
             DoubleClickMaxDistance = 5f,
             DoubleClickThreshold = 0.5f,
@@ -1469,7 +1463,6 @@ public class UITheme
             EventInspectorMarkerOpacity = 0.5f,
             EventInspectorWarningThreshold = 0.5f,
             EventInspectorMildThreshold = 0.25f,
-
             DragThreshold = 5f,
             DoubleClickMaxDistance = 5f,
             DoubleClickThreshold = 0.5f,

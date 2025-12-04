@@ -29,12 +29,12 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
 {
     private readonly IScriptingApiProvider _apis;
     private readonly PerformanceConfiguration _config;
+    private readonly ConcurrentDictionary<int, ScriptBase> _entityScriptCache = new();
     private readonly IEventBus? _eventBus;
     private readonly ILogger<NPCBehaviorSystem> _logger;
     private readonly ILoggerFactory _loggerFactory;
-    private readonly ScriptService _scriptService;
     private readonly ConcurrentDictionary<string, ILogger> _scriptLoggerCache = new();
-    private readonly ConcurrentDictionary<int, ScriptBase> _entityScriptCache = new();
+    private readonly ScriptService _scriptService;
     private TypeRegistry<BehaviorDefinition>? _behaviorRegistry;
     private int _lastBehaviorSummaryCount;
     private int _tickCounter;
@@ -109,7 +109,15 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
                             "Behavior activation",
                             $"failed to create script instance ({behavior.BehaviorTypeId})"
                         );
-                        DeactivateBehavior(world, entity, null, ref behavior, null, npc.NpcId, "script creation failed");
+                        DeactivateBehavior(
+                            world,
+                            entity,
+                            null,
+                            ref behavior,
+                            null,
+                            npc.NpcId,
+                            "script creation failed"
+                        );
                         return;
                     }
 
@@ -139,7 +147,7 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
                         behavior.IsInitialized = true;
 
                         // CRITICAL: Write component back to persist changes (structs passed by value in queries)
-                        world.Set<Behavior>(entity, behavior);
+                        world.Set(entity, behavior);
                     }
 
                     behaviorCount++;
@@ -155,7 +163,15 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
 
                     // Cleanup failed script
                     _entityScriptCache.TryRemove(entity.Id, out _);
-                    DeactivateBehavior(world, entity, null, ref behavior, null, npc.NpcId, $"error: {ex.Message}");
+                    DeactivateBehavior(
+                        world,
+                        entity,
+                        null,
+                        ref behavior,
+                        null,
+                        npc.NpcId,
+                        $"error: {ex.Message}"
+                    );
                 }
             }
         );
@@ -163,11 +179,7 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
         // Publish TickEvent for all registered script event handlers to react
         if (behaviorCount > 0 && _eventBus != null)
         {
-            _eventBus.Publish(new TickEvent
-            {
-                DeltaTime = deltaTime,
-                TotalTime = 0f
-            });
+            _eventBus.Publish(new TickEvent { DeltaTime = deltaTime, TotalTime = 0f });
         }
 
         // Log performance metrics periodically
@@ -325,7 +337,7 @@ public class NPCBehaviorSystem : SystemBase, IUpdateSystem
         behavior.IsActive = false;
 
         // CRITICAL: Write component back to persist changes (structs passed by value)
-        world.Set<Behavior>(entity, behavior);
+        world.Set(entity, behavior);
 
         // Clean up entity script instance
         _entityScriptCache.TryRemove(entity.Id, out _);

@@ -74,7 +74,10 @@ public abstract class EventDrivenScriptBase : TypeScriptBase
     /// <summary>
     /// Helper method to subscribe to forced movement checks.
     /// </summary>
-    protected void OnForcedMovementCheck(EventHandler<ForcedMovementCheckEvent> handler, int priority = 0)
+    protected void OnForcedMovementCheck(
+        EventHandler<ForcedMovementCheckEvent> handler,
+        int priority = 0
+    )
     {
         var sub = Events.Subscribe<ForcedMovementCheckEvent>(handler, priority);
         _subscriptions.Add(sub);
@@ -110,26 +113,32 @@ public class IceTileBehavior : EventDrivenScriptBase
     protected override void RegisterEventHandlers(ScriptContext context)
     {
         // Force continued movement in same direction
-        OnForcedMovementCheck((ref ForcedMovementCheckEvent evt) =>
-        {
-            // Only apply to entities on THIS tile
-            if (evt.TileEntity != TileEntity) return;
-
-            // Continue moving in current direction
-            if (evt.CurrentDirection != Direction.None)
+        OnForcedMovementCheck(
+            (ref ForcedMovementCheckEvent evt) =>
             {
-                evt.ForcedDirection = evt.CurrentDirection;
+                // Only apply to entities on THIS tile
+                if (evt.TileEntity != TileEntity)
+                    return;
+
+                // Continue moving in current direction
+                if (evt.CurrentDirection != Direction.None)
+                {
+                    evt.ForcedDirection = evt.CurrentDirection;
+                }
             }
-        });
+        );
 
         // Optional: Play slide sound when stepping on ice
-        OnTileStep((ref TileSteppedEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
+        OnTileStep(
+            (ref TileSteppedEvent evt) =>
+            {
+                if (evt.TileEntity != TileEntity)
+                    return;
 
-            // Play ice slide sound effect
-            // SoundEffects.Play("ice_slide");
-        });
+                // Play ice slide sound effect
+                // SoundEffects.Play("ice_slide");
+            }
+        );
     }
 }
 
@@ -149,30 +158,36 @@ public class LedgeTileBehavior : EventDrivenScriptBase
         }
 
         // Allow jumping from specific direction
-        OnJumpCheck((ref JumpCheckEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
-
-            // Only allow jumping when approaching from opposite direction
-            if (evt.FromDirection == _jumpDirection.Opposite())
+        OnJumpCheck(
+            (ref JumpCheckEvent evt) =>
             {
-                evt.JumpDirection = _jumpDirection;
-                evt.JumpDistance = 2; // Standard jump distance
+                if (evt.TileEntity != TileEntity)
+                    return;
+
+                // Only allow jumping when approaching from opposite direction
+                if (evt.FromDirection == _jumpDirection.Opposite())
+                {
+                    evt.JumpDirection = _jumpDirection;
+                    evt.JumpDistance = 2; // Standard jump distance
+                }
             }
-        });
+        );
 
         // Block movement in other directions
-        OnCollisionCheck((ref CollisionCheckEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
-
-            // Block if not jumping
-            if (evt.FromDirection != _jumpDirection.Opposite())
+        OnCollisionCheck(
+            (ref CollisionCheckEvent evt) =>
             {
-                evt.IsWalkable = false;
-                evt.CancellationReason = "Can only jump from this direction";
+                if (evt.TileEntity != TileEntity)
+                    return;
+
+                // Block if not jumping
+                if (evt.FromDirection != _jumpDirection.Opposite())
+                {
+                    evt.IsWalkable = false;
+                    evt.CancellationReason = "Can only jump from this direction";
+                }
             }
-        });
+        );
     }
 }
 
@@ -192,21 +207,27 @@ public class SpinningArrowBehavior : EventDrivenScriptBase
         }
 
         // Force movement in arrow direction
-        OnForcedMovementCheck((ref ForcedMovementCheckEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
+        OnForcedMovementCheck(
+            (ref ForcedMovementCheckEvent evt) =>
+            {
+                if (evt.TileEntity != TileEntity)
+                    return;
 
-            // Always move in arrow direction
-            evt.ForcedDirection = _arrowDirection;
-        });
+                // Always move in arrow direction
+                evt.ForcedDirection = _arrowDirection;
+            }
+        );
 
         // Play conveyor sound
-        OnTileStep((ref TileSteppedEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
+        OnTileStep(
+            (ref TileSteppedEvent evt) =>
+            {
+                if (evt.TileEntity != TileEntity)
+                    return;
 
-            // SoundEffects.Play("conveyor");
-        });
+                // SoundEffects.Play("conveyor");
+            }
+        );
     }
 }
 
@@ -218,30 +239,36 @@ public class WaterTileBehavior : EventDrivenScriptBase
     protected override void RegisterEventHandlers(ScriptContext context)
     {
         // Block movement unless player has Surf
-        OnCollisionCheck((ref CollisionCheckEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
+        OnCollisionCheck(
+            (ref CollisionCheckEvent evt) =>
+            {
+                if (evt.TileEntity != TileEntity)
+                    return;
 
-            // Check if entity has Surf ability
-            if (HasSurfAbility(evt.Entity))
-            {
-                evt.IsWalkable = true;
+                // Check if entity has Surf ability
+                if (HasSurfAbility(evt.Entity))
+                {
+                    evt.IsWalkable = true;
+                }
+                else
+                {
+                    evt.IsWalkable = false;
+                    evt.CancellationReason = "Need Surf to cross water";
+                }
             }
-            else
-            {
-                evt.IsWalkable = false;
-                evt.CancellationReason = "Need Surf to cross water";
-            }
-        });
+        );
 
         // Trigger Surf animation
-        OnTileStep((ref TileSteppedEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
+        OnTileStep(
+            (ref TileSteppedEvent evt) =>
+            {
+                if (evt.TileEntity != TileEntity)
+                    return;
 
-            // Start Surf animation if not already surfing
-            // AnimationController.StartSurf(evt.Entity);
-        });
+                // Start Surf animation if not already surfing
+                // AnimationController.StartSurf(evt.Entity);
+            }
+        );
     }
 
     private bool HasSurfAbility(Entity entity)
@@ -268,19 +295,23 @@ public class TallGrassBehavior : EventDrivenScriptBase
         }
 
         // Trigger wild encounters
-        OnTileStep((ref TileSteppedEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
-
-            // Only trigger for player
-            if (!evt.Entity.Has<PlayerTag>()) return;
-
-            // Roll for encounter
-            if (Random.Shared.NextSingle() < _encounterRate)
+        OnTileStep(
+            (ref TileSteppedEvent evt) =>
             {
-                TriggerWildEncounter(evt.Entity, context);
+                if (evt.TileEntity != TileEntity)
+                    return;
+
+                // Only trigger for player
+                if (!evt.Entity.Has<PlayerTag>())
+                    return;
+
+                // Roll for encounter
+                if (Random.Shared.NextSingle() < _encounterRate)
+                {
+                    TriggerWildEncounter(evt.Entity, context);
+                }
             }
-        });
+        );
     }
 
     private void TriggerWildEncounter(Entity player, ScriptContext context)
@@ -307,13 +338,16 @@ public class WarpTileBehavior : EventDrivenScriptBase
         _destY = context.GetProperty<int>("destY");
 
         // Trigger warp on step
-        OnTileStep((ref TileSteppedEvent evt) =>
-        {
-            if (evt.TileEntity != TileEntity) return;
+        OnTileStep(
+            (ref TileSteppedEvent evt) =>
+            {
+                if (evt.TileEntity != TileEntity)
+                    return;
 
-            // Warp entity to destination
-            WarpEntity(evt.Entity);
-        });
+                // Warp entity to destination
+                WarpEntity(evt.Entity);
+            }
+        );
     }
 
     private void WarpEntity(Entity entity)
@@ -346,7 +380,7 @@ public static class DirectionExtensions
             Direction.South => Direction.North,
             Direction.East => Direction.West,
             Direction.West => Direction.East,
-            _ => Direction.None
+            _ => Direction.None,
         };
     }
 
@@ -358,7 +392,7 @@ public static class DirectionExtensions
             Direction.South => "idle_south",
             Direction.East => "idle_east",
             Direction.West => "idle_west",
-            _ => "idle_south"
+            _ => "idle_south",
         };
     }
 
@@ -370,7 +404,7 @@ public static class DirectionExtensions
             Direction.South => "walk_south",
             Direction.East => "walk_east",
             Direction.West => "walk_west",
-            _ => "walk_south"
+            _ => "walk_south",
         };
     }
 
@@ -382,7 +416,7 @@ public static class DirectionExtensions
             Direction.South => "turn_south",
             Direction.East => "turn_east",
             Direction.West => "turn_west",
-            _ => "turn_south"
+            _ => "turn_south",
         };
     }
 }

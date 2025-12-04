@@ -1,6 +1,8 @@
 using Microsoft.Xna.Framework;
+using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.UI.Debug.Core;
 using PokeSharp.Engine.UI.Debug.Interfaces;
+using PokeSharp.Engine.UI.Debug.Models;
 
 namespace PokeSharp.Engine.Debug.Commands.BuiltIn;
 
@@ -52,6 +54,7 @@ events export          - Export event list to clipboard";
                     context.WriteLine("Usage: events stats <event-type>", theme.Warning);
                     context.WriteLine("Example: events stats MovementStartedEvent", theme.TextDim);
                 }
+
                 break;
 
             case "export":
@@ -74,7 +77,7 @@ events export          - Export event list to clipboard";
     private static void ShowSummary(IConsoleContext context)
     {
         UITheme theme = context.Theme;
-        var eventBus = context.EventBus;
+        IEventBus? eventBus = context.EventBus;
 
         if (eventBus == null)
         {
@@ -83,17 +86,20 @@ events export          - Export event list to clipboard";
         }
 
         // Get pool statistics
-        var poolStats = eventBus.GetPoolStatistics();
+        IReadOnlyCollection<EventPoolStatistics> poolStats = eventBus.GetPoolStatistics();
         long totalPublished = poolStats.Sum(s => s.TotalRented);
         long totalCreated = poolStats.Sum(s => s.TotalCreated);
         long totalInUse = poolStats.Sum(s => s.CurrentlyInUse);
         double avgReuseRate = poolStats.Count > 0 ? poolStats.Average(s => s.ReuseRate) : 0.0;
 
         // Get registered event types
-        var registeredTypes = eventBus.GetRegisteredEventTypes();
+        IReadOnlyCollection<Type> registeredTypes = eventBus.GetRegisteredEventTypes();
 
         context.WriteLine("═══ Event System Summary ═══", theme.Info);
-        context.WriteLine($"  Event Types:    {poolStats.Count} pooled, {registeredTypes.Count} registered", theme.TextPrimary);
+        context.WriteLine(
+            $"  Event Types:    {poolStats.Count} pooled, {registeredTypes.Count} registered",
+            theme.TextPrimary
+        );
         context.WriteLine($"  Published:      {totalPublished:N0} events", theme.TextPrimary);
 
         // Reuse rate with color coding
@@ -119,19 +125,21 @@ events export          - Export event list to clipboard";
 
         if (totalInUse >= 50)
         {
-            context.WriteLine("  ⚠ Warning: High in-flight count - check for leaks!", theme.Warning);
+            context.WriteLine(
+                "  ⚠ Warning: High in-flight count - check for leaks!",
+                theme.Warning
+            );
         }
 
-        context.WriteLine($"\nUse 'tab stats' for pool details (press 8)", theme.TextDim);
-        context.WriteLine($"Use 'events list' for event inspector summary", theme.TextDim);
-        context.WriteLine($"Use 'events show' to switch to Events tab (press 6)", theme.TextDim);
+        context.WriteLine("\nUse 'tab stats' for pool details (press 8)", theme.TextDim);
+        context.WriteLine("Use 'events list' for event inspector summary", theme.TextDim);
+        context.WriteLine("Use 'events show' to switch to Events tab (press 6)", theme.TextDim);
     }
-
 
     private static void ShowPoolStats(IConsoleContext context)
     {
         UITheme theme = context.Theme;
-        var eventBus = context.EventBus;
+        IEventBus? eventBus = context.EventBus;
 
         if (eventBus == null)
         {
@@ -144,15 +152,21 @@ events export          - Export event list to clipboard";
         if (poolStats.Count == 0)
         {
             context.WriteLine("No event pools found.", theme.Warning);
-            context.WriteLine("Event pools are created lazily when events are published.", theme.TextDim);
+            context.WriteLine(
+                "Event pools are created lazily when events are published.",
+                theme.TextDim
+            );
             return;
         }
 
         context.WriteLine("═══ Event Pool Statistics ═══", theme.Info);
-        context.WriteLine($"{"Event Type",-30} {"Rented",10} {"Created",10} {"Reuse",8} {"In Use",8}", theme.TextSecondary);
+        context.WriteLine(
+            $"{"Event Type", -30} {"Rented", 10} {"Created", 10} {"Reuse", 8} {"In Use", 8}",
+            theme.TextSecondary
+        );
         context.WriteLine(new string('─', 74), theme.BorderPrimary);
 
-        foreach (var stat in poolStats)
+        foreach (EventPoolStatistics stat in poolStats)
         {
             Color reuseColor =
                 stat.ReuseRate >= 0.95 ? theme.Success
@@ -173,7 +187,7 @@ events export          - Export event list to clipboard";
 
             // Format row with proper spacing
             context.WriteLine(
-                $"{eventName,-30} {stat.TotalRented,10:N0} {stat.TotalCreated,10:N0} {stat.ReuseRate,7:P0} {stat.CurrentlyInUse,8}",
+                $"{eventName, -30} {stat.TotalRented, 10:N0} {stat.TotalCreated, 10:N0} {stat.ReuseRate, 7:P0} {stat.CurrentlyInUse, 8}",
                 theme.TextPrimary
             );
         }
@@ -195,21 +209,27 @@ events export          - Export event list to clipboard";
             return;
         }
 
-        var data = inspector.GetData();
+        EventInspectorData data = inspector.GetData();
         var events = data.Events.OrderBy(e => e.EventTypeName).ToList();
 
         if (events.Count == 0)
         {
             context.WriteLine("No events found.", theme.Warning);
-            context.WriteLine("Events appear after they are published or subscribed to.", theme.TextDim);
+            context.WriteLine(
+                "Events appear after they are published or subscribed to.",
+                theme.TextDim
+            );
             return;
         }
 
         context.WriteLine("═══ All Event Types ═══", theme.Info);
-        context.WriteLine($"{"Event Type",-35} {"Subs",5} {"Count",10} {"Avg ms",8}", theme.TextSecondary);
+        context.WriteLine(
+            $"{"Event Type", -35} {"Subs", 5} {"Count", 10} {"Avg ms", 8}",
+            theme.TextSecondary
+        );
         context.WriteLine(new string('─', 64), theme.BorderPrimary);
 
-        foreach (var evt in events)
+        foreach (EventTypeInfo evt in events)
         {
             // Truncate long names
             string eventName = evt.EventTypeName.Replace("Event", "");
@@ -225,9 +245,9 @@ events export          - Export event list to clipboard";
                 : evt.PublishCount > 0 ? theme.TextSecondary
                 : theme.TextDim;
 
-            string subsText = $"{evt.SubscriberCount,5}";
-            string countText = $"{evt.PublishCount,10:N0}";
-            string avgText = evt.PublishCount > 0 ? $"{evt.AverageTimeMs,7:F2}" : "     -";
+            string subsText = $"{evt.SubscriberCount, 5}";
+            string countText = $"{evt.PublishCount, 10:N0}";
+            string avgText = evt.PublishCount > 0 ? $"{evt.AverageTimeMs, 7:F2}" : "     -";
 
             Color timeColor =
                 evt.AverageTimeMs >= 1.0 ? theme.Error
@@ -235,15 +255,15 @@ events export          - Export event list to clipboard";
                 : evt.PublishCount > 0 ? theme.Success
                 : theme.TextDim;
 
-            context.WriteLine(
-                $"{eventName,-35} {subsText} {countText} {avgText}",
-                nameColor
-            );
+            context.WriteLine($"{eventName, -35} {subsText} {countText} {avgText}", nameColor);
         }
 
         context.WriteLine(new string('─', 64), theme.BorderPrimary);
         int customCount = events.Count(e => e.IsCustom);
-        context.WriteLine($"Total: {events.Count} event types ({customCount} custom)", theme.TextSecondary);
+        context.WriteLine(
+            $"Total: {events.Count} event types ({customCount} custom)",
+            theme.TextSecondary
+        );
     }
 
     private static void ShowEventStats(IConsoleContext context, string eventTypeName)
@@ -266,10 +286,8 @@ events export          - Export event list to clipboard";
             return;
         }
 
-        inspector.CopyToClipboard(asCsv: false);
+        inspector.CopyToClipboard();
         context.WriteLine("Event list exported to clipboard.", theme.Success);
         context.WriteLine("Use 'events show' for interactive view", theme.TextDim);
     }
 }
-
-

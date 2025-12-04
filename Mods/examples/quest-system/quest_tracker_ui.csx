@@ -29,7 +29,7 @@ public class QuestTrackerUI : ScriptBase
                     ActiveQuests = new List<QuestDisplayInfo>(),
                     ShowTracker = true,
                     TrackerPosition = new Microsoft.Xna.Framework.Vector2(10, 50),
-                    RecentUpdates = new Queue<string>()
+                    RecentUpdates = new Queue<string>(),
                 }
             );
         }
@@ -45,14 +45,16 @@ public class QuestTrackerUI : ScriptBase
             ref var state = ref Context.GetState<QuestTrackerState>();
 
             // Add to active quests display
-            state.ActiveQuests.Add(new QuestDisplayInfo
-            {
-                QuestId = evt.QuestId,
-                Name = GetQuestName(evt.QuestId),
-                Progress = 0,
-                Target = GetQuestTarget(evt.QuestId),
-                IsNew = true
-            });
+            state.ActiveQuests.Add(
+                new QuestDisplayInfo
+                {
+                    QuestId = evt.QuestId,
+                    Name = GetQuestName(evt.QuestId),
+                    Progress = 0,
+                    Target = GetQuestTarget(evt.QuestId),
+                    IsNew = true,
+                }
+            );
 
             // Show notification
             ShowNotification("New Quest: " + GetQuestName(evt.QuestId));
@@ -76,8 +78,12 @@ public class QuestTrackerUI : ScriptBase
                 // Show progress notification
                 ShowNotification($"Quest Progress: {quest.Name} ({evt.Progress}/{evt.Target})");
 
-                Context.Logger.LogInformation("Quest tracker updated: {QuestId} ({Progress}/{Target})",
-                    evt.QuestId, evt.Progress, evt.Target);
+                Context.Logger.LogInformation(
+                    "Quest tracker updated: {QuestId} ({Progress}/{Target})",
+                    evt.QuestId,
+                    evt.Progress,
+                    evt.Target
+                );
             }
         });
 
@@ -122,14 +128,22 @@ public class QuestTrackerUI : ScriptBase
             var prefix = quest.IsNew ? "[NEW] " : "";
             var progressBar = RenderProgressBar(quest.Progress, quest.Target);
 
-            Context.Logger.LogDebug("{Prefix}{Name} {ProgressBar} ({Progress}/{Target})",
-                prefix, quest.Name, progressBar, quest.Progress, quest.Target);
+            Context.Logger.LogDebug(
+                "{Prefix}{Name} {ProgressBar} ({Progress}/{Target})",
+                prefix,
+                quest.Name,
+                progressBar,
+                quest.Progress,
+                quest.Target
+            );
         }
 
         if (state.ActiveQuests.Count > MAX_VISIBLE_QUESTS)
         {
-            Context.Logger.LogDebug("... +{More} more quests",
-                state.ActiveQuests.Count - MAX_VISIBLE_QUESTS);
+            Context.Logger.LogDebug(
+                "... +{More} more quests",
+                state.ActiveQuests.Count - MAX_VISIBLE_QUESTS
+            );
         }
 
         Context.Logger.LogDebug("================");
@@ -170,7 +184,7 @@ public class QuestTrackerUI : ScriptBase
             "defeat_gym_leader" => "Defeat Gym Leader",
             "find_lost_item" => "Find Lost Item",
             "talk_to_npcs" => "Talk to 3 NPCs",
-            _ => questId
+            _ => questId,
         };
     }
 
@@ -183,7 +197,7 @@ public class QuestTrackerUI : ScriptBase
             "defeat_gym_leader" => 1,
             "find_lost_item" => 1,
             "talk_to_npcs" => 3,
-            _ => 1
+            _ => 1,
         };
     }
 

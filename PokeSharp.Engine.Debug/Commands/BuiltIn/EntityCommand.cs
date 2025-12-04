@@ -317,9 +317,12 @@ Examples:
         foreach (string component in entity.Components)
         {
             context.WriteLine($"    • {component}", theme.TextSecondary);
-            
+
             // Show component field values if available
-            if (entity.ComponentData.TryGetValue(component, out Dictionary<string, string>? fields) && fields.Count > 0)
+            if (
+                entity.ComponentData.TryGetValue(component, out Dictionary<string, string>? fields)
+                && fields.Count > 0
+            )
             {
                 foreach ((string fieldName, string fieldValue) in fields)
                 {

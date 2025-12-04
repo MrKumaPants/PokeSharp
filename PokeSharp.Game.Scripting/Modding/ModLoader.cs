@@ -17,25 +17,20 @@ public class ModLoader
 {
     private const string ModManifestFileName = "mod.json";
     private const string ModsDirectoryName = "Mods";
-
-    private readonly ILogger<ModLoader> _logger;
-    private readonly ScriptService _scriptService;
-    private readonly ModDependencyResolver _dependencyResolver;
-    private readonly World _world;
-    private readonly IEventBus _eventBus;
     private readonly IScriptingApiProvider _apis;
-    private readonly string _modsBasePath;
+    private readonly ModDependencyResolver _dependencyResolver;
+    private readonly IEventBus _eventBus;
 
     private readonly Dictionary<string, ModManifest> _loadedMods = new();
+
+    private readonly ILogger<ModLoader> _logger;
+    private readonly string _modsBasePath;
     private readonly Dictionary<string, List<object>> _modScriptInstances = new();
+    private readonly ScriptService _scriptService;
+    private readonly World _world;
 
     /// <summary>
-    ///     Gets a read-only collection of loaded mod manifests.
-    /// </summary>
-    public IReadOnlyDictionary<string, ModManifest> LoadedMods => _loadedMods;
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="ModLoader"/> class.
+    ///     Initializes a new instance of the <see cref="ModLoader" /> class.
     /// </summary>
     public ModLoader(
         ScriptService scriptService,
@@ -57,6 +52,11 @@ public class ModLoader
     }
 
     /// <summary>
+    ///     Gets a read-only collection of loaded mod manifests.
+    /// </summary>
+    public IReadOnlyDictionary<string, ModManifest> LoadedMods => _loadedMods;
+
+    /// <summary>
     ///     Discovers and loads all mods from the /Mods/ directory.
     ///     Must be called AFTER core scripts are loaded.
     /// </summary>
@@ -66,7 +66,10 @@ public class ModLoader
 
         if (!Directory.Exists(_modsBasePath))
         {
-            _logger.LogWarning("⚠️  Mods directory not found: {Path}. Creating it...", _modsBasePath);
+            _logger.LogWarning(
+                "⚠️  Mods directory not found: {Path}. Creating it...",
+                _modsBasePath
+            );
             Directory.CreateDirectory(_modsBasePath);
             return;
         }
@@ -102,10 +105,7 @@ public class ModLoader
                 await LoadModAsync(manifest);
             }
 
-            _logger.LogInformation(
-                "✅ Successfully loaded {Count} mod(s)",
-                _loadedMods.Count
-            );
+            _logger.LogInformation("✅ Successfully loaded {Count} mod(s)", _loadedMods.Count);
         }
         catch (ModDependencyException)
         {
@@ -131,7 +131,11 @@ public class ModLoader
 
             if (!File.Exists(manifestPath))
             {
-                _logger.LogDebug("Skipping {Path} (no {FileName})", modDirectory, ModManifestFileName);
+                _logger.LogDebug(
+                    "Skipping {Path} (no {FileName})",
+                    modDirectory,
+                    ModManifestFileName
+                );
                 continue;
             }
 
@@ -242,12 +246,7 @@ public class ModLoader
                 // Initialize the script
                 if (instance is ScriptBase scriptBase)
                 {
-                    _scriptService.InitializeScript(
-                        scriptBase,
-                        _world,
-                        entity: null,
-                        logger: _logger
-                    );
+                    _scriptService.InitializeScript(scriptBase, _world, null, _logger);
 
                     _logger.LogDebug(
                         "✅ Loaded and initialized script: {Script} ({Type})",
@@ -279,12 +278,7 @@ public class ModLoader
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "❌ Failed to load mod '{Id}': {Message}",
-                manifest.Id,
-                ex.Message
-            );
+            _logger.LogError(ex, "❌ Failed to load mod '{Id}': {Message}", manifest.Id, ex.Message);
 
             // Cleanup partially loaded scripts
             await UnloadModAsync(manifest.Id);

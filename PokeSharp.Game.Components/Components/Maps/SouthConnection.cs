@@ -16,4 +16,3 @@ public struct SouthConnection
         Offset = offset;
     }
 }
-

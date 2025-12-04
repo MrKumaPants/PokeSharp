@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using Arch.Core;
+using FluentAssertions;
 using Microsoft.Xna.Framework;
 using NUnit.Framework;
-using FluentAssertions;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Events.Tile;
 using PokeSharp.Engine.Core.Types.Events;
@@ -63,7 +63,7 @@ public class EventIntegrationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.North,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         // Act
@@ -125,7 +125,7 @@ public class EventIntegrationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.North,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         // Act
@@ -133,7 +133,8 @@ public class EventIntegrationTests
 
         // Assert
         evt.IsCancelled.Should().BeTrue();
-        evt.CancellationReason.Should().Be("Cutscene active", "first blocking condition should set the reason");
+        evt.CancellationReason.Should()
+            .Be("Cutscene active", "first blocking condition should set the reason");
     }
 
     #endregion
@@ -162,7 +163,7 @@ public class EventIntegrationTests
             NewPosition = (6, 5),
             Direction = Direction.East,
             MovementTime = 0.25f,
-            MapId = 1
+            MapId = 1,
         };
 
         // Act
@@ -192,7 +193,9 @@ public class EventIntegrationTests
 
         _eventBus.Subscribe<MovementCompletedEvent>(e =>
         {
-            eventSequence.Add($"Completed: ({e.OldPosition.X},{e.OldPosition.Y}) → ({e.NewPosition.X},{e.NewPosition.Y})");
+            eventSequence.Add(
+                $"Completed: ({e.OldPosition.X},{e.OldPosition.Y}) → ({e.NewPosition.X},{e.NewPosition.Y})"
+            );
         });
 
         // Act - Simulate complete movement
@@ -203,7 +206,7 @@ public class EventIntegrationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.North,
-            StartPosition = new Vector2(10, 11)
+            StartPosition = new Vector2(10, 11),
         };
 
         _eventBus.Publish(startEvent);
@@ -219,17 +222,14 @@ public class EventIntegrationTests
                 OldPosition = (10, 11),
                 NewPosition = (10, 10),
                 Direction = Direction.North,
-                MovementTime = 0.25f
+                MovementTime = 0.25f,
             };
 
             _eventBus.Publish(completedEvent);
         }
 
         // Assert
-        eventSequence.Should().ContainInOrder(
-            "Started: Up",
-            "Completed: (10,11) → (10,10)"
-        );
+        eventSequence.Should().ContainInOrder("Started: Up", "Completed: (10,11) → (10,10)");
     }
 
     #endregion
@@ -262,7 +262,7 @@ public class EventIntegrationTests
             TilePosition = (10, 10),
             FromDirection = Direction.South,
             ToDirection = Direction.North,
-            Elevation = 0
+            Elevation = 0,
         };
 
         // Act
@@ -317,7 +317,7 @@ public class EventIntegrationTests
             TilePosition = targetPosition,
             FromDirection = Direction.South,
             ToDirection = Direction.North,
-            Elevation = 0
+            Elevation = 0,
         };
 
         _eventBus.Publish(collisionEvt);
@@ -333,7 +333,7 @@ public class EventIntegrationTests
                 BlockReason = collisionEvt.BlockReason ?? "Unknown",
                 TargetPosition = targetPosition,
                 Direction = Direction.North,
-                MapId = 1
+                MapId = 1,
             };
 
             _eventBus.Publish(blockedEvt);
@@ -347,18 +347,19 @@ public class EventIntegrationTests
                 Entity = entity,
                 TargetPosition = new Vector2(targetPosition.Item1, targetPosition.Item2),
                 Direction = Direction.North,
-                StartPosition = new Vector2(10, 11)
+                StartPosition = new Vector2(10, 11),
             };
 
             _eventBus.Publish(startEvt);
         }
 
         // Assert
-        eventSequence.Should().ContainInOrder(
-            "CollisionCheck: (10, 10)",
-            "MovementBlocked: Tile is solid"
-        );
-        eventSequence.Should().NotContain("MovementStarted: Up", "movement should not start when blocked");
+        eventSequence
+            .Should()
+            .ContainInOrder("CollisionCheck: (10, 10)", "MovementBlocked: Tile is solid");
+        eventSequence
+            .Should()
+            .NotContain("MovementStarted: Up", "movement should not start when blocked");
     }
 
     #endregion
@@ -387,7 +388,7 @@ public class EventIntegrationTests
             Timestamp = 0f,
             Entity = entity,
             TilePosition = new TilePosition(5, 5),
-            TileType = "lava"
+            TileType = "lava",
         };
 
         // Act
@@ -431,7 +432,7 @@ public class EventIntegrationTests
             Timestamp = 0f,
             Entity = entity,
             TilePosition = tilePos,
-            TileType = "grass"
+            TileType = "grass",
         };
 
         _eventBus.Publish(stepOnEvt);
@@ -447,17 +448,16 @@ public class EventIntegrationTests
                 Timestamp = 0.5f,
                 Entity = entity,
                 TilePosition = tilePos,
-                TileType = "grass"
+                TileType = "grass",
             };
 
             _eventBus.Publish(stepOffEvt);
         }
 
         // Assert
-        eventSequence.Should().ContainInOrder(
-            "StepOn: grass at (10,10)",
-            "StepOff: grass at (10,10)"
-        );
+        eventSequence
+            .Should()
+            .ContainInOrder("StepOn: grass at (10,10)", "StepOff: grass at (10,10)");
     }
 
     #endregion
@@ -518,7 +518,7 @@ public class EventIntegrationTests
             MapId = 1,
             TilePosition = targetPos,
             FromDirection = Direction.West,
-            ToDirection = Direction.East
+            ToDirection = Direction.East,
         };
         _eventBus.Publish(collisionEvt);
 
@@ -532,32 +532,36 @@ public class EventIntegrationTests
                 Entity = entity,
                 TargetPosition = new Vector2(targetPos.Item1, targetPos.Item2),
                 Direction = Direction.East,
-                StartPosition = new Vector2(10, 10)
+                StartPosition = new Vector2(10, 10),
             };
             _eventBus.Publish(startEvt);
 
             if (!startEvt.IsCancelled)
             {
                 // 3. Step off old tile
-                _eventBus.Publish(new TileSteppedOffEvent
-                {
-                    TypeId = "step_off",
-                    Timestamp = 0.05f,
-                    Entity = entity,
-                    TilePosition = new TilePosition(10, 10),
-                    TileType = "grass"
-                });
+                _eventBus.Publish(
+                    new TileSteppedOffEvent
+                    {
+                        TypeId = "step_off",
+                        Timestamp = 0.05f,
+                        Entity = entity,
+                        TilePosition = new TilePosition(10, 10),
+                        TileType = "grass",
+                    }
+                );
 
                 // 4. Progress updates (simplified)
-                _eventBus.Publish(new MovementProgressEvent
-                {
-                    TypeId = "progress",
-                    Timestamp = 0.125f,
-                    Entity = entity,
-                    Progress = 0.5f,
-                    CurrentPosition = new Vector2(10.5f, 10f),
-                    Direction = Direction.East
-                });
+                _eventBus.Publish(
+                    new MovementProgressEvent
+                    {
+                        TypeId = "progress",
+                        Timestamp = 0.125f,
+                        Entity = entity,
+                        Progress = 0.5f,
+                        CurrentPosition = new Vector2(10.5f, 10f),
+                        Direction = Direction.East,
+                    }
+                );
 
                 // 5. Step on new tile
                 var stepOnEvt = new TileSteppedOnEvent
@@ -566,23 +570,25 @@ public class EventIntegrationTests
                     Timestamp = 0.2f,
                     Entity = entity,
                     TilePosition = new TilePosition(targetPos.Item1, targetPos.Item2),
-                    TileType = "grass"
+                    TileType = "grass",
                 };
                 _eventBus.Publish(stepOnEvt);
 
                 if (!stepOnEvt.IsCancelled)
                 {
                     // 6. Movement completed
-                    _eventBus.Publish(new MovementCompletedEvent
-                    {
-                        TypeId = "completed",
-                        Timestamp = 0.25f,
-                        Entity = entity,
-                        OldPosition = (10, 10),
-                        NewPosition = targetPos,
-                        Direction = Direction.East,
-                        MovementTime = 0.25f
-                    });
+                    _eventBus.Publish(
+                        new MovementCompletedEvent
+                        {
+                            TypeId = "completed",
+                            Timestamp = 0.25f,
+                            Entity = entity,
+                            OldPosition = (10, 10),
+                            NewPosition = targetPos,
+                            Direction = Direction.East,
+                            MovementTime = 0.25f,
+                        }
+                    );
                 }
             }
         }
@@ -643,22 +649,24 @@ public class EventIntegrationTests
             MapId = 1,
             TilePosition = (10, 10),
             FromDirection = Direction.South,
-            ToDirection = Direction.North
+            ToDirection = Direction.North,
         };
 
         _eventBus.Publish(collisionEvt);
 
         if (!collisionEvt.IsBlocked)
         {
-            _eventBus.Publish(new MovementStartedEvent
-            {
-                TypeId = "movement",
-                Timestamp = 0f,
-                Entity = entity,
-                TargetPosition = new Vector2(10, 10),
-                Direction = Direction.North,
-                StartPosition = Vector2.Zero
-            });
+            _eventBus.Publish(
+                new MovementStartedEvent
+                {
+                    TypeId = "movement",
+                    Timestamp = 0f,
+                    Entity = entity,
+                    TargetPosition = new Vector2(10, 10),
+                    Direction = Direction.North,
+                    StartPosition = Vector2.Zero,
+                }
+            );
         }
 
         movementStarted.Should().BeFalse("movement should not start when collision is blocked");
@@ -687,22 +695,24 @@ public class EventIntegrationTests
             Entity = entity,
             TargetPosition = new Vector2(10, 10),
             Direction = Direction.North,
-            StartPosition = Vector2.Zero
+            StartPosition = Vector2.Zero,
         };
 
         _eventBus.Publish(startEvt);
 
         if (!startEvt.IsCancelled)
         {
-            _eventBus.Publish(new MovementCompletedEvent
-            {
-                TypeId = "completed",
-                Timestamp = 0.25f,
-                Entity = entity,
-                OldPosition = (0, 0),
-                NewPosition = (10, 10),
-                Direction = Direction.North
-            });
+            _eventBus.Publish(
+                new MovementCompletedEvent
+                {
+                    TypeId = "completed",
+                    Timestamp = 0.25f,
+                    Entity = entity,
+                    OldPosition = (0, 0),
+                    NewPosition = (10, 10),
+                    Direction = Direction.North,
+                }
+            );
         }
 
         movementCompleted.Should().BeFalse("movement should not complete when start is cancelled");
@@ -730,25 +740,29 @@ public class EventIntegrationTests
             Timestamp = 0f,
             Entity = entity,
             TilePosition = new TilePosition(10, 10),
-            TileType = "lava"
+            TileType = "lava",
         };
 
         _eventBus.Publish(stepEvt);
 
         if (!stepEvt.IsCancelled)
         {
-            _eventBus.Publish(new MovementCompletedEvent
-            {
-                TypeId = "completed",
-                Timestamp = 0.25f,
-                Entity = entity,
-                OldPosition = (0, 0),
-                NewPosition = (10, 10),
-                Direction = Direction.North
-            });
+            _eventBus.Publish(
+                new MovementCompletedEvent
+                {
+                    TypeId = "completed",
+                    Timestamp = 0.25f,
+                    Entity = entity,
+                    OldPosition = (0, 0),
+                    NewPosition = (10, 10),
+                    Direction = Direction.North,
+                }
+            );
         }
 
-        movementCompleted.Should().BeFalse("movement should not complete when tile step is cancelled");
+        movementCompleted
+            .Should()
+            .BeFalse("movement should not complete when tile step is cancelled");
     }
 
     #endregion

@@ -1,5 +1,4 @@
 using Arch.Core;
-using Arch.Core.Extensions;
 using Arch.Relationships;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Core.Systems;
@@ -40,7 +39,10 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
     public override void Initialize(World world)
     {
         base.Initialize(world);
-        _logger.LogInformation("RelationshipSystem initialized with Arch.Relationships (Priority: {Priority})", Priority);
+        _logger.LogInformation(
+            "RelationshipSystem initialized with Arch.Relationships (Priority: {Priority})",
+            Priority
+        );
     }
 
     public override void Update(World world, float deltaTime)
@@ -67,14 +69,15 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
     /// <summary>
     ///     Validates relationships of a specific type and removes broken references.
     /// </summary>
-    private void ValidateRelationships<T>(World world) where T : struct
+    private void ValidateRelationships<T>(World world)
+        where T : struct
     {
         var entitiesToClean = new List<(Entity parent, Entity child)>();
 
         // Query all entities and check if they have relationships of this type
         world.Query(
             new QueryDescription(),
-            (Entity entity) =>
+            entity =>
             {
                 if (!entity.HasRelationship<T>())
                 {
@@ -82,8 +85,8 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
                 }
 
                 // Get the relationships and check if related entities are still alive
-                ref var relationships = ref entity.GetRelationships<T>();
-                foreach (var kvp in relationships)
+                ref Relationship<T> relationships = ref entity.GetRelationships<T>();
+                foreach (KeyValuePair<Entity, T> kvp in relationships)
                 {
                     Entity relatedEntity = kvp.Key;
                     if (!world.IsAlive(relatedEntity))
@@ -114,5 +117,8 @@ public class RelationshipSystem : SystemBase, IUpdateSystem
     /// <summary>
     ///     Gets current relationship validation statistics.
     /// </summary>
-    public int GetBrokenRelationshipsFixed() => _brokenRelationshipsFixed;
+    public int GetBrokenRelationshipsFixed()
+    {
+        return _brokenRelationshipsFixed;
+    }
 }

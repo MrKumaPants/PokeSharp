@@ -43,10 +43,11 @@ public class ModLoaderTests
         var mods = _loader.DiscoverMods();
 
         // Assert
-        mods.Should().NotContain(
-            m => m.Manifest.ModId == "pokesharp.test.badversion",
-            "invalid semantic version should fail validation"
-        );
+        mods.Should()
+            .NotContain(
+                m => m.Manifest.ModId == "pokesharp.test.badversion",
+                "invalid semantic version should fail validation"
+            );
     }
 
     [Fact]
@@ -114,10 +115,12 @@ public class ModLoaderTests
             var versionIndex = sorted.IndexOf(versionMod);
             var basicIndex = sorted.IndexOf(basicMod);
 
-            versionIndex.Should().BeLessThan(
-                basicIndex,
-                "version mod (priority 50) should load before basic (priority 100)"
-            );
+            versionIndex
+                .Should()
+                .BeLessThan(
+                    basicIndex,
+                    "version mod (priority 50) should load before basic (priority 100)"
+                );
         }
     }
 
@@ -157,10 +160,10 @@ public class ModLoaderTests
                 {
                     ModId = "test.missing",
                     Name = "Missing Dep Test",
-                    Dependencies = new List<string> { "nonexistent.mod" }
+                    Dependencies = new List<string> { "nonexistent.mod" },
                 },
-                RootPath = "/fake/path"
-            }
+                RootPath = "/fake/path",
+            },
         };
 
         // Act & Assert
@@ -177,7 +180,7 @@ public class ModLoaderTests
         var mod = new LoadedMod
         {
             Manifest = new ModManifest { ModId = "test", Name = "Test" },
-            RootPath = "/mods/test-mod"
+            RootPath = "/mods/test-mod",
         };
 
         // Act
@@ -203,12 +206,13 @@ public class ModLoaderTests
         var mods = _loader.DiscoverMods();
 
         // Assert - all discovered mods should have valid manifests
-        mods.Should().AllSatisfy(mod =>
-        {
-            mod.Manifest.ModId.Should().NotBeNullOrEmpty();
-            mod.Manifest.Name.Should().NotBeNullOrEmpty();
-            mod.Manifest.Version.Should().MatchRegex(@"^\d+\.\d+\.\d+");
-            mod.RootPath.Should().NotBeNullOrEmpty();
-        });
+        mods.Should()
+            .AllSatisfy(mod =>
+            {
+                mod.Manifest.ModId.Should().NotBeNullOrEmpty();
+                mod.Manifest.Name.Should().NotBeNullOrEmpty();
+                mod.Manifest.Version.Should().MatchRegex(@"^\d+\.\d+\.\d+");
+                mod.RootPath.Should().NotBeNullOrEmpty();
+            });
     }
 }

@@ -33,7 +33,9 @@ public class EventBusComparisonBenchmarks
         // Subscribe handlers
         for (int i = 0; i < SubscriberCount; i++)
         {
-            _eventBus.Subscribe<TestEvent>(evt => { /* handler */ });
+            _eventBus.Subscribe<TestEvent>(evt =>
+            { /* handler */
+            });
         }
     }
 
@@ -66,12 +68,19 @@ public class HighFrequencyBenchmarks
     public void Setup()
     {
         _eventBus = new EventBus();
-        _tickEvent = new TickEvent { TypeId = "tick", Timestamp = 0f, DeltaTime = 0.016f };
+        _tickEvent = new TickEvent
+        {
+            TypeId = "tick",
+            Timestamp = 0f,
+            DeltaTime = 0.016f,
+        };
 
         // Simulate 20 mod handlers
         for (int i = 0; i < 20; i++)
         {
-            _eventBus.Subscribe<TickEvent>(evt => { /* mod handler */ });
+            _eventBus.Subscribe<TickEvent>(evt =>
+            { /* mod handler */
+            });
         }
     }
 

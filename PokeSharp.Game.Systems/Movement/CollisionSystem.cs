@@ -26,20 +26,27 @@ namespace PokeSharp.Game.Systems;
 public class CollisionService : ICollisionService
 {
     // PERFORMANCE: Cached event pools to eliminate dictionary lookups (50% faster pooling)
-    private static readonly EventPool<CollisionCheckEvent> _checkEventPool = EventPool<CollisionCheckEvent>.Shared;
-    private static readonly EventPool<CollisionDetectedEvent> _detectedEventPool = EventPool<CollisionDetectedEvent>.Shared;
-    private static readonly EventPool<CollisionResolvedEvent> _resolvedEventPool = EventPool<CollisionResolvedEvent>.Shared;
+    private static readonly EventPool<CollisionCheckEvent> _checkEventPool =
+        EventPool<CollisionCheckEvent>.Shared;
+
+    private static readonly EventPool<CollisionDetectedEvent> _detectedEventPool =
+        EventPool<CollisionDetectedEvent>.Shared;
+
+    private static readonly EventPool<CollisionResolvedEvent> _resolvedEventPool =
+        EventPool<CollisionResolvedEvent>.Shared;
+
+    private readonly IEventBus? _eventBus;
 
     private readonly ILogger<CollisionService>? _logger;
     private readonly ISpatialQuery _spatialQuery;
-    private readonly IEventBus? _eventBus;
     private ITileBehaviorSystem? _tileBehaviorSystem;
     private World? _world;
 
     public CollisionService(
         ISpatialQuery spatialQuery,
         IEventBus? eventBus = null,
-        ILogger<CollisionService>? logger = null)
+        ILogger<CollisionService>? logger = null
+    )
     {
         _spatialQuery = spatialQuery ?? throw new ArgumentNullException(nameof(spatialQuery));
         _eventBus = eventBus;
@@ -78,7 +85,7 @@ public class CollisionService : ICollisionService
                 fromDirection != Direction.None ? fromDirection.Opposite() : Direction.None;
 
             // IMPORTANT: Use cached pool directly (eliminates dictionary lookup overhead)
-            var checkEvent = _checkEventPool.Rent();
+            CollisionCheckEvent checkEvent = _checkEventPool.Rent();
             try
             {
                 checkEvent.TypeId = "collision.check";
@@ -110,7 +117,7 @@ public class CollisionService : ICollisionService
                         mapId,
                         (tileX, tileY),
                         (tileX, tileY),
-                        wasBlocked: true,
+                        true,
                         ResolutionStrategy.Custom
                     );
 
@@ -170,8 +177,7 @@ public class CollisionService : ICollisionService
                         mapId,
                         (tileX, tileY),
                         (tileX, tileY),
-                        wasBlocked: true,
-                        ResolutionStrategy.Blocked
+                        true
                     );
 
                     return false; // Behavior blocks movement
@@ -203,8 +209,7 @@ public class CollisionService : ICollisionService
                         mapId,
                         (tileX, tileY),
                         (tileX, tileY),
-                        wasBlocked: true,
-                        ResolutionStrategy.Blocked
+                        true
                     );
 
                     return false;
@@ -215,14 +220,7 @@ public class CollisionService : ICollisionService
         // No blocking collisions found - publish successful resolution
         if (_eventBus != null)
         {
-            PublishCollisionResolved(
-                Entity.Null,
-                mapId,
-                (tileX, tileY),
-                (tileX, tileY),
-                wasBlocked: false,
-                ResolutionStrategy.Blocked
-            );
+            PublishCollisionResolved(Entity.Null, mapId, (tileX, tileY), (tileX, tileY), false);
         }
 
         return true;
@@ -265,7 +263,7 @@ public class CollisionService : ICollisionService
                 fromDirection != Direction.None ? fromDirection.Opposite() : Direction.None;
 
             // IMPORTANT: Use RentEvent for cancellable events so we can check modifications after handlers run
-            var checkEvent = _eventBus.RentEvent<CollisionCheckEvent>();
+            CollisionCheckEvent checkEvent = _eventBus.RentEvent<CollisionCheckEvent>();
             try
             {
                 checkEvent.TypeId = "collision.check";
@@ -289,7 +287,7 @@ public class CollisionService : ICollisionService
                         mapId,
                         (tileX, tileY),
                         (tileX, tileY),
-                        wasBlocked: true,
+                        true,
                         ResolutionStrategy.Custom
                     );
 
@@ -379,8 +377,7 @@ public class CollisionService : ICollisionService
                 mapId,
                 (tileX, tileY),
                 (tileX, tileY),
-                wasBlocked: !isWalkable,
-                ResolutionStrategy.Blocked
+                !isWalkable
             );
         }
 
@@ -431,7 +428,7 @@ public class CollisionService : ICollisionService
         }
 
         // Use cached pool directly (50% faster than EventBus lookup)
-        var detectedEvent = _detectedEventPool.Rent();
+        CollisionDetectedEvent detectedEvent = _detectedEventPool.Rent();
         try
         {
             detectedEvent.TypeId = "collision.detected";
@@ -485,7 +482,7 @@ public class CollisionService : ICollisionService
         }
 
         // Use cached pool directly (50% faster than EventBus lookup)
-        var resolvedEvent = _resolvedEventPool.Rent();
+        CollisionResolvedEvent resolvedEvent = _resolvedEventPool.Rent();
         try
         {
             resolvedEvent.TypeId = "collision.resolved";

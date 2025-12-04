@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Services;
 using PokeSharp.Engine.Systems.Management;
 using PokeSharp.Engine.Systems.Pooling;
@@ -11,7 +12,6 @@ using PokeSharp.Game.Initialization.Factories;
 using PokeSharp.Game.Input;
 using PokeSharp.Game.Systems;
 using PokeSharp.Game.Systems.Services;
-using PokeSharp.Engine.Core.Events;
 
 namespace PokeSharp.Game.Infrastructure.ServiceRegistration;
 

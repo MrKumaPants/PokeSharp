@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using PokeSharp.Engine.UI.Debug.Core;
 using PokeSharp.Engine.UI.Debug.Layout;
 
@@ -42,7 +41,7 @@ public static class EmptyStateComponent
             lineCount++;
         }
 
-        float totalHeight = lineCount * lineHeight + ((lineCount - 1) * theme.SpacingTight);
+        float totalHeight = (lineCount * lineHeight) + ((lineCount - 1) * theme.SpacingTight);
         float startY = centerY - (totalHeight / 2);
         float y = startY;
 
@@ -170,7 +169,7 @@ public static class EmptyStateComponent
             lineCount++;
         }
 
-        float totalHeight = lineCount * lineHeight + ((lineCount - 1) * theme.SpacingTight);
+        float totalHeight = (lineCount * lineHeight) + ((lineCount - 1) * theme.SpacingTight);
         float startY = centerY - (totalHeight / 2);
         float y = startY;
 
@@ -197,4 +196,3 @@ public static class EmptyStateComponent
         }
     }
 }
-

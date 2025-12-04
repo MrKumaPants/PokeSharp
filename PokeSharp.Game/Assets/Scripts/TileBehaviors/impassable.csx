@@ -1,5 +1,6 @@
 using PokeSharp.Game.Scripting.Runtime;
 using PokeSharp.Game.Systems.Events;
+using PokeSharp.Game.Components.Tiles;
 
 /// <summary>
 ///     Impassable tile behavior.
@@ -7,11 +8,29 @@ using PokeSharp.Game.Systems.Events;
 /// </summary>
 public class ImpassableBehavior : ScriptBase
 {
+    private (int X, int Y) tilePosition;
+
+    public override void Initialize(ScriptContext ctx)
+    {
+        base.Initialize(ctx);
+
+        // Cache the tile's position so we can check if events are for this tile
+        if (ctx.Entity.HasValue && ctx.Entity.Value.Has<TilePosition>())
+        {
+            var pos = ctx.Entity.Value.Get<TilePosition>();
+            tilePosition = (pos.X, pos.Y);
+        }
+    }
+
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         On<CollisionCheckEvent>(evt =>
         {
-            evt.PreventDefault("Tile is impassable");
+            // Only block if this collision check is for OUR tile
+            if (evt.TilePosition == tilePosition)
+            {
+                evt.PreventDefault("Tile is impassable");
+            }
         });
     }
 }

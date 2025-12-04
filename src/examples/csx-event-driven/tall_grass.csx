@@ -2,7 +2,8 @@
 // Event-driven tall grass behavior with wild Pokemon encounters
 // Triggers random wild battles when player steps on grass
 
-public class TallGrass : TileBehaviorScriptBase {
+public class TallGrass : TileBehaviorScriptBase
+{
     private static readonly Random random = new Random();
 
     // Configuration
@@ -11,10 +12,13 @@ public class TallGrass : TileBehaviorScriptBase {
     public int minLevel = 2;
     public int maxLevel = 5;
 
-    public override void RegisterEventHandlers(ScriptContext ctx) {
-        OnTileSteppedOn(evt => {
+    public override void RegisterEventHandlers(ScriptContext ctx)
+    {
+        OnTileSteppedOn(evt =>
+        {
             // Only trigger for player
-            if (!ctx.Player.IsPlayerEntity(evt.Entity)) {
+            if (!ctx.Player.IsPlayerEntity(evt.Entity))
+            {
                 return;
             }
 
@@ -26,14 +30,17 @@ public class TallGrass : TileBehaviorScriptBase {
         });
     }
 
-    private void CheckWildEncounter(TileSteppedOnEvent evt) {
+    private void CheckWildEncounter(TileSteppedOnEvent evt)
+    {
         // Random encounter check
-        if (random.NextDouble() < encounterRate) {
+        if (random.NextDouble() < encounterRate)
+        {
             TriggerWildBattle(evt.Entity, evt.TilePosition);
         }
     }
 
-    private void TriggerWildBattle(Entity player, Vector2 position) {
+    private void TriggerWildBattle(Entity player, Vector2 position)
+    {
         // Select random wild Pokemon
         var pokemonName = wildPokemon[random.Next(wildPokemon.Length)];
         var level = random.Next(minLevel, maxLevel + 1);
@@ -52,8 +59,10 @@ public class TallGrass : TileBehaviorScriptBase {
     }
 
     // Optional: Override default step sound
-    public override void OnStepOn(Entity entity) {
-        if (ctx.Player.IsPlayerEntity(entity)) {
+    public override void OnStepOn(Entity entity)
+    {
+        if (ctx.Player.IsPlayerEntity(entity))
+        {
             ctx.Effects.PlaySound("grass_step");
         }
     }

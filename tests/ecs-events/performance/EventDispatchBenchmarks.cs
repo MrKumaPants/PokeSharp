@@ -2,8 +2,8 @@ using System;
 using System.Diagnostics;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
-using NUnit.Framework;
 using FluentAssertions;
+using NUnit.Framework;
 
 namespace PokeSharp.EcsEvents.Tests.Performance;
 
@@ -29,7 +29,9 @@ public class EventDispatchBenchmarks
         // Subscribe some handlers to make it realistic
         for (int i = 0; i < 10; i++)
         {
-            _eventBus.Subscribe<TestEvent>(evt => { /* no-op */ });
+            _eventBus.Subscribe<TestEvent>(evt =>
+            { /* no-op */
+            });
         }
     }
 
@@ -176,8 +178,12 @@ public class PerformanceComparisonTests
         Console.WriteLine($"Overhead: {overhead:F2}%");
 
         // Assert: < 10% overhead
-        overhead.Should().BeLessThan(10.0,
-            $"event dispatch overhead should be less than 10%, was {overhead:F2}%");
+        overhead
+            .Should()
+            .BeLessThan(
+                10.0,
+                $"event dispatch overhead should be less than 10%, was {overhead:F2}%"
+            );
     }
 
     [Test]
@@ -190,7 +196,9 @@ public class PerformanceComparisonTests
         // Subscribe some handlers
         for (int i = 0; i < 5; i++)
         {
-            eventBus.Subscribe<TestEvent>(evt => { /* simulate work */ });
+            eventBus.Subscribe<TestEvent>(evt =>
+            { /* simulate work */
+            });
         }
 
         var sw = Stopwatch.StartNew();
@@ -212,8 +220,9 @@ public class PerformanceComparisonTests
         Console.WriteLine($"Average frame time: {avgFrameTime:F2}ms");
         Console.WriteLine($"Frame budget: {frameTimeBudget}ms");
 
-        avgFrameTime.Should().BeLessThan(frameTimeBudget,
-            "event dispatch should not exceed frame time budget");
+        avgFrameTime
+            .Should()
+            .BeLessThan(frameTimeBudget, "event dispatch should not exceed frame time budget");
 
         eventBus.Dispose();
     }
@@ -239,8 +248,8 @@ public class PerformanceComparisonTests
         Console.WriteLine($"1000 events dispatched in {sw.Elapsed.TotalMilliseconds:F2}ms");
         Console.WriteLine($"Average: {sw.Elapsed.TotalMilliseconds / 1000.0:F4}ms per event");
 
-        sw.Elapsed.TotalMilliseconds.Should().BeLessThan(10.0,
-            "1000 events should process in under 10ms");
+        sw.Elapsed.TotalMilliseconds.Should()
+            .BeLessThan(10.0, "1000 events should process in under 10ms");
 
         handlerCalls.Should().Be(1000, "all events should be handled");
 
@@ -284,8 +293,9 @@ public class PerformanceComparisonTests
         Console.WriteLine($"GC collections with pooling: {collectionsWithPooling}");
         Console.WriteLine($"GC collections without pooling: {collectionsWithoutPooling}");
 
-        collectionsWithPooling.Should().BeLessThan(collectionsWithoutPooling,
-            "pooling should reduce garbage collections");
+        collectionsWithPooling
+            .Should()
+            .BeLessThan(collectionsWithoutPooling, "pooling should reduce garbage collections");
 
         eventBus.Dispose();
     }

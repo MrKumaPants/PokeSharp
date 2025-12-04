@@ -5,10 +5,9 @@ using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Configuration;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;
+using PokeSharp.Engine.Core.Events.Tile;
 using PokeSharp.Engine.Core.Systems;
 using PokeSharp.Engine.Core.Types;
-using PokeSharp.Engine.Core.Types.Events;
-using PokeSharp.Engine.Core.Events.Tile;
 using PokeSharp.Game.Components.Interfaces;
 using PokeSharp.Game.Components.Movement;
 using PokeSharp.Game.Components.Tiles;
@@ -98,7 +97,8 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
             tileEntity,
             _logger,
             _apis,
-            _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
+            _eventBus
+                ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
         );
 
         // Check both directions (like Pokemon Emerald's two-way check)
@@ -148,7 +148,8 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
             tileEntity,
             _logger,
             _apis,
-            _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
+            _eventBus
+                ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
         );
         return script.GetForcedMovement(context, currentDirection);
     }
@@ -186,7 +187,8 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
             tileEntity,
             _logger,
             _apis,
-            _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
+            _eventBus
+                ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
         );
         return script.GetJumpDirection(context, fromDirection);
     }
@@ -224,7 +226,8 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
             tileEntity,
             _logger,
             _apis,
-            _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
+            _eventBus
+                ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
         );
         return script.GetRequiredMovementMode(context);
     }
@@ -262,7 +265,8 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
             tileEntity,
             _logger,
             _apis,
-            _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
+            _eventBus
+                ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
         );
         return script.AllowsRunning(context);
     }
@@ -338,7 +342,10 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
                         entity,
                         scriptLogger,
                         _apis,
-                        _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
+                        _eventBus
+                            ?? throw new InvalidOperationException(
+                                "EventBus is required for ScriptContext"
+                            )
                     );
 
                     // Initialize on first tick
@@ -434,7 +441,7 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
                 TileY = tilePosition.Y,
                 TileType = tileType,
                 FromDirection = 0, // TODO: Get actual direction if needed
-                Elevation = 0 // TODO: Get actual elevation if needed
+                Elevation = 0, // TODO: Get actual elevation if needed
             };
 
             _eventBus.Publish(steppedOnEvent);
@@ -454,10 +461,7 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
         }
 
         // Call OnStep on tile behavior script (maintains backward compatibility)
-        if (
-            _behaviorRegistry != null
-            && tileEntity.Has<TileBehavior>()
-        )
+        if (_behaviorRegistry != null && tileEntity.Has<TileBehavior>())
         {
             ref TileBehavior behavior = ref tileEntity.Get<TileBehavior>();
             if (behavior.IsActive)
@@ -472,7 +476,10 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
                             tileEntity,
                             _logger,
                             _apis,
-                            _eventBus ?? throw new InvalidOperationException("EventBus is required for ScriptContext")
+                            _eventBus
+                                ?? throw new InvalidOperationException(
+                                    "EventBus is required for ScriptContext"
+                                )
                         );
                         script.OnStep(context, entity);
                     }
@@ -527,7 +534,7 @@ public class TileBehaviorSystem : SystemBase, IUpdateSystem, ITileBehaviorSystem
                 NewTileX = tilePosition.X, // TODO: Get actual new tile position from movement system
                 NewTileY = tilePosition.Y, // TODO: Get actual new tile position from movement system
                 ExitDirection = 0, // TODO: Get actual exit direction if needed
-                Elevation = 0 // TODO: Get actual elevation if needed
+                Elevation = 0, // TODO: Get actual elevation if needed
             };
 
             _eventBus.Publish(steppedOffEvent);

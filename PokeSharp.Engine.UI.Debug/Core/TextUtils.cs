@@ -118,4 +118,3 @@ public static class TextUtils
         return bestLen > 0 ? text[..bestLen] + suffix : suffix;
     }
 }
-

@@ -90,10 +90,20 @@ namespace PokeSharp.Tests.ScriptingTests
 
             // Subscribe to events
             int eventCount = 0;
-            script.OnTileStep((ref TileSteppedEvent evt) => { eventCount++; });
+            script.OnTileStep(
+                (ref TileSteppedEvent evt) =>
+                {
+                    eventCount++;
+                }
+            );
 
             // ACT - Trigger event before disposal
-            var evt1 = new TileSteppedEvent { Entity = _testEntity, TileEntity = _testTileEntity, Timestamp = 1.0f };
+            var evt1 = new TileSteppedEvent
+            {
+                Entity = _testEntity,
+                TileEntity = _testTileEntity,
+                Timestamp = 1.0f,
+            };
             _eventBus.Publish(ref evt1);
             Assert.Equal(1, eventCount);
 
@@ -101,7 +111,12 @@ namespace PokeSharp.Tests.ScriptingTests
             script.Dispose();
 
             // Trigger event after disposal
-            var evt2 = new TileSteppedEvent { Entity = _testEntity, TileEntity = _testTileEntity, Timestamp = 2.0f };
+            var evt2 = new TileSteppedEvent
+            {
+                Entity = _testEntity,
+                TileEntity = _testTileEntity,
+                Timestamp = 2.0f,
+            };
             _eventBus.Publish(ref evt2);
 
             // ASSERT - Event count should not increase after disposal
@@ -158,7 +173,7 @@ namespace PokeSharp.Tests.ScriptingTests
                 TileEntity = _testTileEntity,
                 Timestamp = 1.0f,
                 Position = (5, 10),
-                MapId = 1
+                MapId = 1,
             };
             _eventBus.Publish(ref evt);
 
@@ -185,7 +200,7 @@ namespace PokeSharp.Tests.ScriptingTests
                 Entity = _testEntity,
                 TileEntity = _world.Create(), // Different tile
                 Timestamp = 1.0f,
-                IsWalkable = true
+                IsWalkable = true,
             };
             _eventBus.Publish(ref evt1);
 
@@ -195,7 +210,7 @@ namespace PokeSharp.Tests.ScriptingTests
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
                 Timestamp = 2.0f,
-                IsWalkable = true
+                IsWalkable = true,
             };
             _eventBus.Publish(ref evt2);
 
@@ -229,7 +244,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref evt);
 
@@ -306,7 +321,7 @@ namespace PokeSharp.Tests.ScriptingTests
                 {
                     Entity = _testEntity,
                     TileEntity = _testTileEntity,
-                    Timestamp = i
+                    Timestamp = i,
                 };
                 _eventBus.Publish(ref evt);
             }
@@ -399,7 +414,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref evt);
 
@@ -432,7 +447,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref evt);
 
@@ -462,7 +477,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref evt1);
             Assert.Equal(1, script1.TileStepCallCount);
@@ -476,7 +491,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 2.0f
+                Timestamp = 2.0f,
             };
             _eventBus.Publish(ref evt2);
 
@@ -505,7 +520,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref evt1);
 
@@ -520,7 +535,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 2.0f
+                Timestamp = 2.0f,
             };
             _eventBus.Publish(ref evt2);
 
@@ -546,17 +561,19 @@ namespace PokeSharp.Tests.ScriptingTests
             publisherScript.Initialize(_eventBus, _testTileEntity, context);
 
             bool eventReceived = false;
-            _eventBus.Subscribe<LedgeJumpedEvent>((ref LedgeJumpedEvent evt) =>
-            {
-                eventReceived = true;
-            });
+            _eventBus.Subscribe<LedgeJumpedEvent>(
+                (ref LedgeJumpedEvent evt) =>
+                {
+                    eventReceived = true;
+                }
+            );
 
             // ACT
             var stepEvt = new TileSteppedEvent
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref stepEvt);
 
@@ -584,7 +601,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref evt);
 
@@ -607,18 +624,20 @@ namespace PokeSharp.Tests.ScriptingTests
             Entity? receivedEntity = null;
             Direction receivedDirection = Direction.None;
 
-            _eventBus.Subscribe<LedgeJumpedEvent>((ref LedgeJumpedEvent evt) =>
-            {
-                receivedEntity = evt.Entity;
-                receivedDirection = evt.JumpDirection;
-            });
+            _eventBus.Subscribe<LedgeJumpedEvent>(
+                (ref LedgeJumpedEvent evt) =>
+                {
+                    receivedEntity = evt.Entity;
+                    receivedDirection = evt.JumpDirection;
+                }
+            );
 
             // ACT
             var evt = new TileSteppedEvent
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref evt);
 
@@ -654,11 +673,13 @@ namespace PokeSharp.Tests.ScriptingTests
             bool iceTriggered = false;
             bool grassTriggered = false;
 
-            _eventBus.Subscribe<ForcedMovementCheckEvent>((ref ForcedMovementCheckEvent evt) =>
-            {
-                if (evt.TileEntity == _testTileEntity)
-                    iceTriggered = true;
-            });
+            _eventBus.Subscribe<ForcedMovementCheckEvent>(
+                (ref ForcedMovementCheckEvent evt) =>
+                {
+                    if (evt.TileEntity == _testTileEntity)
+                        iceTriggered = true;
+                }
+            );
 
             // ACT
             var evt = new TileSteppedEvent
@@ -666,7 +687,7 @@ namespace PokeSharp.Tests.ScriptingTests
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
                 Timestamp = 1.0f,
-                EntryDirection = Direction.North
+                EntryDirection = Direction.North,
             };
             _eventBus.Publish(ref evt);
 
@@ -676,7 +697,7 @@ namespace PokeSharp.Tests.ScriptingTests
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
                 CurrentDirection = Direction.North,
-                Timestamp = 2.0f
+                Timestamp = 2.0f,
             };
             _eventBus.Publish(ref forceEvt);
 
@@ -706,7 +727,7 @@ namespace PokeSharp.Tests.ScriptingTests
             {
                 Entity = _testEntity,
                 TileEntity = _testTileEntity,
-                Timestamp = 1.0f
+                Timestamp = 1.0f,
             };
             _eventBus.Publish(ref evt);
 
@@ -747,10 +768,11 @@ namespace PokeSharp.Tests.ScriptingTests
             RegisterEventHandlersCalled = true;
 
             // Subscribe to test events
-            OnTileStep((ref TileSteppedEvent evt) =>
-            {
-                // Test handler
-            });
+            OnTileStep(
+                (ref TileSteppedEvent evt) => {
+                    // Test handler
+                }
+            );
         }
     }
 
@@ -767,22 +789,28 @@ namespace PokeSharp.Tests.ScriptingTests
 
         protected override void RegisterEventHandlers(ScriptContext context)
         {
-            OnTileStep((ref TileSteppedEvent evt) =>
-            {
-                if (evt.TileEntity != TileEntity) return;
+            OnTileStep(
+                (ref TileSteppedEvent evt) =>
+                {
+                    if (evt.TileEntity != TileEntity)
+                        return;
 
-                TileStepCalled = true;
-                TileStepCallCount++;
-                ReceivedEntity = evt.Entity;
-            });
+                    TileStepCalled = true;
+                    TileStepCallCount++;
+                    ReceivedEntity = evt.Entity;
+                }
+            );
 
-            OnCollisionCheck((ref CollisionCheckEvent evt) =>
-            {
-                if (evt.TileEntity != TileEntity) return;
+            OnCollisionCheck(
+                (ref CollisionCheckEvent evt) =>
+                {
+                    if (evt.TileEntity != TileEntity)
+                        return;
 
-                CollisionCheckCalled = true;
-                CollisionCheckCount++;
-            });
+                    CollisionCheckCalled = true;
+                    CollisionCheckCount++;
+                }
+            );
         }
     }
 
@@ -804,11 +832,15 @@ namespace PokeSharp.Tests.ScriptingTests
 
         protected override void RegisterEventHandlers(ScriptContext context)
         {
-            OnTileStep((ref TileSteppedEvent evt) =>
-            {
-                if (evt.TileEntity != TileEntity) return;
-                _executionOrder.Add(_name);
-            }, _priority);
+            OnTileStep(
+                (ref TileSteppedEvent evt) =>
+                {
+                    if (evt.TileEntity != TileEntity)
+                        return;
+                    _executionOrder.Add(_name);
+                },
+                _priority
+            );
         }
     }
 
@@ -833,14 +865,17 @@ namespace PokeSharp.Tests.ScriptingTests
 
         protected override void RegisterEventHandlers(ScriptContext context)
         {
-            OnTileStep((ref TileSteppedEvent evt) =>
-            {
-                if (evt.TileEntity != TileEntity) return;
+            OnTileStep(
+                (ref TileSteppedEvent evt) =>
+                {
+                    if (evt.TileEntity != TileEntity)
+                        return;
 
-                // Increment counter on each step
-                var counter = GetState<int>("counter");
-                SetState("counter", counter + 1);
-            });
+                    // Increment counter on each step
+                    var counter = GetState<int>("counter");
+                    SetState("counter", counter + 1);
+                }
+            );
         }
     }
 
@@ -851,20 +886,23 @@ namespace PokeSharp.Tests.ScriptingTests
     {
         protected override void RegisterEventHandlers(ScriptContext context)
         {
-            OnTileStep((ref TileSteppedEvent evt) =>
-            {
-                if (evt.TileEntity != TileEntity) return;
-
-                // Publish custom event
-                var customEvt = new LedgeJumpedEvent
+            OnTileStep(
+                (ref TileSteppedEvent evt) =>
                 {
-                    Entity = evt.Entity,
-                    TileEntity = TileEntity,
-                    JumpDirection = Direction.South,
-                    Timestamp = evt.Timestamp
-                };
-                Events.Publish(ref customEvt);
-            });
+                    if (evt.TileEntity != TileEntity)
+                        return;
+
+                    // Publish custom event
+                    var customEvt = new LedgeJumpedEvent
+                    {
+                        Entity = evt.Entity,
+                        TileEntity = TileEntity,
+                        JumpDirection = Direction.South,
+                        Timestamp = evt.Timestamp,
+                    };
+                    Events.Publish(ref customEvt);
+                }
+            );
         }
     }
 
@@ -877,10 +915,12 @@ namespace PokeSharp.Tests.ScriptingTests
 
         protected override void RegisterEventHandlers(ScriptContext context)
         {
-            Events.Subscribe<LedgeJumpedEvent>((ref LedgeJumpedEvent evt) =>
-            {
-                CustomEventReceived = true;
-            });
+            Events.Subscribe<LedgeJumpedEvent>(
+                (ref LedgeJumpedEvent evt) =>
+                {
+                    CustomEventReceived = true;
+                }
+            );
         }
     }
 

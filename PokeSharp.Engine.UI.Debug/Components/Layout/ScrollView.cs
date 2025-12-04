@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using PokeSharp.Engine.UI.Debug.Components.Base;
 using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Core;

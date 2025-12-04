@@ -72,7 +72,8 @@ namespace PokeSharp.Scripting.Unified
         /// <summary>
         /// Subscribe to an event with automatic cleanup tracking
         /// </summary>
-        protected void Subscribe<T>(Action<T> handler) where T : IGameEvent
+        protected void Subscribe<T>(Action<T> handler)
+            where T : IGameEvent
         {
             Events?.Subscribe(handler);
             _subscriptions.Add(() => Events?.Unsubscribe(handler));
@@ -81,7 +82,8 @@ namespace PokeSharp.Scripting.Unified
         /// <summary>
         /// Subscribe to an event with a filter condition
         /// </summary>
-        protected void SubscribeWhen<T>(Func<T, bool> filter, Action<T> handler) where T : IGameEvent
+        protected void SubscribeWhen<T>(Func<T, bool> filter, Action<T> handler)
+            where T : IGameEvent
         {
             Action<T> filteredHandler = evt =>
             {
@@ -94,7 +96,8 @@ namespace PokeSharp.Scripting.Unified
         /// <summary>
         /// Publish an event to the game
         /// </summary>
-        protected void Publish<T>(T gameEvent) where T : IGameEvent
+        protected void Publish<T>(T gameEvent)
+            where T : IGameEvent
         {
             Events?.Publish(gameEvent);
         }
@@ -137,13 +140,13 @@ namespace PokeSharp.Scripting.Unified
         /// <summary>
         /// Get all entities of a specific type near this script's target
         /// </summary>
-        protected IEnumerable<T> GetNearbyEntities<T>(int radius = 5) where T : IEntity
+        protected IEnumerable<T> GetNearbyEntities<T>(int radius = 5)
+            where T : IEntity
         {
             if (Target == null || World == null)
                 return Enumerable.Empty<T>();
 
-            return World.GetEntitiesInRadius(Target.Position, radius)
-                .OfType<T>();
+            return World.GetEntitiesInRadius(Target.Position, radius).OfType<T>();
         }
 
         /// <summary>
@@ -217,9 +220,12 @@ namespace PokeSharp.Scripting.Unified
 
     public interface IEventSystem
     {
-        void Subscribe<T>(Action<T> handler) where T : IGameEvent;
-        void Unsubscribe<T>(Action<T> handler) where T : IGameEvent;
-        void Publish<T>(T gameEvent) where T : IGameEvent;
+        void Subscribe<T>(Action<T> handler)
+            where T : IGameEvent;
+        void Unsubscribe<T>(Action<T> handler)
+            where T : IGameEvent;
+        void Publish<T>(T gameEvent)
+            where T : IGameEvent;
     }
 
     public interface IGameEvent

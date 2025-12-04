@@ -129,7 +129,7 @@ public class ImageLayerProcessor
             Entity entity = world.Create(imageLayerComponent);
 
             // Add ParentOf relationship - map is parent of image layers
-            mapInfoEntity.AddRelationship<ParentOf>(entity, new ParentOf());
+            mapInfoEntity.AddRelationship(entity, new ParentOf());
 
             _logger?.LogDebug(
                 "Created image layer '{LayerName}' with texture '{TextureId}' at ({X}, {Y}) depth {Depth:F2}",

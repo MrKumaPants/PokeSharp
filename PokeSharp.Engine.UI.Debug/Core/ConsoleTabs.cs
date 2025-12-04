@@ -41,12 +41,7 @@ public static class ConsoleTabs
         Keys.D7
     );
 
-    public static readonly TabDefinition Stats = new(
-        7,
-        "Stats",
-        ["stats", "stat", "s"],
-        Keys.D8
-    );
+    public static readonly TabDefinition Stats = new(7, "Stats", ["stats", "stat", "s"], Keys.D8);
 
     /// <summary>
     ///     All tab definitions in order.

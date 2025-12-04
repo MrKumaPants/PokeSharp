@@ -1,9 +1,9 @@
 // Weather System Script - Example Test Mod
 // Publishes weather events that other mods can react to
 
-using PokeSharp.Game.Scripting.Runtime;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Events.System;
+using PokeSharp.Game.Scripting.Runtime;
 
 public class WeatherScript : ScriptBase
 {
@@ -29,23 +29,26 @@ public class WeatherScript : ScriptBase
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         // Subscribe to game tick
-        On<TickEvent>(evt =>
-        {
-            _tickCount++;
-
-            // Toggle rain every 300 ticks (5 seconds at 60 FPS)
-            if (_tickCount % 300 == 0)
+        On<TickEvent>(
+            evt =>
             {
-                if (!_isRaining)
+                _tickCount++;
+
+                // Toggle rain every 300 ticks (5 seconds at 60 FPS)
+                if (_tickCount % 300 == 0)
                 {
-                    StartRain();
+                    if (!_isRaining)
+                    {
+                        StartRain();
+                    }
+                    else
+                    {
+                        StopRain();
+                    }
                 }
-                else
-                {
-                    StopRain();
-                }
-            }
-        }, priority: 500);
+            },
+            priority: 500
+        );
     }
 
     private void StartRain()
@@ -58,11 +61,7 @@ public class WeatherScript : ScriptBase
             intensity
         );
 
-        Publish(new RainStartedEvent
-        {
-            Intensity = intensity,
-            MapId = "route_1"
-        });
+        Publish(new RainStartedEvent { Intensity = intensity, MapId = "route_1" });
     }
 
     private void StopRain()
@@ -71,9 +70,6 @@ public class WeatherScript : ScriptBase
 
         Context.Logger?.LogInformation("[WeatherScript] Rain stopped");
 
-        Publish(new RainStoppedEvent
-        {
-            MapId = "route_1"
-        });
+        Publish(new RainStoppedEvent { MapId = "route_1" });
     }
 }

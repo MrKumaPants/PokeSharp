@@ -270,12 +270,12 @@ public struct MovementBlockedEvent : IMovementEvent, IPostEvent
 /// </summary>
 public enum BlockReason
 {
-    Collision,      // Solid obstacle
-    OutOfBounds,    // Map boundary
-    Locked,         // Movement locked (cutscene, menu)
-    Elevation,      // Wrong elevation
-    Behavior,       // Tile behavior blocked
-    Custom          // Mod-defined reason
+    Collision, // Solid obstacle
+    OutOfBounds, // Map boundary
+    Locked, // Movement locked (cutscene, menu)
+    Elevation, // Wrong elevation
+    Behavior, // Tile behavior blocked
+    Custom, // Mod-defined reason
 }
 
 /// <summary>
@@ -358,10 +358,10 @@ public struct CollisionOccurredEvent : ICollisionEvent, IPostEvent
 /// </summary>
 public enum CollisionType
 {
-    Entity,         // Collided with another entity
-    Tile,           // Collided with solid tile
-    Boundary,       // Hit map boundary
-    Elevation       // Wrong elevation
+    Entity, // Collided with another entity
+    Tile, // Collided with solid tile
+    Boundary, // Hit map boundary
+    Elevation, // Wrong elevation
 }
 
 #endregion

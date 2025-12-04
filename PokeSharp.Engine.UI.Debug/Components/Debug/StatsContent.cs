@@ -3,7 +3,6 @@ using Microsoft.Xna.Framework.Input;
 using PokeSharp.Engine.UI.Debug.Components.Base;
 using PokeSharp.Engine.UI.Debug.Components.Controls;
 using PokeSharp.Engine.UI.Debug.Core;
-using PokeSharp.Engine.UI.Debug.Input;
 using PokeSharp.Engine.UI.Debug.Layout;
 
 namespace PokeSharp.Engine.UI.Debug.Components.Debug;
@@ -36,13 +35,11 @@ public class StatsContent : UIComponent
     private const int MaxSystemNameLength = 18;
     private const int TruncatedNameLength = 15;
 
-    // Layout values from theme (accessed dynamically for theme switching)
-    private int SectionSpacing => ThemeManager.Current.SectionSpacing;
-    private int GcColumnWidth => ThemeManager.Current.TableColumnWidth;
-    private int ScrollSpeed => ThemeManager.Current.ScrollSpeed;
-
     // Sparkline component for frame time history
     private readonly Sparkline _frameTimeSparkline;
+
+    // Scrolling support
+    private readonly ScrollbarComponent _scrollbar = new();
 
     // Cached stats
     private StatsData _cachedStats = new();
@@ -60,9 +57,6 @@ public class StatsContent : UIComponent
     private double _lastUpdateTime;
     private float _lastVisibleHeight;
     private double _refreshIntervalSeconds = 0.033; // ~30fps updates by default
-
-    // Scrolling support
-    private readonly ScrollbarComponent _scrollbar = new();
     private Func<StatsData>? _statsProvider;
     private float _totalContentHeight;
 
@@ -73,6 +67,11 @@ public class StatsContent : UIComponent
         // Create sparkline for frame time history
         _frameTimeSparkline = Sparkline.ForFrameTime(id + "_sparkline");
     }
+
+    // Layout values from theme (accessed dynamically for theme switching)
+    private int SectionSpacing => ThemeManager.Current.SectionSpacing;
+    private int GcColumnWidth => ThemeManager.Current.TableColumnWidth;
+    private int ScrollSpeed => ThemeManager.Current.ScrollSpeed;
 
     public bool HasProvider { get; private set; }
 
@@ -217,7 +216,11 @@ public class StatsContent : UIComponent
         }
 
         // Handle scroll input (mouse wheel and keyboard)
-        if (context.Input != null && Rect.Contains(context.Input.MousePosition) && !_scrollbar.IsDragging)
+        if (
+            context.Input != null
+            && Rect.Contains(context.Input.MousePosition)
+            && !_scrollbar.IsDragging
+        )
         {
             // Mouse wheel scrolling
             _scrollbar.HandleMouseWheel(context.Input, _totalContentHeight, visibleHeight);
@@ -225,11 +228,17 @@ public class StatsContent : UIComponent
             // Keyboard scrolling
             if (context.Input.IsKeyPressedWithRepeat(Keys.PageUp))
             {
-                _scrollbar.ScrollOffset = Math.Max(0, _scrollbar.ScrollOffset - (visibleHeight * 0.8f));
+                _scrollbar.ScrollOffset = Math.Max(
+                    0,
+                    _scrollbar.ScrollOffset - (visibleHeight * 0.8f)
+                );
             }
             else if (context.Input.IsKeyPressedWithRepeat(Keys.PageDown))
             {
-                _scrollbar.ScrollOffset = Math.Min(maxScroll, _scrollbar.ScrollOffset + (visibleHeight * 0.8f));
+                _scrollbar.ScrollOffset = Math.Min(
+                    maxScroll,
+                    _scrollbar.ScrollOffset + (visibleHeight * 0.8f)
+                );
             }
             else if (context.Input.IsKeyPressed(Keys.Home))
             {
@@ -499,25 +508,36 @@ public class StatsContent : UIComponent
         if (_cachedStats.EventPoolCount > 0)
         {
             y += SectionSpacing;
-            
+
             // Separator
-            renderer.DrawRectangle(new LayoutRect(contentX, y, contentWidth, 1), theme.BorderPrimary);
+            renderer.DrawRectangle(
+                new LayoutRect(contentX, y, contentWidth, 1),
+                theme.BorderPrimary
+            );
             y += SectionSpacing;
 
             // Section header
             renderer.DrawText("Event Pools", contentX, y, theme.Info);
             // Show reuse efficiency indicator on the right
             string efficiencyText = $"{_cachedStats.EventPoolAvgReuseRate:P0} reuse";
-            Color efficiencyColor = 
+            Color efficiencyColor =
                 _cachedStats.EventPoolAvgReuseRate >= 0.95 ? theme.Success
                 : _cachedStats.EventPoolAvgReuseRate >= 0.80 ? theme.Warning
                 : theme.Error;
             float efficiencyWidth = renderer.MeasureText(efficiencyText).X;
-            renderer.DrawText(efficiencyText, contentX + contentWidth - efficiencyWidth, y, efficiencyColor);
+            renderer.DrawText(
+                efficiencyText,
+                contentX + contentWidth - efficiencyWidth,
+                y,
+                efficiencyColor
+            );
             y += lineHeight + SectionSpacing;
 
             // Separator
-            renderer.DrawRectangle(new LayoutRect(contentX, y, contentWidth, 1), theme.BorderPrimary);
+            renderer.DrawRectangle(
+                new LayoutRect(contentX, y, contentWidth, 1),
+                theme.BorderPrimary
+            );
             y += SectionSpacing;
 
             // Pool count and allocations
@@ -541,12 +561,13 @@ public class StatsContent : UIComponent
                 float savedWidth = renderer.MeasureText(savedText).X;
                 renderer.DrawText(savedText, contentX + contentWidth - savedWidth, y, savedColor);
             }
+
             y += rowHeight;
 
             // Currently in use (not returned)
             renderer.DrawText("In Flight:", contentX, y, theme.TextSecondary);
             string inUseText = $"{_cachedStats.EventPoolCurrentlyInUse}";
-            Color inUseColor = 
+            Color inUseColor =
                 _cachedStats.EventPoolCurrentlyInUse < 10 ? theme.Success
                 : _cachedStats.EventPoolCurrentlyInUse < 50 ? theme.Warning
                 : theme.Error;
@@ -555,8 +576,14 @@ public class StatsContent : UIComponent
             {
                 string warningText = "Check for leaks!";
                 float warningWidth = renderer.MeasureText(warningText).X;
-                renderer.DrawText(warningText, contentX + contentWidth - warningWidth, y, theme.Warning);
+                renderer.DrawText(
+                    warningText,
+                    contentX + contentWidth - warningWidth,
+                    y,
+                    theme.Warning
+                );
             }
+
             y += rowHeight;
 
             // Most used event type (if available)
@@ -569,11 +596,17 @@ public class StatsContent : UIComponent
                 {
                     eventName = eventName.Substring(0, TruncatedNameLength) + "...";
                 }
+
                 renderer.DrawText(eventName, valueX, y, theme.Info);
                 // Show count on the right
                 string countText = $"{_cachedStats.MostUsedEventRented:N0}x";
                 float countWidth = renderer.MeasureText(countText).X;
-                renderer.DrawText(countText, contentX + contentWidth - countWidth, y, theme.TextPrimary);
+                renderer.DrawText(
+                    countText,
+                    contentX + contentWidth - countWidth,
+                    y,
+                    theme.TextPrimary
+                );
                 y += rowHeight;
             }
         }
@@ -596,7 +629,6 @@ public class StatsContent : UIComponent
             _scrollbar.Draw(renderer, theme, scrollbarRect, _totalContentHeight, visibleHeight);
         }
     }
-
 
     private void DrawProgressBar(
         UIRenderer renderer,

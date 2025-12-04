@@ -60,8 +60,12 @@ public interface IEventInspectorOperations
     /// <summary>
     ///     Gets consolidated statistics about tracked events.
     /// </summary>
-    (int EventCount, int TotalSubscribers, double SlowestEventMs, string SlowestEventName)
-        GetStatistics();
+    (
+        int EventCount,
+        int TotalSubscribers,
+        double SlowestEventMs,
+        string SlowestEventName
+    ) GetStatistics();
 
     /// <summary>
     ///     Gets the current event inspector data including all event types.

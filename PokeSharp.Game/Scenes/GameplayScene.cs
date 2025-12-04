@@ -20,6 +20,7 @@ namespace PokeSharp.Game.Scenes;
 /// </summary>
 public class GameplayScene : SceneBase
 {
+    private readonly EventInspectorOverlay? _eventInspectorOverlay;
     private readonly IGameInitializer _gameInitializer;
     private readonly IGameTimeService _gameTime;
     private readonly InputManager _inputManager;
@@ -29,7 +30,6 @@ public class GameplayScene : SceneBase
     private readonly SceneManager? _sceneManager;
     private readonly SystemManager _systemManager;
     private readonly World _world;
-    private readonly EventInspectorOverlay? _eventInspectorOverlay;
 
     /// <summary>
     ///     Initializes a new instance of the GameplayScene class.
@@ -90,10 +90,7 @@ public class GameplayScene : SceneBase
         IEventBus? eventBus = services.GetService<IEventBus>();
         if (eventBus is EventBus concreteEventBus)
         {
-            _eventInspectorOverlay = new EventInspectorOverlay(
-                graphicsDevice,
-                concreteEventBus
-            );
+            _eventInspectorOverlay = new EventInspectorOverlay(graphicsDevice, concreteEventBus);
             logger.LogInformation("Event Inspector initialized (F9 to toggle)");
         }
 

@@ -11,9 +11,8 @@ namespace PokeSharp.Engine.UI.Debug.Components.Controls;
 /// </summary>
 public class ScrollbarComponent
 {
-    private bool _isDragging;
-    private int _dragStartY;
     private float _dragStartOffset;
+    private int _dragStartY;
 
     /// <summary>
     ///     Current scroll offset (0 = top).
@@ -23,7 +22,7 @@ public class ScrollbarComponent
     /// <summary>
     ///     Whether the scrollbar is currently being dragged.
     /// </summary>
-    public bool IsDragging => _isDragging;
+    public bool IsDragging { get; private set; }
 
     /// <summary>
     ///     Handles scrollbar input interactions including dragging and clicking.
@@ -54,14 +53,24 @@ public class ScrollbarComponent
         float oldOffset = ScrollOffset;
 
         // Calculate thumb dimensions
-        float thumbHeight = CalculateThumbHeight(contentHeight, visibleHeight, trackRect.Height, theme);
-        float thumbY = CalculateThumbPosition(maxScroll, trackRect.Y, trackRect.Height, thumbHeight);
+        float thumbHeight = CalculateThumbHeight(
+            contentHeight,
+            visibleHeight,
+            trackRect.Height,
+            theme
+        );
+        float thumbY = CalculateThumbPosition(
+            maxScroll,
+            trackRect.Y,
+            trackRect.Height,
+            thumbHeight
+        );
 
         var thumbRect = new LayoutRect(trackRect.X, thumbY, trackRect.Width, thumbHeight);
         bool isOverScrollbar = trackRect.Contains(input.MousePosition);
 
         // Handle dragging (continues even outside bounds due to input capture)
-        if (_isDragging)
+        if (IsDragging)
         {
             if (input.IsMouseButtonDown(MouseButton.Left))
             {
@@ -75,7 +84,7 @@ public class ScrollbarComponent
             // Handle mouse release (end drag)
             if (input.IsMouseButtonReleased(MouseButton.Left))
             {
-                _isDragging = false;
+                IsDragging = false;
                 context.ReleaseCapture();
             }
         }
@@ -89,7 +98,7 @@ public class ScrollbarComponent
             if (thumbRect.Contains(input.MousePosition))
             {
                 // Start dragging the thumb
-                _isDragging = true;
+                IsDragging = true;
                 _dragStartY = input.MousePosition.Y;
                 _dragStartOffset = ScrollOffset;
             }
@@ -101,7 +110,7 @@ public class ScrollbarComponent
                 ScrollOffset = Math.Clamp(targetScroll, 0, maxScroll);
 
                 // Also start dragging from this new position
-                _isDragging = true;
+                IsDragging = true;
                 _dragStartY = input.MousePosition.Y;
                 _dragStartOffset = ScrollOffset;
             }
@@ -133,13 +142,23 @@ public class ScrollbarComponent
         renderer.DrawRectangle(trackRect, theme.ScrollbarTrack);
 
         // Calculate thumb dimensions
-        float thumbHeight = CalculateThumbHeight(contentHeight, visibleHeight, trackRect.Height, theme);
+        float thumbHeight = CalculateThumbHeight(
+            contentHeight,
+            visibleHeight,
+            trackRect.Height,
+            theme
+        );
         float maxScroll = Math.Max(0, contentHeight - visibleHeight);
-        float thumbY = CalculateThumbPosition(maxScroll, trackRect.Y, trackRect.Height, thumbHeight);
+        float thumbY = CalculateThumbPosition(
+            maxScroll,
+            trackRect.Y,
+            trackRect.Height,
+            thumbHeight
+        );
 
         // Draw thumb
         var thumbRect = new LayoutRect(trackRect.X, thumbY, trackRect.Width, thumbHeight);
-        Color thumbColor = _isDragging ? theme.ScrollbarThumbHover : theme.ScrollbarThumb;
+        Color thumbColor = IsDragging ? theme.ScrollbarThumbHover : theme.ScrollbarThumb;
         renderer.DrawRectangle(thumbRect, thumbColor);
     }
 
@@ -232,7 +251,7 @@ public class ScrollbarComponent
     public void Reset()
     {
         ScrollOffset = 0;
-        _isDragging = false;
+        IsDragging = false;
     }
 
     /// <summary>
@@ -297,4 +316,3 @@ public class ScrollbarComponent
         return trackY + (scrollRatio * (trackHeight - thumbHeight));
     }
 }
-

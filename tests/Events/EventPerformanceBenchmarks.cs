@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
-using NUnit.Framework;
 using FluentAssertions;
+using NUnit.Framework;
 using PokeSharp.Engine.Core.Events;
 using PokeSharp.Engine.Core.Types.Events;
 
@@ -58,12 +58,18 @@ public class EventPerformanceBenchmarks
 
         // At 60fps, we have 16.67ms per frame. Event system should use < 5ms
         var elapsedMs = stopwatch.Elapsed.TotalMilliseconds;
-        elapsedMs.Should().BeLessThan(5.0,
-            "10,000 events should process in < 5ms (leaves 11.67ms for game logic at 60fps)");
+        elapsedMs
+            .Should()
+            .BeLessThan(
+                5.0,
+                "10,000 events should process in < 5ms (leaves 11.67ms for game logic at 60fps)"
+            );
 
         TestContext.WriteLine($"✓ Stress Test Results:");
         TestContext.WriteLine($"  Total time: {elapsedMs:F3}ms");
-        TestContext.WriteLine($"  Per event: {elapsedMs / 10_000:F6}ms ({(elapsedMs * 1000) / 10_000:F3}μs)");
+        TestContext.WriteLine(
+            $"  Per event: {elapsedMs / 10_000:F6}ms ({(elapsedMs * 1000) / 10_000:F3}μs)"
+        );
         TestContext.WriteLine($"  Frame budget remaining: {16.67 - elapsedMs:F2}ms @ 60fps");
     }
 
@@ -107,11 +113,14 @@ public class EventPerformanceBenchmarks
         TestContext.WriteLine($"  Iterations: {iterations:N0}");
         TestContext.WriteLine($"  Total time: {totalMs:F2}ms");
         TestContext.WriteLine($"  Avg publish: {avgMicrosecondsPerPublish:F3}μs");
-        TestContext.WriteLine($"  Handlers called: {handler1Count + handler2Count + handler3Count:N0}");
+        TestContext.WriteLine(
+            $"  Handlers called: {handler1Count + handler2Count + handler3Count:N0}"
+        );
 
         // Target: <1μs, but allow up to 10μs for debug builds
-        avgMicrosecondsPerPublish.Should().BeLessThan(10.0,
-            "average publish time should be efficient");
+        avgMicrosecondsPerPublish
+            .Should()
+            .BeLessThan(10.0, "average publish time should be efficient");
 
         // Log pass/fail against strict target
         if (avgMicrosecondsPerPublish < 1.0)
@@ -120,7 +129,9 @@ public class EventPerformanceBenchmarks
         }
         else
         {
-            TestContext.WriteLine($"  ⚠ Above strict target (<1μs) but acceptable for debug builds");
+            TestContext.WriteLine(
+                $"  ⚠ Above strict target (<1μs) but acceptable for debug builds"
+            );
         }
     }
 
@@ -159,12 +170,15 @@ public class EventPerformanceBenchmarks
         TestContext.WriteLine($"✓ Invoke Performance:");
         TestContext.WriteLine($"  Iterations: {iterations:N0}");
         TestContext.WriteLine($"  Total time: {totalMs:F2}ms");
-        TestContext.WriteLine($"  Avg invoke: {avgNanosecondsPerInvoke:F0}ns ({avgMicrosecondsPerInvoke:F3}μs)");
+        TestContext.WriteLine(
+            $"  Avg invoke: {avgNanosecondsPerInvoke:F0}ns ({avgMicrosecondsPerInvoke:F3}μs)"
+        );
         TestContext.WriteLine($"  Handler calls: {count:N0}");
 
         // Target: <0.5μs (500ns), but allow up to 5μs for debug builds
-        avgMicrosecondsPerInvoke.Should().BeLessThan(5.0,
-            "average invoke time should be very fast");
+        avgMicrosecondsPerInvoke
+            .Should()
+            .BeLessThan(5.0, "average invoke time should be very fast");
 
         // Log pass/fail against strict target
         if (avgMicrosecondsPerInvoke < 0.5)
@@ -173,7 +187,9 @@ public class EventPerformanceBenchmarks
         }
         else
         {
-            TestContext.WriteLine($"  ⚠ Above strict target (<0.5μs) but acceptable for debug builds");
+            TestContext.WriteLine(
+                $"  ⚠ Above strict target (<0.5μs) but acceptable for debug builds"
+            );
         }
     }
 
@@ -218,8 +234,12 @@ public class EventPerformanceBenchmarks
         TestContext.WriteLine($"  Gen0 collections: {gen0Collections}");
 
         // Allow minimal allocations from ConcurrentDictionary overhead
-        allocatedBytes.Should().BeLessThan(1024 * 100,
-            "hot path should have minimal allocations (< 100KB for 100K events)");
+        allocatedBytes
+            .Should()
+            .BeLessThan(
+                1024 * 100,
+                "hot path should have minimal allocations (< 100KB for 100K events)"
+            );
 
         if (allocatedBytes == 0)
         {
@@ -279,7 +299,9 @@ public class EventPerformanceBenchmarks
 
         foreach (var (subs, ms, us) in results)
         {
-            TestContext.WriteLine($"  {subs,11} | {ms,8:F2}ms | {us,6:F3}μs | {subs * 10_000,13:N0}");
+            TestContext.WriteLine(
+                $"  {subs, 11} | {ms, 8:F2}ms | {us, 6:F3}μs | {subs * 10_000, 13:N0}"
+            );
         }
 
         // Assert linear scaling (not exponential)
@@ -290,8 +312,9 @@ public class EventPerformanceBenchmarks
 
         // Time should scale roughly linearly with subscriber count
         // Allow 2x overhead for ConcurrentDictionary/locking overhead
-        timeRatio.Should().BeLessThan(subscriberRatio * 2,
-            "time should scale linearly with subscriber count");
+        timeRatio
+            .Should()
+            .BeLessThan(subscriberRatio * 2, "time should scale linearly with subscriber count");
 
         TestContext.WriteLine($"  Subscriber ratio: {subscriberRatio:F1}x");
         TestContext.WriteLine($"  Time ratio: {timeRatio:F1}x");

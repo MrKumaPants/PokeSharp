@@ -1,4 +1,5 @@
 using PokeSharp.Game.Components.Movement;
+using PokeSharp.Game.Components.Tiles;
 using PokeSharp.Game.Scripting.Runtime;
 using PokeSharp.Game.Systems.Events;
 
@@ -8,29 +9,48 @@ using PokeSharp.Game.Systems.Events;
 /// </summary>
 public class JumpNorthBehavior : ScriptBase
 {
+    private (int X, int Y) tilePosition;
+
+    public override void Initialize(ScriptContext ctx)
+    {
+        base.Initialize(ctx);
+
+        // Cache the tile's position
+        if (ctx.Entity.HasValue && ctx.Entity.Value.Has<TilePosition>())
+        {
+            var pos = ctx.Entity.Value.Get<TilePosition>();
+            tilePosition = (pos.X, pos.Y);
+        }
+    }
+
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         // Block movement from south (can't climb up the ledge)
-        On<MovementStartedEvent>((evt) =>
+        On<CollisionCheckEvent>(evt =>
         {
-            // If on this tile trying to move south, block it (can't go back down the ledge from wrong side)
-            if (evt.Direction == Direction.South)
+            // Only apply to OUR tile and when moving from south
+            if (evt.TilePosition == tilePosition && evt.FromDirection == Direction.South)
             {
-                Context.Logger.LogDebug("Jump north tile: Blocking movement to south - can't enter from north side");
-                evt.PreventDefault("Can't move in that direction");
+                evt.PreventDefault("Can't climb up the ledge");
             }
         });
 
         // Handle jump effect when moving north onto this tile
-        On<MovementCompletedEvent>((evt) =>
-        {
-            // If player just moved north onto this tile, trigger jump
-            if (evt.Direction == Direction.North)
+        On<MovementCompletedEvent>(
+            (evt) =>
             {
-                Context.Logger.LogDebug("Jump north tile: Player jumped north onto ledge");
-                // Jump animation/effect would go here if API existed
+                // Check if entity is on our tile after movement
+                if (evt.Entity.Has<TilePosition>())
+                {
+                    var pos = evt.Entity.Get<TilePosition>();
+                    if (pos.X == tilePosition.X && pos.Y == tilePosition.Y && evt.Direction == Direction.North)
+                    {
+                        Context.Logger.LogDebug("Jump north tile: Entity jumped north onto ledge");
+                        // Jump animation/effect would go here if API existed
+                    }
+                }
             }
-        });
+        );
     }
 }
 

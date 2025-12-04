@@ -11,7 +11,6 @@ namespace PokeSharp.Engine.Core.Events;
 ///     2. Handlers can inspect and potentially cancel the event
 ///     3. Source system checks IsCancelled before proceeding
 ///     4. If cancelled, the action is blocked and a *BlockedEvent may be published instead
-///
 ///     Example flow:
 ///     - MovementStartedEvent (cancellable) -> if cancelled -> MovementBlockedEvent
 ///     - CollisionCheckEvent (cancellable) -> if cancelled -> custom collision response

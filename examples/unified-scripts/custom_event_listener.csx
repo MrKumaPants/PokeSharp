@@ -2,11 +2,11 @@
 // Example demonstrating custom event listening
 // Listens for LedgeJumpedEvent and plays special effects/achievements
 
-using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Scripting.Events;
-using PokeSharp.Core.Components;
 using System;
 using System.Numerics;
+using PokeSharp.Core.Components;
+using PokeSharp.Game.Scripting.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 // This script listens for the custom LedgeJumpedEvent published by ledge_jump_unified.csx
 public class LedgeJumpListenerScript : ScriptBase
@@ -17,12 +17,15 @@ public class LedgeJumpListenerScript : ScriptBase
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         // Listen for custom LedgeJumpedEvent
-        On<LedgeJumpedEvent>(evt => {
+        On<LedgeJumpedEvent>(evt =>
+        {
             totalJumps++;
 
-            ctx.Logger.Info($"Ledge Jump Listener: Jump #{totalJumps} detected! " +
-                           $"Direction: {evt.JumpDirection}, " +
-                           $"From: {evt.StartPosition} To: {evt.LandingPosition}");
+            ctx.Logger.Info(
+                $"Ledge Jump Listener: Jump #{totalJumps} detected! "
+                    + $"Direction: {evt.JumpDirection}, "
+                    + $"From: {evt.StartPosition} To: {evt.LandingPosition}"
+            );
 
             // Play special effect for jump
             PlayJumpEffect(evt);
@@ -31,15 +34,18 @@ public class LedgeJumpListenerScript : ScriptBase
             CheckJumpAchievement();
 
             // Example: Special behavior for consecutive jumps
-            if (totalJumps % 5 == 0) {
+            if (totalJumps % 5 == 0)
+            {
                 ctx.Effects.PlaySound("milestone");
                 ctx.Logger.Info($"Ledge Jump Listener: {totalJumps} jumps milestone!");
             }
         });
 
         // Example: Listen for multiple event types
-        On<MovementCompletedEvent>(evt => {
-            if (ctx.Player.IsPlayerEntity(evt.Entity)) {
+        On<MovementCompletedEvent>(evt =>
+        {
+            if (ctx.Player.IsPlayerEntity(evt.Entity))
+            {
                 // Could track total movement for statistics
                 ctx.Logger.Debug("Ledge Jump Listener: Player movement detected");
             }
@@ -52,12 +58,13 @@ public class LedgeJumpListenerScript : ScriptBase
         ctx.Effects.PlayEffect("jump_trail", evt.LandingPosition);
 
         // Different sounds based on jump direction
-        var soundName = evt.JumpDirection switch {
+        var soundName = evt.JumpDirection switch
+        {
             Direction.Down => "jump_down",
             Direction.Up => "jump_up",
             Direction.Left => "jump_left",
             Direction.Right => "jump_right",
-            _ => "jump"
+            _ => "jump",
         };
 
         ctx.Effects.PlaySound(soundName);
@@ -65,8 +72,11 @@ public class LedgeJumpListenerScript : ScriptBase
 
     private void CheckJumpAchievement()
     {
-        if (totalJumps == ACHIEVEMENT_THRESHOLD) {
-            ctx.Logger.Info($"Ledge Jump Listener: ACHIEVEMENT UNLOCKED - {ACHIEVEMENT_THRESHOLD} Jumps!");
+        if (totalJumps == ACHIEVEMENT_THRESHOLD)
+        {
+            ctx.Logger.Info(
+                $"Ledge Jump Listener: ACHIEVEMENT UNLOCKED - {ACHIEVEMENT_THRESHOLD} Jumps!"
+            );
             ctx.Effects.PlaySound("achievement");
             ctx.Effects.FlashScreen(Color.Gold, duration: 0.5f);
 

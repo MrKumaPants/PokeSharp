@@ -118,69 +118,77 @@ public class MapMetadataFactory
         // Add optional string components
         if (!string.IsNullOrEmpty(mapDef.MusicId))
         {
-            mapInfoEntity.Add<Music>(new Music(mapDef.MusicId));
+            mapInfoEntity.Add(new Music(mapDef.MusicId));
         }
 
         if (!string.IsNullOrEmpty(mapDef.MapType))
         {
-            mapInfoEntity.Add<MapType>(new MapType(mapDef.MapType));
+            mapInfoEntity.Add(new MapType(mapDef.MapType));
         }
 
         if (!string.IsNullOrEmpty(mapDef.RegionMapSection))
         {
-            mapInfoEntity.Add<RegionSection>(new RegionSection(mapDef.RegionMapSection));
+            mapInfoEntity.Add(new RegionSection(mapDef.RegionMapSection));
         }
 
         // Add flag components based on bool properties
         if (mapDef.ShowMapName)
         {
-            mapInfoEntity.Add<ShowMapNameOnEntry>(new ShowMapNameOnEntry());
+            mapInfoEntity.Add<ShowMapNameOnEntry>();
         }
 
         if (mapDef.CanFly)
         {
-            mapInfoEntity.Add<CanFlyToMap>(new CanFlyToMap());
+            mapInfoEntity.Add<CanFlyToMap>();
         }
 
         if (mapDef.RequiresFlash)
         {
-            mapInfoEntity.Add<RequiresFlash>(new RequiresFlash());
+            mapInfoEntity.Add<RequiresFlash>();
         }
 
         if (mapDef.AllowRunning)
         {
-            mapInfoEntity.Add<AllowRunning>(new AllowRunning());
+            mapInfoEntity.Add<AllowRunning>();
         }
 
         if (mapDef.AllowCycling)
         {
-            mapInfoEntity.Add<AllowCycling>(new AllowCycling());
+            mapInfoEntity.Add<AllowCycling>();
         }
 
         if (mapDef.AllowEscaping)
         {
-            mapInfoEntity.Add<AllowEscaping>(new AllowEscaping());
+            mapInfoEntity.Add<AllowEscaping>();
         }
 
         // Add map connection components
         if (mapDef.NorthMapId != null)
         {
-            mapInfoEntity.Add<NorthConnection>(new NorthConnection(mapDef.NorthMapId.Value, mapDef.NorthConnectionOffset));
+            mapInfoEntity.Add(
+                new NorthConnection(mapDef.NorthMapId.Value, mapDef.NorthConnectionOffset)
+            );
         }
 
         if (mapDef.SouthMapId != null)
         {
-            mapInfoEntity.Add<SouthConnection>(new SouthConnection(mapDef.SouthMapId.Value, mapDef.SouthConnectionOffset));
+            mapInfoEntity.Add(
+                new SouthConnection(mapDef.SouthMapId.Value, mapDef.SouthConnectionOffset)
+            );
         }
 
         if (mapDef.EastMapId != null)
         {
-            mapInfoEntity.Add<EastConnection>(new EastConnection(mapDef.EastMapId.Value, mapDef.EastConnectionOffset));
+            mapInfoEntity.Add(
+                new EastConnection(mapDef.EastMapId.Value, mapDef.EastConnectionOffset)
+            );
         }
 
         if (mapDef.WestMapId != null)
         {
-            mapInfoEntity.Add<WestConnection>(new WestConnection(mapDef.WestMapId.Value, mapDef.WestConnectionOffset));
+            mapInfoEntity.Add(
+                new WestConnection(mapDef.WestMapId.Value, mapDef.WestConnectionOffset)
+            );
         }
 
         // Create TilesetInfo if map has tilesets

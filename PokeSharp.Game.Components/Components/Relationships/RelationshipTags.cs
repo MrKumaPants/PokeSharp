@@ -1,6 +1,3 @@
-using Arch.Core;
-using PokeSharp.Engine.Core.Types;
-
 namespace PokeSharp.Game.Components.Relationships;
 
 /// <summary>
@@ -126,5 +123,3 @@ public struct OwnerOf
         Metadata = metadata;
     }
 }
-
-

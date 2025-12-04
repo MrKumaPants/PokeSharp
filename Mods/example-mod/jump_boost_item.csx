@@ -3,8 +3,8 @@
  * Adds an item that temporarily allows jumping over multiple tiles.
  */
 
-using PokeSharp.Game.Scripting.Runtime;
 using PokeSharp.Engine.Core.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 public class JumpBoostItemScript : ScriptBase
 {
@@ -35,7 +35,9 @@ public class JumpBoostItemScript : ScriptBase
         }
 
         isJumpBoostActive = true;
-        Context.Logger.LogInformation($"🚀 Jump Boost activated for {BoostDurationSeconds} seconds!");
+        Context.Logger.LogInformation(
+            $"🚀 Jump Boost activated for {BoostDurationSeconds} seconds!"
+        );
 
         // Play activation sound
         Context.Api.Audio.PlaySound("power_up");

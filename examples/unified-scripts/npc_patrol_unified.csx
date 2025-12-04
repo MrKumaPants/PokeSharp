@@ -3,22 +3,23 @@
 // NPC patrols between waypoints with line-of-sight player detection
 // Uses ScriptBase for unified event handling
 
-using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Scripting.Events;
-using PokeSharp.Core.Components;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
+using PokeSharp.Core.Components;
+using PokeSharp.Game.Scripting.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 public class NPCPatrolScript : ScriptBase
 {
     // Configuration
-    public List<Vector2> patrolPoints = new List<Vector2> {
+    public List<Vector2> patrolPoints = new List<Vector2>
+    {
         new Vector2(5, 5),
         new Vector2(10, 5),
         new Vector2(10, 10),
-        new Vector2(5, 10)
+        new Vector2(5, 10),
     };
 
     public float waitTimeAtPoint = 2.0f; // Seconds to wait at each point
@@ -46,8 +47,10 @@ public class NPCPatrolScript : ScriptBase
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         // React to NPC movement completion
-        On<MovementCompletedEvent>(evt => {
-            if (evt.Entity != npcEntity) return;
+        On<MovementCompletedEvent>(evt =>
+        {
+            if (evt.Entity != npcEntity)
+                return;
 
             ctx.Logger.Info($"NPC Patrol: Reached waypoint {currentIndex} at {evt.NewPosition}");
 
@@ -56,8 +59,10 @@ public class NPCPatrolScript : ScriptBase
         });
 
         // Handle blocked movement
-        On<MovementBlockedEvent>(evt => {
-            if (evt.Entity != npcEntity) return;
+        On<MovementBlockedEvent>(evt =>
+        {
+            if (evt.Entity != npcEntity)
+                return;
 
             ctx.Logger.Info("NPC Patrol: Movement blocked, skipping to next waypoint");
 
@@ -67,9 +72,12 @@ public class NPCPatrolScript : ScriptBase
         });
 
         // Detect player movement for line-of-sight
-        if (detectPlayer) {
-            On<MovementCompletedEvent>(evt => {
-                if (ctx.Player.IsPlayerEntity(evt.Entity)) {
+        if (detectPlayer)
+        {
+            On<MovementCompletedEvent>(evt =>
+            {
+                if (ctx.Player.IsPlayerEntity(evt.Entity))
+                {
                     CheckPlayerDetection(evt.Entity);
                 }
             });
@@ -79,10 +87,12 @@ public class NPCPatrolScript : ScriptBase
     public override void OnTick(ScriptContext ctx, float deltaTime)
     {
         // Use polling for wait timer
-        if (isWaiting) {
+        if (isWaiting)
+        {
             waitTimer -= deltaTime;
 
-            if (waitTimer <= 0) {
+            if (waitTimer <= 0)
+            {
                 isWaiting = false;
                 ctx.Logger.Info("NPC Patrol: Wait complete, moving to next waypoint");
                 MoveToNextPoint();
@@ -113,14 +123,16 @@ public class NPCPatrolScript : ScriptBase
 
     private void CheckPlayerDetection(Entity player)
     {
-        if (!detectPlayer || isWaiting) return;
+        if (!detectPlayer || isWaiting)
+            return;
 
         var npcPos = npcEntity.Get<Position>().Value;
         var playerPos = player.Get<Position>().Value;
         var npcFacing = npcEntity.Get<Facing>().Direction;
 
         // Check if player is in line of sight
-        if (IsInLineOfSight(npcPos, playerPos, npcFacing)) {
+        if (IsInLineOfSight(npcPos, playerPos, npcFacing))
+        {
             ctx.Logger.Info("NPC Patrol: Player detected in line of sight!");
             TriggerBattle(player);
         }
@@ -131,15 +143,17 @@ public class NPCPatrolScript : ScriptBase
         var diff = playerPos - npcPos;
 
         // Check if player is in front of NPC
-        bool inFront = facing switch {
+        bool inFront = facing switch
+        {
             Direction.Up => diff.Y < 0 && Math.Abs(diff.X) == 0,
             Direction.Down => diff.Y > 0 && Math.Abs(diff.X) == 0,
             Direction.Left => diff.X < 0 && Math.Abs(diff.Y) == 0,
             Direction.Right => diff.X > 0 && Math.Abs(diff.Y) == 0,
-            _ => false
+            _ => false,
         };
 
-        if (!inFront) return false;
+        if (!inFront)
+            return false;
 
         // Check if within detection range
         var distance = Math.Abs(diff.X + diff.Y);
@@ -162,10 +176,12 @@ public class NPCPatrolScript : ScriptBase
         WalkTowardsPlayer(player);
 
         // Start battle after walking
-        Task.Delay(1000).ContinueWith(_ => {
-            ctx.GameState.StartTrainerBattle(npcEntity);
-            ctx.Logger.Info("NPC Patrol: Trainer battle started");
-        });
+        Task.Delay(1000)
+            .ContinueWith(_ =>
+            {
+                ctx.GameState.StartTrainerBattle(npcEntity);
+                ctx.Logger.Info("NPC Patrol: Trainer battle started");
+            });
     }
 
     private void WalkTowardsPlayer(Entity player)
@@ -202,21 +218,25 @@ public class NPCPatrolScript : ScriptBase
     {
         var diff = to - from;
 
-        if (Math.Abs(diff.X) > Math.Abs(diff.Y)) {
+        if (Math.Abs(diff.X) > Math.Abs(diff.Y))
+        {
             return diff.X > 0 ? Direction.Right : Direction.Left;
-        } else {
+        }
+        else
+        {
             return diff.Y > 0 ? Direction.Down : Direction.Up;
         }
     }
 
     private Vector2 GetDirectionOffset(Direction direction)
     {
-        return direction switch {
+        return direction switch
+        {
             Direction.Up => new Vector2(0, -1),
             Direction.Down => new Vector2(0, 1),
             Direction.Left => new Vector2(-1, 0),
             Direction.Right => new Vector2(1, 0),
-            _ => Vector2.Zero
+            _ => Vector2.Zero,
         };
     }
 }

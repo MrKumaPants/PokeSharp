@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Arch.Core;
-using NUnit.Framework;
 using FluentAssertions;
+using NUnit.Framework;
 using PokeSharp.Engine.Core.Systems;
 
 namespace PokeSharp.EcsEvents.Tests.Integration;
@@ -53,8 +53,12 @@ public class SystemDecouplingTests
         _systemManager.Update(_world, 0.016f);
 
         // Assert
-        collisionSystem.HandledCollisionChecks.Should().BeGreaterThan(0,
-            "collision system should receive collision check events from movement");
+        collisionSystem
+            .HandledCollisionChecks.Should()
+            .BeGreaterThan(
+                0,
+                "collision system should receive collision check events from movement"
+            );
     }
 
     [Test]
@@ -68,11 +72,7 @@ public class SystemDecouplingTests
         _eventBus.Subscribe<MovementBlockedEvent>(evt => movementBlocked = true);
 
         // Act
-        _eventBus.Publish(new CollisionCheckEvent
-        {
-            Entity = _world.Create(),
-            IsBlocked = true
-        });
+        _eventBus.Publish(new CollisionCheckEvent { Entity = _world.Create(), IsBlocked = true });
 
         collisionSystem.ProcessCollisions();
 
@@ -104,12 +104,14 @@ public class SystemDecouplingTests
         collisionSystem.Update(_world, 0.016f);
 
         // Assert - Verify event sequence
-        eventLog.Should().ContainInOrder(
-            typeof(InputEvent),
-            typeof(MoveCommandEvent),
-            typeof(CollisionCheckEvent),
-            typeof(PositionUpdateEvent)
-        );
+        eventLog
+            .Should()
+            .ContainInOrder(
+                typeof(InputEvent),
+                typeof(MoveCommandEvent),
+                typeof(CollisionCheckEvent),
+                typeof(PositionUpdateEvent)
+            );
     }
 
     [Test]
@@ -120,32 +122,27 @@ public class SystemDecouplingTests
         var warpSystem = new EventDrivenWarpSystem(_eventBus);
         var mapSystem = new EventDrivenMapSystem(_eventBus);
 
-        _eventBus.Subscribe<WarpTriggeredEvent>(evt =>
-            eventLog.Add($"Warp to {evt.TargetMap}"));
-        _eventBus.Subscribe<MapUnloadEvent>(evt =>
-            eventLog.Add($"Unload {evt.MapId}"));
-        _eventBus.Subscribe<MapLoadEvent>(evt =>
-            eventLog.Add($"Load {evt.MapId}"));
+        _eventBus.Subscribe<WarpTriggeredEvent>(evt => eventLog.Add($"Warp to {evt.TargetMap}"));
+        _eventBus.Subscribe<MapUnloadEvent>(evt => eventLog.Add($"Unload {evt.MapId}"));
+        _eventBus.Subscribe<MapLoadEvent>(evt => eventLog.Add($"Load {evt.MapId}"));
 
         var player = _world.Create();
 
         // Act - Trigger warp
-        _eventBus.Publish(new WarpTriggeredEvent
-        {
-            Entity = player,
-            SourceMap = "map1",
-            TargetMap = "map2"
-        });
+        _eventBus.Publish(
+            new WarpTriggeredEvent
+            {
+                Entity = player,
+                SourceMap = "map1",
+                TargetMap = "map2",
+            }
+        );
 
         warpSystem.Update(_world, 0.016f);
         mapSystem.Update(_world, 0.016f);
 
         // Assert
-        eventLog.Should().ContainInOrder(
-            "Warp to map2",
-            "Unload map1",
-            "Load map2"
-        );
+        eventLog.Should().ContainInOrder("Warp to map2", "Unload map1", "Load map2");
     }
 
     #endregion
@@ -165,10 +162,7 @@ public class SystemDecouplingTests
         _eventBus.Subscribe<PlayerStateChangedEvent>(evt => audioEventReceived = true);
 
         // Act
-        _eventBus.Publish(new PlayerStateChangedEvent
-        {
-            State = PlayerState.Running
-        });
+        _eventBus.Publish(new PlayerStateChangedEvent { State = PlayerState.Running });
 
         // Assert
         uiUpdateReceived.Should().BeTrue("UI system should receive state change");
@@ -188,12 +182,14 @@ public class SystemDecouplingTests
 
         // Act
         var npc = _world.Create();
-        _eventBus.Publish(new PathfindingRequestEvent
-        {
-            Entity = npc,
-            Start = new Vector2Int(0, 0),
-            Goal = new Vector2Int(10, 10)
-        });
+        _eventBus.Publish(
+            new PathfindingRequestEvent
+            {
+                Entity = npc,
+                Start = new Vector2Int(0, 0),
+                Goal = new Vector2Int(10, 10),
+            }
+        );
 
         pathfindingSystem.Update(_world, 0.016f);
 
@@ -211,10 +207,7 @@ public class SystemDecouplingTests
         _eventBus.Subscribe<ScriptExecutedEvent>(evt => scriptExecuted = true);
 
         // Act
-        _eventBus.Publish(new TileSteppedEvent
-        {
-            TileScript = "test-behavior.csx"
-        });
+        _eventBus.Publish(new TileSteppedEvent { TileScript = "test-behavior.csx" });
 
         scriptSystem.Update(_world, 0.016f);
 
@@ -310,11 +303,7 @@ public class SystemDecouplingTests
         public void Update(World world, float deltaTime)
         {
             // Publish collision check event
-            _eventBus.Publish(new CollisionCheckEvent
-            {
-                Entity = Entity.Null,
-                IsBlocked = false
-            });
+            _eventBus.Publish(new CollisionCheckEvent { Entity = Entity.Null, IsBlocked = false });
         }
     }
 
@@ -455,6 +444,7 @@ public class SystemDecouplingTests
         public IndependentSystem1(EventBus eventBus) { }
 
         public void Initialize(World world) { }
+
         public void Update(World world, float deltaTime) { }
     }
 
@@ -466,6 +456,7 @@ public class SystemDecouplingTests
         public IndependentSystem2(EventBus eventBus) { }
 
         public void Initialize(World world) { }
+
         public void Update(World world, float deltaTime) { }
     }
 
@@ -590,8 +581,20 @@ public class SystemDecouplingTests
         public object? Sender { get; set; }
     }
 
-    private enum InputKey { Up, Down, Left, Right }
-    private enum PlayerState { Idle, Walking, Running }
+    private enum InputKey
+    {
+        Up,
+        Down,
+        Left,
+        Right,
+    }
+
+    private enum PlayerState
+    {
+        Idle,
+        Walking,
+        Running,
+    }
 
     private record struct Vector2Int(int X, int Y);
 

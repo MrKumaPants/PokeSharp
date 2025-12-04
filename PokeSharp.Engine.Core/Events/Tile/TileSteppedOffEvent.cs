@@ -9,19 +9,15 @@ namespace PokeSharp.Engine.Core.Events.Tile;
 /// <remarks>
 ///     Published by the TileBehaviorSystem after MovementCompletedEvent when the entity
 ///     leaves a tile with active behaviors.
-///
 ///     This event is used for cleanup and state transitions:
 ///     - Stop tile-specific animations (grass rustling stops)
 ///     - Deactivate tile effects (leave ice, stop sliding)
 ///     - Trigger exit behaviors (leave bridge, update appearance)
 ///     - Update entity state (no longer in water, surfing ends)
-///
 ///     The event is published AFTER the entity's position has been updated, so CurrentPosition
 ///     reflects the new tile and TilePosition reflects the previous tile that was exited.
-///
 ///     Unlike TileSteppedOnEvent, this event cannot prevent the exit since the movement
 ///     has already been completed.
-///
 ///     This class supports object pooling via EventPool{T} to reduce allocations.
 /// </remarks>
 public sealed class TileSteppedOffEvent : NotificationEventBase

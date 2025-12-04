@@ -7,7 +7,6 @@ namespace PokeSharp.Engine.Core.Events.System;
 /// <remarks>
 ///     This is a high-frequency event published every frame (60+ times per second).
 ///     Object pooling is essential for this event to avoid GC pressure.
-///
 ///     This class supports object pooling via EventPool{T} to reduce allocations.
 /// </remarks>
 public sealed class TickEvent : NotificationEventBase

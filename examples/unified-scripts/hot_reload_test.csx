@@ -2,11 +2,11 @@
 // Example script demonstrating hot-reload capabilities
 // Edit this file while game is running to see changes immediately
 
-using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Game.Scripting.Events;
-using PokeSharp.Core.Components;
 using System;
 using System.Numerics;
+using PokeSharp.Core.Components;
+using PokeSharp.Game.Scripting.Events;
+using PokeSharp.Game.Scripting.Runtime;
 
 public class HotReloadTestScript : ScriptBase
 {
@@ -27,8 +27,10 @@ public class HotReloadTestScript : ScriptBase
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
-        On<TileSteppedOnEvent>(evt => {
-            if (!ctx.Player.IsPlayerEntity(evt.Entity)) return;
+        On<TileSteppedOnEvent>(evt =>
+        {
+            if (!ctx.Player.IsPlayerEntity(evt.Entity))
+                return;
 
             // Display the welcome message
             ctx.Logger.Info($"[Hot Reload v{version}] {welcomeMessage}");

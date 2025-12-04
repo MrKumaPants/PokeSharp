@@ -1,7 +1,7 @@
-using PokeSharp.Game.Scripting.Runtime;
-using PokeSharp.Engine.Core.Events.Movement;
-using EnhancedLedges.Events;
 using Arch.Core;
+using EnhancedLedges.Events;
+using PokeSharp.Engine.Core.Events.Movement;
+using PokeSharp.Game.Scripting.Runtime;
 
 /// <summary>
 ///     Jump Boost Item behavior - consumable that temporarily increases jump height.
@@ -32,56 +32,72 @@ public class JumpBoostItemBehavior : ScriptBase
         _durationSeconds = ctx.ItemData?.GetFloatProperty("duration_seconds", 30.0f) ?? 30.0f;
         _isConsumable = ctx.ItemData?.GetBoolProperty("consumable", true) ?? true;
 
-        Context.Logger.LogInformation("Jump boost item initialized: multiplier={Multiplier}x, duration={Duration}s", _boostMultiplier, _durationSeconds);
+        Context.Logger.LogInformation(
+            "Jump boost item initialized: multiplier={Multiplier}x, duration={Duration}s",
+            _boostMultiplier,
+            _durationSeconds
+        );
     }
 
     public override void RegisterEventHandlers(ScriptContext ctx)
     {
         // Handle item use/consumption
-        On<ItemUsedEvent>((evt) =>
-        {
-            if (evt.ItemId != Context.ItemData?.ItemId)
+        On<ItemUsedEvent>(
+            (evt) =>
             {
-                return; // Not this item
-            }
+                if (evt.ItemId != Context.ItemData?.ItemId)
+                {
+                    return; // Not this item
+                }
 
-            ActivateBoost(evt.Entity);
+                ActivateBoost(evt.Entity);
 
-            // Consume item if configured
-            if (_isConsumable)
-            {
-                Context.Logger.LogDebug("Jump boost item consumed");
-                // Inventory system would remove the item
+                // Consume item if configured
+                if (_isConsumable)
+                {
+                    Context.Logger.LogDebug("Jump boost item consumed");
+                    // Inventory system would remove the item
+                }
             }
-        });
+        );
 
         // Modify jump behavior when boost is active
-        On<MovementStartedEvent>((evt) =>
-        {
-            if (!IsBoostActive(evt.Entity))
+        On<MovementStartedEvent>(
+            (evt) =>
             {
-                return;
+                if (!IsBoostActive(evt.Entity))
+                {
+                    return;
+                }
+
+                // Check if this is a jump movement (onto a ledge tile)
+                // Would need to query destination tile type
+                var isJumping = IsJumpMovement(evt.ToX, evt.ToY);
+
+                if (isJumping)
+                {
+                    Context.Logger.LogDebug(
+                        "Jump boost active: applying {Multiplier}x multiplier",
+                        _boostMultiplier
+                    );
+
+                    // Modify movement to jump 2 tiles instead of 1
+                    var extendedX = evt.ToX + GetDirectionDeltaX(evt.Direction);
+                    var extendedY = evt.ToY + GetDirectionDeltaY(evt.Direction);
+
+                    Context.Logger.LogInformation(
+                        "Extended jump: ({FromX},{FromY}) -> ({ToX},{ToY})",
+                        evt.ToX,
+                        evt.ToY,
+                        extendedX,
+                        extendedY
+                    );
+
+                    // Note: Would need to update evt.ToX/ToY if events were mutable
+                    // Alternatively, publish a separate JumpExtendedEvent for systems to handle
+                }
             }
-
-            // Check if this is a jump movement (onto a ledge tile)
-            // Would need to query destination tile type
-            var isJumping = IsJumpMovement(evt.ToX, evt.ToY);
-
-            if (isJumping)
-            {
-                Context.Logger.LogDebug("Jump boost active: applying {Multiplier}x multiplier", _boostMultiplier);
-
-                // Modify movement to jump 2 tiles instead of 1
-                var extendedX = evt.ToX + GetDirectionDeltaX(evt.Direction);
-                var extendedY = evt.ToY + GetDirectionDeltaY(evt.Direction);
-
-                Context.Logger.LogInformation("Extended jump: ({FromX},{FromY}) -> ({ToX},{ToY})", evt.ToX, evt.ToY, extendedX, extendedY);
-
-                // Note: Would need to update evt.ToX/ToY if events were mutable
-                // Alternatively, publish a separate JumpExtendedEvent for systems to handle
-            }
-        });
-
+        );
     }
 
     private void ActivateBoost(Entity entity)
@@ -91,17 +107,23 @@ public class JumpBoostItemBehavior : ScriptBase
         // Store boost data in global state (would need entity-specific state in real implementation)
         Context.State.SetFloat($"boost_expires_{entity.Id}", (float)expiresAt.Ticks);
 
-        Context.Logger.LogInformation("Jump boost activated for entity {EntityId}, expires at {ExpiresAt}", entity.Id, expiresAt);
+        Context.Logger.LogInformation(
+            "Jump boost activated for entity {EntityId}, expires at {ExpiresAt}",
+            entity.Id,
+            expiresAt
+        );
 
         // Publish boost activation event
-        Context.Events.Publish(new JumpBoostActivatedEvent
-        {
-            Entity = entity,
-            BoostMultiplier = _boostMultiplier,
-            DurationSeconds = _durationSeconds,
-            BoostSource = "JumpBoostItem",
-            ExpiresAt = expiresAt
-        });
+        Context.Events.Publish(
+            new JumpBoostActivatedEvent
+            {
+                Entity = entity,
+                BoostMultiplier = _boostMultiplier,
+                DurationSeconds = _durationSeconds,
+                BoostSource = "JumpBoostItem",
+                ExpiresAt = expiresAt,
+            }
+        );
     }
 
     private bool IsBoostActive(Entity entity)
@@ -138,8 +160,8 @@ public class JumpBoostItemBehavior : ScriptBase
         return direction switch
         {
             1 => -1, // West
-            2 => 1,  // East
-            _ => 0
+            2 => 1, // East
+            _ => 0,
         };
     }
 
@@ -148,9 +170,9 @@ public class JumpBoostItemBehavior : ScriptBase
         // Direction values: 0=South, 1=West, 2=East, 3=North
         return direction switch
         {
-            0 => 1,  // South
+            0 => 1, // South
             3 => -1, // North
-            _ => 0
+            _ => 0,
         };
     }
 }

@@ -6,9 +6,10 @@ using System.Diagnostics;
 /// Automated test script for validating hot-reload functionality
 /// with event-driven CSX scripts.
 /// </summary>
-public class HotReloadTest : TypeScriptBase {
-
-    public override void Execute(ScriptContext ctx) {
+public class HotReloadTest : TypeScriptBase
+{
+    public override void Execute(ScriptContext ctx)
+    {
         ctx.Log.Info("═══════════════════════════════════════");
         ctx.Log.Info("  Hot-Reload Test Suite");
         ctx.Log.Info("═══════════════════════════════════════");
@@ -29,15 +30,19 @@ public class HotReloadTest : TypeScriptBase {
 
         // Final Report
         ctx.Log.Info("═══════════════════════════════════════");
-        if (allPassed) {
+        if (allPassed)
+        {
             ctx.Log.Info("✅ All hot-reload tests PASSED");
-        } else {
+        }
+        else
+        {
             ctx.Log.Error("❌ Some hot-reload tests FAILED");
         }
         ctx.Log.Info("═══════════════════════════════════════");
     }
 
-    private bool TestReloadPerformance(ScriptContext ctx) {
+    private bool TestReloadPerformance(ScriptContext ctx)
+    {
         ctx.Log.Info("\n[Test 1] Script Reload Performance");
         ctx.Log.Info("───────────────────────────────────────");
 
@@ -45,29 +50,37 @@ public class HotReloadTest : TypeScriptBase {
         var watch = Stopwatch.StartNew();
         var allSucceeded = true;
 
-        foreach (var script in scripts) {
+        foreach (var script in scripts)
+        {
             watch.Restart();
             var result = ctx.Scripting.ReloadScript(script);
             var elapsedMs = watch.ElapsedMilliseconds;
 
-            if (result.Success && elapsedMs < 100) {
+            if (result.Success && elapsedMs < 100)
+            {
                 ctx.Log.Info($"  ✅ {script}: {elapsedMs}ms (PASS)");
-            } else {
+            }
+            else
+            {
                 ctx.Log.Error($"  ❌ {script}: {elapsedMs}ms (FAIL - {result.ErrorMessage})");
                 allSucceeded = false;
             }
         }
 
-        if (allSucceeded) {
+        if (allSucceeded)
+        {
             ctx.Log.Info("  Result: All scripts reload in < 100ms");
             return true;
-        } else {
+        }
+        else
+        {
             ctx.Log.Error("  Result: Some scripts failed or too slow");
             return false;
         }
     }
 
-    private bool TestEventHandlerRegistration(ScriptContext ctx) {
+    private bool TestEventHandlerRegistration(ScriptContext ctx)
+    {
         ctx.Log.Info("\n[Test 2] Event Handler Registration");
         ctx.Log.Info("───────────────────────────────────────");
 
@@ -77,7 +90,8 @@ public class HotReloadTest : TypeScriptBase {
 
         // Reload a script
         var result = ctx.Scripting.ReloadScript("ice_tile.csx");
-        if (!result.Success) {
+        if (!result.Success)
+        {
             ctx.Log.Error($"  ❌ Failed to reload: {result.ErrorMessage}");
             return false;
         }
@@ -87,16 +101,20 @@ public class HotReloadTest : TypeScriptBase {
         ctx.Log.Info($"  After reload count: {afterReloadCount}");
 
         // Handler count should be the same (old removed, new added)
-        if (afterReloadCount == initialCount) {
+        if (afterReloadCount == initialCount)
+        {
             ctx.Log.Info("  ✅ Handler count stable (no accumulation)");
             return true;
-        } else {
+        }
+        else
+        {
             ctx.Log.Error($"  ❌ Handler count changed by {afterReloadCount - initialCount}");
             return false;
         }
     }
 
-    private bool TestMemoryManagement(ScriptContext ctx) {
+    private bool TestMemoryManagement(ScriptContext ctx)
+    {
         ctx.Log.Info("\n[Test 3] Memory Management");
         ctx.Log.Info("───────────────────────────────────────");
 
@@ -110,7 +128,8 @@ public class HotReloadTest : TypeScriptBase {
 
         // Perform multiple reloads
         const int reloadCount = 10;
-        for (int i = 0; i < reloadCount; i++) {
+        for (int i = 0; i < reloadCount; i++)
+        {
             ctx.Scripting.ReloadScript("ice_tile.csx");
         }
 
@@ -126,16 +145,20 @@ public class HotReloadTest : TypeScriptBase {
         ctx.Log.Info($"  Increase: {increaseMB:F2} MB");
 
         // Allow up to 1MB increase per 10 reloads
-        if (increaseMB < 1.0) {
+        if (increaseMB < 1.0)
+        {
             ctx.Log.Info("  ✅ Memory increase acceptable (< 1MB)");
             return true;
-        } else {
+        }
+        else
+        {
             ctx.Log.Error($"  ❌ Memory increase too high ({increaseMB:F2} MB)");
             return false;
         }
     }
 
-    private bool TestCrossScriptReload(ScriptContext ctx) {
+    private bool TestCrossScriptReload(ScriptContext ctx)
+    {
         ctx.Log.Info("\n[Test 4] Cross-Script Reload");
         ctx.Log.Info("───────────────────────────────────────");
 
@@ -143,9 +166,11 @@ public class HotReloadTest : TypeScriptBase {
         var watch = Stopwatch.StartNew();
 
         // Reload both scripts rapidly
-        foreach (var script in scripts) {
+        foreach (var script in scripts)
+        {
             var result = ctx.Scripting.ReloadScript(script);
-            if (!result.Success) {
+            if (!result.Success)
+            {
                 ctx.Log.Error($"  ❌ Failed to reload {script}: {result.ErrorMessage}");
                 return false;
             }
@@ -158,10 +183,13 @@ public class HotReloadTest : TypeScriptBase {
         var iceLoaded = ctx.Scripting.IsScriptLoaded("ice_tile.csx");
         var grassLoaded = ctx.Scripting.IsScriptLoaded("tall_grass.csx");
 
-        if (iceLoaded && grassLoaded) {
+        if (iceLoaded && grassLoaded)
+        {
             ctx.Log.Info("  ✅ Both scripts operational after reload");
             return true;
-        } else {
+        }
+        else
+        {
             ctx.Log.Error("  ❌ One or more scripts not loaded");
             return false;
         }

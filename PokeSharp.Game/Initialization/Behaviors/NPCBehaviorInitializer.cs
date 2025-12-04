@@ -1,4 +1,3 @@
-using Arch.Core;
 using Microsoft.Extensions.Logging;
 using PokeSharp.Engine.Common.Logging;
 using PokeSharp.Engine.Core.Events;

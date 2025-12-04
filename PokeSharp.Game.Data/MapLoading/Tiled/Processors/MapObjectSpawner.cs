@@ -151,7 +151,7 @@ public class MapObjectSpawner
                 );
 
                 // Add ParentOf relationship - map is parent of spawned objects
-                mapInfoEntity.AddRelationship<ParentOf>(entity, new ParentOf());
+                mapInfoEntity.AddRelationship(entity, new ParentOf());
 
                 _logger?.LogDebug(
                     "Spawned '{ObjectName}' ({TemplateId}) at ({X}, {Y})",
@@ -473,7 +473,7 @@ public class MapObjectSpawner
             );
 
             // Add ParentOf relationship - map is parent of warps
-            mapInfoEntity.AddRelationship<ParentOf>(warpEntity, new ParentOf());
+            mapInfoEntity.AddRelationship(warpEntity, new ParentOf());
 
             // Register warp in MapWarps spatial index for O(1) lookup
             ref MapWarps mapWarps = ref mapInfoEntity.Get<MapWarps>();
