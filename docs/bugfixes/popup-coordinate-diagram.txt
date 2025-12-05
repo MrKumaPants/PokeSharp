@@ -1,0 +1,126 @@
+Map Popup Coordinate System Diagram
+=====================================
+
+BEFORE FIX (WRONG):
+-------------------
+DrawNineSliceBorder was called with OUTER coordinates (popupX, popupY)
+But it expected INTERIOR coordinates!
+
+Popup Layout:
+┌────────────────────────────────────┐ ← popupY = 0
+│ ╔══════════════════════════════╗   │
+│ ║ Background (80×24)           ║   │
+│ ║                              ║   │
+│ ╚══════════════════════════════╝   │
+└────────────────────────────────────┘
+  ↑                                ↑
+  popupX = 0                       popupX + 96
+
+When calling DrawTileSheetBorder(0, 0, 96, 40):
+- Function thinks (0, 0) is the INTERIOR position
+- Draws top edge at Y = 0 - 8 = -8 (OFF SCREEN!)
+- Draws left edge at X = 0 - 8 = -8 (OFF SCREEN!)
+- Border is offset by 8 pixels in both directions
+
+Result: Border doesn't properly frame the background!
+
+
+AFTER FIX (CORRECT):
+--------------------
+DrawNineSliceBorder is called with INTERIOR coordinates (bgX, bgY)
+
+Popup Layout:
+┌────────────────────────────────────┐ ← popupY = 0
+│ ╔══════════════════════════════╗   │ ← bgY = 8 (popupY + 8)
+│ ║ Background (80×24)           ║   │
+│ ║                              ║   │
+│ ╚══════════════════════════════╝   │ ← bgY + 24 = 32
+└────────────────────────────────────┘ ← popupY + 40 = 40
+  ↑ ↑                            ↑
+  │ bgX = 8 (popupX + 8)         bgX + 80 = 88
+  popupX = 0
+
+When calling DrawTileSheetBorder(8, 8, 80, 24):
+- Function receives (8, 8) as the INTERIOR position
+- Draws top edge at Y = 8 - 8 = 0 ✓
+- Draws left edge at X = 8 - 8 = 0 ✓
+- Draws right edge at X = 8 + 80 = 88 ✓
+- Draws bottom edge at Y = 8 + 24 = 32 ✓
+
+Result: Border perfectly frames the background!
+
+
+COORDINATE REFERENCE:
+---------------------
+
+Outer Popup:
+- Position: (popupX, popupY)
+- Size: 96×40 pixels (_popupWidth × _popupHeight)
+- Includes borders (1 tile = 8 pixels on each side)
+
+Interior (Background):
+- Position: (bgX, bgY) = (popupX + 8, popupY + 8)
+- Size: 80×24 pixels (fixed in pokeemerald)
+- This is where the background texture is drawn
+
+Border Frame:
+- Top edge: 12 tiles at Y = bgY - 8
+- Bottom edge: 12 tiles at Y = bgY + 24
+- Left edge: 3 tiles at X = bgX - 8
+- Right edge: 3 tiles at X = bgX + 80
+- Total: 30 tiles (10×3 tile sheet)
+
+
+TILE DRAWING POSITIONS:
+-----------------------
+
+With bgX=8, bgY=8:
+
+Top Edge (12 tiles):
+  Tile 0:  X=0,  Y=0  (i=0:  bgX + (0-1)*8 = 0)
+  Tile 1:  X=8,  Y=0  (i=1:  bgX + (1-1)*8 = 8)
+  ...
+  Tile 11: X=80, Y=0  (i=11: bgX + (11-1)*8 = 88)
+
+Left Edge (3 tiles):
+  Tile 12: X=0, Y=8   (bgX - 8, bgY + 0*8)
+  Tile 14: X=0, Y=16  (bgX - 8, bgY + 1*8)
+  Tile 16: X=0, Y=24  (bgX - 8, bgY + 2*8)
+
+Right Edge (3 tiles):
+  Tile 13: X=88, Y=8  (bgX + 80, bgY + 0*8)
+  Tile 15: X=88, Y=16 (bgX + 80, bgY + 1*8)
+  Tile 17: X=88, Y=24 (bgX + 80, bgY + 2*8)
+
+Bottom Edge (12 tiles):
+  Tile 18: X=0,  Y=32 (i=0:  bgX + (0-1)*8, bgY + 24)
+  Tile 19: X=8,  Y=32 (i=1:  bgX + (1-1)*8, bgY + 24)
+  ...
+  Tile 29: X=80, Y=32 (i=11: bgX + (11-1)*8, bgY + 24)
+
+
+VISUAL TILE MAP:
+----------------
+
+     0    8   16   24   32   40   48   56   64   72   80   88   (X pixels)
+  0 ┌───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┐
+    │ 0 │ 1 │ 2 │ 3 │ 4 │ 5 │ 6 │ 7 │ 8 │ 9 │10 │11 │ Top Edge
+  8 ├───┼───┴───┴───┴───┴───┴───┴───┴───┴───┴───┼───┤
+    │12 │                                       │13 │
+ 16 │14 │        Background (80×24)             │15 │
+    │   │                                       │   │
+ 24 │16 │                                       │17 │
+ 32 ├───┼───┬───┬───┬───┬───┬───┬───┬───┬───┬───┼───┤
+    │18 │19 │20 │21 │22 │23 │24 │25 │26 │27 │28 │29 │ Bottom Edge
+ 40 └───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┘
+    (Y)
+
+Legend:
+- Numbers = Tile indices from tile sheet
+- Tiles 0-11 = Top edge decorative tiles
+- Tiles 12,13 = Top corners
+- Tiles 14,15 = Side edges (middle)
+- Tiles 16,17 = Bottom corners
+- Tiles 18-29 = Bottom edge decorative tiles
+
+

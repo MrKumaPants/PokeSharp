@@ -48,9 +48,17 @@ public class GameDataLoader
         string trainersPath = Path.Combine(dataPath, "Trainers");
         loadedCounts["Trainers"] = await LoadTrainersAsync(trainersPath, ct);
 
-        // Load Maps
-        string mapsPath = Path.Combine(dataPath, "Maps");
+        // Load Maps (from Regions subdirectory)
+        string mapsPath = Path.Combine(dataPath, "Maps", "Regions");
         loadedCounts["Maps"] = await LoadMapsAsync(mapsPath, ct);
+
+        // Load Popup Themes
+        string themesPath = Path.Combine(dataPath, "Maps", "Popups", "Themes");
+        loadedCounts["PopupThemes"] = await LoadPopupThemesAsync(themesPath, ct);
+
+        // Load Map Sections
+        string sectionsPath = Path.Combine(dataPath, "Maps", "Sections");
+        loadedCounts["MapSections"] = await LoadMapSectionsAsync(sectionsPath, ct);
 
         // Log summary
         _logger.LogGameDataLoaded(loadedCounts);
@@ -581,6 +589,145 @@ public class GameDataLoader
         );
         return pathParts.Any(part => part.StartsWith("."));
     }
+
+    /// <summary>
+    ///     Load popup theme definitions from JSON files.
+    /// </summary>
+    private async Task<int> LoadPopupThemesAsync(string path, CancellationToken ct)
+    {
+        if (!Directory.Exists(path))
+        {
+            _logger.LogDirectoryNotFound("PopupThemes", path);
+            return 0;
+        }
+
+        string[] files = Directory.GetFiles(path, "*.json", SearchOption.TopDirectoryOnly)
+            .Where(f => !Path.GetFileName(f).Equals("README.md", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        int count = 0;
+
+        foreach (string file in files)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                string json = await File.ReadAllTextAsync(file, ct);
+                PopupThemeDto? dto = JsonSerializer.Deserialize<PopupThemeDto>(json, _jsonOptions);
+
+                if (dto == null)
+                {
+                    _logger.LogPopupThemeLoadFailed(file);
+                    continue;
+                }
+
+                // Validate required fields
+                if (string.IsNullOrWhiteSpace(dto.Id))
+                {
+                    _logger.LogPopupThemeLoadFailed(file);
+                    continue;
+                }
+
+                // Convert DTO to entity
+                var theme = new PopupTheme
+                {
+                    Id = dto.Id,
+                    Name = dto.Name ?? dto.Id,
+                    Description = dto.Description,
+                    Background = dto.Background ?? dto.Id,
+                    Outline = dto.Outline ?? $"{dto.Id}_outline",
+                    UsageCount = dto.UsageCount ?? 0,
+                    SourceMod = dto.SourceMod,
+                    Version = dto.Version ?? "1.0.0"
+                };
+
+                _context.PopupThemes.Add(theme);
+                count++;
+
+                _logger.LogPopupThemeLoaded(theme.Id, theme.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogPopupThemeLoadFailed(file, ex);
+            }
+        }
+
+        // Save to in-memory database
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogPopupThemesLoaded(count);
+        return count;
+    }
+
+    /// <summary>
+    ///     Load map section definitions from JSON files.
+    /// </summary>
+    private async Task<int> LoadMapSectionsAsync(string path, CancellationToken ct)
+    {
+        if (!Directory.Exists(path))
+        {
+            _logger.LogDirectoryNotFound("MapSections", path);
+            return 0;
+        }
+
+        string[] files = Directory.GetFiles(path, "*.json", SearchOption.TopDirectoryOnly)
+            .Where(f => !Path.GetFileName(f).Equals("README.md", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        int count = 0;
+
+        foreach (string file in files)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                string json = await File.ReadAllTextAsync(file, ct);
+                MapSectionDto? dto = JsonSerializer.Deserialize<MapSectionDto>(json, _jsonOptions);
+
+                if (dto == null)
+                {
+                    _logger.LogMapSectionLoadFailed(file);
+                    continue;
+                }
+
+                // Validate required fields
+                if (string.IsNullOrWhiteSpace(dto.Id) || string.IsNullOrWhiteSpace(dto.Theme))
+                {
+                    _logger.LogMapSectionLoadFailed(file);
+                    continue;
+                }
+
+                // Convert DTO to entity
+                var section = new MapSection
+                {
+                    Id = dto.Id,
+                    Name = dto.Name ?? dto.Id,
+                    ThemeId = dto.Theme,
+                    X = dto.X,
+                    Y = dto.Y,
+                    Width = dto.Width,
+                    Height = dto.Height,
+                    SourceMod = dto.SourceMod,
+                    Version = dto.Version ?? "1.0.0"
+                };
+
+                _context.MapSections.Add(section);
+                count++;
+
+                _logger.LogMapSectionLoaded(section.Id, section.Name);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogMapSectionLoadFailed(file, ex);
+            }
+        }
+
+        // Save to in-memory database
+        await _context.SaveChangesAsync(ct);
+
+        _logger.LogMapSectionsLoaded(count);
+        return count;
+    }
 }
 
 #region DTOs for JSON Deserialization
@@ -642,6 +789,37 @@ internal record TiledPropertyDto
     public string? Name { get; init; }
     public string? Type { get; init; }
     public object? Value { get; init; }
+}
+
+/// <summary>
+///     DTO for deserializing PopupTheme JSON files.
+/// </summary>
+internal record PopupThemeDto
+{
+    public string? Id { get; init; }
+    public string? Name { get; init; }
+    public string? Description { get; init; }
+    public string? Background { get; init; }
+    public string? Outline { get; init; }
+    public int? UsageCount { get; init; }
+    public string? SourceMod { get; init; }
+    public string? Version { get; init; }
+}
+
+/// <summary>
+///     DTO for deserializing MapSection JSON files.
+/// </summary>
+internal record MapSectionDto
+{
+    public string? Id { get; init; }
+    public string? Name { get; init; }
+    public string? Theme { get; init; }
+    public int? X { get; init; }
+    public int? Y { get; init; }
+    public int? Width { get; init; }
+    public int? Height { get; init; }
+    public string? SourceMod { get; init; }
+    public string? Version { get; init; }
 }
 
 #endregion

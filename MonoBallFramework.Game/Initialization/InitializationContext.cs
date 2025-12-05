@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoBallFramework.Game.Engine.Core.Types;
 using MonoBallFramework.Game.Engine.Rendering.Assets;
+using MonoBallFramework.Game.Engine.Rendering.Services;
 using MonoBallFramework.Game.Engine.Scenes;
 using MonoBallFramework.Game.Engine.Systems.Factories;
 using MonoBallFramework.Game.Engine.Systems.Management;
@@ -126,6 +127,21 @@ public class InitializationContext
     ///     Gets or sets the scene manager (available after Initialize()).
     /// </summary>
     public SceneManager? SceneManager { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the popup registry (backgrounds and outlines, created during map popup initialization).
+    /// </summary>
+    public Engine.Rendering.Popups.PopupRegistry? PopupRegistry { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the map popup orchestrator (created during map popup initialization).
+    /// </summary>
+    public Engine.Scenes.Services.IMapPopupOrchestrator? MapPopupOrchestrator { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the rendering service (shared SpriteBatch, created in Phase 2).
+    /// </summary>
+    public IRenderingService? RenderingService { get; set; }
 
     /// <summary>
     ///     Gets the graphics device (available from start).

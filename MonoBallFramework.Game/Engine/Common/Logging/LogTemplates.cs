@@ -1141,6 +1141,74 @@ public static partial class LogTemplates
     }
 
     /// <summary>
+    ///     Logs popup themes loaded in bulk.
+    /// </summary>
+    public static void LogPopupThemesLoaded(this ILogger logger, int count)
+    {
+        string body = $"[green]✓ Loaded[/] [yellow]{count}[/] [cyan]popup themes[/]";
+        logger.LogInformation(LogFormatting.FormatTemplate(WithAccent(LogAccent.Asset, body)));
+    }
+
+    /// <summary>
+    ///     Logs individual popup theme loaded (debug level).
+    /// </summary>
+    public static void LogPopupThemeLoaded(this ILogger logger, string themeId, string name)
+    {
+        string body = $"Loaded Theme: [yellow]{EscapeMarkup(themeId)}[/] ([cyan]{EscapeMarkup(name)}[/])";
+        logger.LogDebug(LogFormatting.FormatTemplate(WithAccent(LogAccent.Asset, body)));
+    }
+
+    /// <summary>
+    ///     Logs popup theme load failed.
+    /// </summary>
+    public static void LogPopupThemeLoadFailed(this ILogger logger, string file, Exception? ex = null)
+    {
+        string body = $"[red]✗ Error loading popup theme from[/] [cyan]{EscapeMarkup(file)}[/]";
+        if (ex != null)
+        {
+            logger.LogError(ex, LogFormatting.FormatTemplate(WithAccent(LogAccent.Asset, body)));
+        }
+        else
+        {
+            logger.LogError(LogFormatting.FormatTemplate(WithAccent(LogAccent.Asset, body)));
+        }
+    }
+
+    /// <summary>
+    ///     Logs map sections loaded in bulk.
+    /// </summary>
+    public static void LogMapSectionsLoaded(this ILogger logger, int count)
+    {
+        string body = $"[green]✓ Loaded[/] [yellow]{count}[/] [cyan]map sections[/]";
+        logger.LogInformation(LogFormatting.FormatTemplate(WithAccent(LogAccent.Map, body)));
+    }
+
+    /// <summary>
+    ///     Logs individual map section loaded (debug level).
+    /// </summary>
+    public static void LogMapSectionLoaded(this ILogger logger, string sectionId, string name)
+    {
+        string body = $"Loaded Section: [yellow]{EscapeMarkup(sectionId)}[/] ([cyan]{EscapeMarkup(name)}[/])";
+        logger.LogDebug(LogFormatting.FormatTemplate(WithAccent(LogAccent.Map, body)));
+    }
+
+    /// <summary>
+    ///     Logs map section load failed.
+    /// </summary>
+    public static void LogMapSectionLoadFailed(this ILogger logger, string file, Exception? ex = null)
+    {
+        string body = $"[red]✗ Error loading map section from[/] [cyan]{EscapeMarkup(file)}[/]";
+        if (ex != null)
+        {
+            logger.LogError(ex, LogFormatting.FormatTemplate(WithAccent(LogAccent.Map, body)));
+        }
+        else
+        {
+            logger.LogError(LogFormatting.FormatTemplate(WithAccent(LogAccent.Map, body)));
+        }
+    }
+
+    /// <summary>
     ///     Logs individual map loaded (debug level).
     /// </summary>
     public static void LogMapLoadedFromFile(

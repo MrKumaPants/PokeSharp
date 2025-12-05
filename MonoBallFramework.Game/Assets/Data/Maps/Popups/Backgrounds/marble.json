@@ -1,0 +1,9 @@
+{
+  "Id": "marble",
+  "DisplayName": "Marble",
+  "Type": "Bitmap",
+  "TexturePath": "Graphics/Maps/Popups/Backgrounds/marble.png",
+  "Width": 80,
+  "Height": 24,
+  "Description": "Background bitmap for map popup"
+}

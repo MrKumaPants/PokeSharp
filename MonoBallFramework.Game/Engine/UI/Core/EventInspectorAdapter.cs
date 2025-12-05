@@ -125,7 +125,7 @@ public class EventInspectorAdapter
         // Get MonoBall Framework assemblies
         IEnumerable<Assembly> assemblies = AppDomain
             .CurrentDomain.GetAssemblies()
-            .Where(a => !a.IsDynamic && a.GetName().Name?.StartsWith("MonoBall Framework") == true);
+            .Where(a => !a.IsDynamic && a.GetName().Name?.StartsWith("MonoBallFramework") == true);
 
         foreach (Assembly assembly in assemblies)
         {

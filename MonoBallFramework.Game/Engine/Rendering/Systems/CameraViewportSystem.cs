@@ -1,6 +1,5 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
-using MonoBallFramework.Game.Ecs.Components.Player;
 using MonoBallFramework.Game.Engine.Core.Systems;
 using MonoBallFramework.Game.Engine.Core.Systems.Base;
 using MonoBallFramework.Game.Engine.Rendering.Components;
@@ -9,22 +8,21 @@ using MonoBallFramework.Game.Engine.Systems.Management;
 namespace MonoBallFramework.Game.Engine.Rendering.Systems;
 
 /// <summary>
-///     System for updating camera viewport when the window is resized.
+///     Event-driven system for updating camera viewport when the window is resized.
 ///     Maintains aspect ratio and applies letterboxing/pillarboxing as needed.
+///     Now decoupled from Player component using MainCamera tag.
 /// </summary>
+/// <remarks>
+///     This system implements IEventDrivenSystem instead of IUpdateSystem because
+///     it only needs to respond to window resize events, not update every frame.
+/// </remarks>
 public class CameraViewportSystem(ILogger<CameraViewportSystem>? logger = null)
-    : SystemBase,
-        IUpdateSystem
+    : EventDrivenSystemBase
 {
     private readonly ILogger<CameraViewportSystem>? _logger = logger;
     private QueryDescription _cameraQuery;
     private int _lastWindowHeight;
     private int _lastWindowWidth;
-
-    /// <summary>
-    ///     Gets the update priority. Lower values execute first.
-    /// </summary>
-    public int UpdatePriority => SystemPriority.CameraViewport;
 
     /// <inheritdoc />
     public override int Priority => SystemPriority.CameraViewport;
@@ -33,14 +31,8 @@ public class CameraViewportSystem(ILogger<CameraViewportSystem>? logger = null)
     public override void Initialize(World world)
     {
         base.Initialize(world);
-        _cameraQuery = QueryCache.Get<Player, Camera>();
-    }
-
-    /// <inheritdoc />
-    public override void Update(World world, float deltaTime)
-    {
-        // This system is event-driven and doesn't need per-frame updates
-        // Camera viewport updates are triggered by window resize events via HandleResize
+        // Query for all cameras (not just player cameras)
+        _cameraQuery = QueryCache.Get<Camera>();
     }
 
     /// <summary>

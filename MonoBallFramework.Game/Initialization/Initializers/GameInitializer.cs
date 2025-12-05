@@ -179,20 +179,26 @@ public class GameInitializer(
         _mapStreamingSystem = new MapStreamingSystem(
             mapLoader,
             mapDefinitionService,
+            eventBus,
             mapStreamingLogger
         );
         systemManager.RegisterUpdateSystem(_mapStreamingSystem);
 
-        // Register CameraViewportSystem (Priority: 820, handles window resize events)
+        // Register CameraViewportSystem (Priority: 820, event-driven for window resize)
         ILogger<CameraViewportSystem> cameraViewportLogger =
             loggerFactory.CreateLogger<CameraViewportSystem>();
         CameraViewportSystem = new CameraViewportSystem(cameraViewportLogger);
-        systemManager.RegisterUpdateSystem(CameraViewportSystem);
+        systemManager.RegisterEventDrivenSystem(CameraViewportSystem);
 
-        // Register CameraFollowSystem (Priority: 825, after PathfindingSystem, before TileAnimation)
+        // Register CameraFollowSystem (Priority: 825, after PathfindingSystem, before CameraUpdate)
         ILogger<CameraFollowSystem> cameraFollowLogger =
             loggerFactory.CreateLogger<CameraFollowSystem>();
         systemManager.RegisterUpdateSystem(new CameraFollowSystem(cameraFollowLogger));
+
+        // Register CameraUpdateSystem (Priority: 826, handles camera zoom/follow logic)
+        ILogger<CameraUpdateSystem> cameraUpdateLogger =
+            loggerFactory.CreateLogger<CameraUpdateSystem>();
+        systemManager.RegisterUpdateSystem(new CameraUpdateSystem(cameraUpdateLogger));
 
         // Register TileAnimationSystem (Priority: 850, animates water/grass tiles between Animation and Render)
         ILogger<TileAnimationSystem> tileAnimLogger =
@@ -239,7 +245,7 @@ public class GameInitializer(
         SpriteTextureLoader =
             spriteTextureLoader ?? throw new ArgumentNullException(nameof(spriteTextureLoader));
 
-        // Initialize MapLifecycleManager with SpriteTextureLoader, SpatialHashSystem, and EntityPoolManager dependencies
+        // Initialize MapLifecycleManager with SpriteTextureLoader, SpatialHashSystem, EventBus, and EntityPoolManager dependencies
         ILogger<MapLifecycleManager> mapLifecycleLogger =
             loggerFactory.CreateLogger<MapLifecycleManager>();
         MapLifecycleManager = new MapLifecycleManager(
@@ -247,11 +253,12 @@ public class GameInitializer(
             assetManager,
             spriteTextureLoader,
             SpatialHashSystem,
+            eventBus,
             poolManager,
             mapLifecycleLogger
         );
         logger.LogInformation(
-            "MapLifecycleManager initialized with sprite texture, spatial hash, and pooling support"
+            "MapLifecycleManager initialized with event bus, sprite texture, spatial hash, and pooling support"
         );
 
         // Wire up MapLifecycleManager to MapStreamingSystem for proper entity cleanup during unloading

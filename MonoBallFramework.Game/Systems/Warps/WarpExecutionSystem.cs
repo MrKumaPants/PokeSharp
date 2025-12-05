@@ -3,6 +3,8 @@ using Arch.Core.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
 using MonoBallFramework.Game.Engine.Common.Logging;
+using MonoBallFramework.Game.Engine.Core.Events;
+using MonoBallFramework.Game.Engine.Core.Events.Map;
 using MonoBallFramework.Game.Engine.Core.Systems;
 using MonoBallFramework.Game.Engine.Core.Types;
 using MonoBallFramework.Game.Engine.Rendering.Components;
@@ -55,6 +57,7 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
     // Services set via SetServices (delayed initialization)
     private IMapInitializer? _mapInitializer;
     private MapLifecycleManager? _mapLifecycleManager;
+    private IEventBus? _eventBus;
 
     private QueryDescription _pendingWarpQuery;
 
@@ -146,11 +149,17 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
     /// </summary>
     /// <param name="mapInitializer">Map initializer for loading maps.</param>
     /// <param name="mapLifecycleManager">Lifecycle manager for unloading maps.</param>
-    public void SetServices(IMapInitializer mapInitializer, MapLifecycleManager mapLifecycleManager)
+    /// <param name="eventBus">Event bus for publishing map transition events.</param>
+    public void SetServices(
+        IMapInitializer mapInitializer,
+        MapLifecycleManager mapLifecycleManager,
+        IEventBus? eventBus = null
+    )
     {
         _mapInitializer = mapInitializer ?? throw new ArgumentNullException(nameof(mapInitializer));
         _mapLifecycleManager =
             mapLifecycleManager ?? throw new ArgumentNullException(nameof(mapLifecycleManager));
+        _eventBus = eventBus;
         _logger?.LogDebug("WarpExecutionSystem: Services configured");
     }
 
@@ -184,8 +193,29 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
     /// </summary>
     private async Task ExecuteWarpAsync(World world, Entity playerEntity, WarpRequest request)
     {
+        MapRuntimeId? oldMapId = null;
+        string? oldMapName = null;
+
         try
         {
+            // Store old map info before unloading (needed for MapTransitionEvent)
+            oldMapId = _mapLifecycleManager!.CurrentMapId;
+            if (oldMapId.HasValue)
+            {
+                // Try to get old map name from the world
+                QueryDescription mapInfoQuery = new QueryDescription().WithAll<MapInfo>();
+                world.Query(
+                    in mapInfoQuery,
+                    (Entity entity, ref MapInfo info) =>
+                    {
+                        if (info.MapId == oldMapId.Value)
+                        {
+                            oldMapName = info.MapName;
+                        }
+                    }
+                );
+            }
+
             // Unload all current maps before loading the target
             _logger?.LogDebug("Unloading all current maps before warp...");
             _mapLifecycleManager!.UnloadAllMaps();
@@ -218,6 +248,12 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
 
             // Teleport player to the target position
             TeleportPlayer(playerEntity, request, targetMapId, tileSize);
+
+            // Fire MapTransitionEvent for popup display
+            // Note: MapLifecycleManager.TransitionToMap() was already called by MapInitializer,
+            // but it fires with IsInitialLoad=true because UnloadAllMaps() cleared the current map.
+            // We need to fire our own event with the correct old map info.
+            PublishWarpTransitionEvent(world, mapEntity.Value, oldMapId, oldMapName, targetMapId);
 
             _logger?.LogInformation(
                 "Warp complete: player now at {MapName} ({MapId}) @ ({X}, {Y})",
@@ -346,5 +382,59 @@ public class WarpExecutionSystem : SystemBase, IUpdateSystem
         _isExecutingWarp = false;
 
         _logger?.LogDebug("Warp cancelled, player movement restored");
+    }
+
+    /// <summary>
+    ///     Publishes a MapTransitionEvent after a warp completes.
+    ///     This ensures the popup is shown even though UnloadAllMaps() cleared the current map.
+    /// </summary>
+    private void PublishWarpTransitionEvent(
+        World world,
+        Entity mapEntity,
+        MapRuntimeId? oldMapId,
+        string? oldMapName,
+        MapRuntimeId newMapId
+    )
+    {
+        if (_eventBus == null)
+        {
+            _logger?.LogDebug("EventBus not available, skipping MapTransitionEvent for warp");
+            return;
+        }
+
+        // Extract display name and region from the new map entity
+        string? displayName = null;
+        string? regionSection = null;
+
+        if (mapEntity.Has<DisplayName>())
+        {
+            displayName = mapEntity.Get<DisplayName>().Value;
+        }
+
+        if (mapEntity.Has<RegionSection>())
+        {
+            regionSection = mapEntity.Get<RegionSection>().Value;
+        }
+
+        // Get map name from MapInfo as fallback
+        MapInfo mapInfo = mapEntity.Get<MapInfo>();
+        string mapName = displayName ?? mapInfo.MapName ?? "Unknown Map";
+
+        // Publish the event
+        _eventBus.PublishPooled<MapTransitionEvent>(evt =>
+        {
+            evt.FromMapId = oldMapId?.Value;
+            evt.FromMapName = oldMapName;
+            evt.ToMapId = newMapId.Value;
+            evt.ToMapName = mapName;
+            evt.RegionName = regionSection;
+        });
+
+        _logger?.LogDebug(
+            "Published MapTransitionEvent for warp: {FromMap} -> {ToMap} (Region: {Region})",
+            oldMapName ?? "None",
+            mapName,
+            regionSection ?? "None"
+        );
     }
 }

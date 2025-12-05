@@ -3,6 +3,8 @@ using Arch.Core.Extensions;
 using Arch.Relationships;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework;
+using MonoBallFramework.Game.Engine.Core.Events;
+using MonoBallFramework.Game.Engine.Core.Events.Map;
 using MonoBallFramework.Game.Engine.Core.Systems;
 using MonoBallFramework.Game.Engine.Core.Types;
 using MonoBallFramework.Game.Components;
@@ -12,6 +14,7 @@ using MonoBallFramework.Game.Ecs.Components.Movement;
 using MonoBallFramework.Game.Ecs.Components.Player;
 using MonoBallFramework.Game.Ecs.Components.Relationships;
 using MonoBallFramework.Game.Engine.Core.Systems.Base;
+using MonoBallFramework.Game.Engine.Systems.Management;
 using MonoBallFramework.Game.GameData.Entities;
 using MonoBallFramework.Game.GameData.MapLoading.Tiled.Core;
 using MonoBallFramework.Game.GameData.Services;
@@ -39,6 +42,7 @@ namespace MonoBallFramework.Game.Systems;
 /// </remarks>
 public class MapStreamingSystem : SystemBase, IUpdateSystem
 {
+    private readonly IEventBus? _eventBus;
     private readonly ILogger<MapStreamingSystem>? _logger;
     private readonly MapDefinitionService _mapDefinitionService;
 
@@ -62,16 +66,19 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
     /// </summary>
     /// <param name="mapLoader">MapLoader service for loading/unloading maps.</param>
     /// <param name="mapDefinitionService">Service for accessing map definitions and connections.</param>
+    /// <param name="eventBus">Optional event bus for publishing map transition events.</param>
     /// <param name="logger">Optional logger for debugging streaming operations.</param>
     public MapStreamingSystem(
         MapLoader mapLoader,
         MapDefinitionService mapDefinitionService,
+        IEventBus? eventBus = null,
         ILogger<MapStreamingSystem>? logger = null
     )
     {
         _mapLoader = mapLoader ?? throw new ArgumentNullException(nameof(mapLoader));
         _mapDefinitionService =
             mapDefinitionService ?? throw new ArgumentNullException(nameof(mapDefinitionService));
+        _eventBus = eventBus;
         _logger = logger;
     }
 
@@ -216,7 +223,7 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
 
         // Find the map entity by its map name
         Entity? foundEntity = null;
-        QueryDescription query = new QueryDescription().WithAll<MapInfo>();
+        QueryDescription query = QueryCache.Get<MapInfo>();
         World.Query(
             in query,
             (Entity entity, ref MapInfo info) =>
@@ -581,6 +588,13 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
         int oldGridX = position.X;
         int oldGridY = position.Y;
 
+        // Get old map name before updating
+        string? oldMapName = null;
+        if (_mapInfoCache.TryGetValue(streaming.CurrentMapId.Value, out var oldMapData))
+        {
+            oldMapName = oldMapData.Info.MapName;
+        }
+
         // Update map reference
         if (
             _mapInfoCache.TryGetValue(
@@ -607,6 +621,70 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
             position.X,
             position.Y
         );
+
+        // Publish map transition event for subscribers (e.g., map popup display)
+        PublishMapTransitionEvent(oldMapId, oldMapName, newMapData);
+    }
+
+    /// <summary>
+    ///     Publishes a MapTransitionEvent when the player crosses a map boundary.
+    /// </summary>
+    private void PublishMapTransitionEvent(
+        MapRuntimeId oldMapId,
+        string? oldMapName,
+        (MapInfo Info, MapWorldPosition WorldPos, MapDefinition? Definition) newMapData
+    )
+    {
+        if (_eventBus == null)
+        {
+            return;
+        }
+
+        // Get display name and region section from the new map
+        string? displayName = null;
+        string? regionSection = null;
+
+        // Try to get components from the map entity
+        if (World != null)
+        {
+            QueryDescription mapInfoQuery = QueryCache.Get<MapInfo>();
+            World.Query(
+                in mapInfoQuery,
+                (Entity entity, ref MapInfo info) =>
+                {
+                    if (info.MapId == newMapData.Info.MapId)
+                    {
+                        // Get DisplayName if available
+                        if (entity.Has<DisplayName>())
+                        {
+                            displayName = entity.Get<DisplayName>().Value;
+                        }
+
+                        // Get RegionSection if available
+                        if (entity.Has<RegionSection>())
+                        {
+                            regionSection = entity.Get<RegionSection>().Value;
+                        }
+                    }
+                }
+            );
+        }
+
+        _eventBus.PublishPooled<MapTransitionEvent>(evt =>
+        {
+            evt.FromMapId = oldMapId.Value;
+            evt.FromMapName = oldMapName;
+            evt.ToMapId = newMapData.Info.MapId.Value;
+            evt.ToMapName = displayName ?? newMapData.Info.MapName;
+            evt.RegionName = regionSection;
+        });
+
+        _logger?.LogDebug(
+            "Published MapTransitionEvent for boundary crossing: {OldMap} -> {NewMap} (Region: {Region})",
+            oldMapName ?? "Unknown",
+            displayName ?? newMapData.Info.MapName,
+            regionSection ?? "None"
+        );
     }
 
     /// <summary>
@@ -620,7 +698,7 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
 
         // Find the current map entity using ECS query
         Entity? currentMapEntity = null;
-        QueryDescription query = new QueryDescription().WithAll<MapInfo>();
+        QueryDescription query = QueryCache.Get<MapInfo>();
         world.Query(
             in query,
             (Entity entity, ref MapInfo mapInfo) =>
@@ -754,7 +832,7 @@ public class MapStreamingSystem : SystemBase, IUpdateSystem
         var entitiesToDestroy = new List<Entity>();
 
         // Find the MapInfo entity and iterate its relationships
-        QueryDescription mapInfoQuery = new QueryDescription().WithAll<MapInfo>();
+        QueryDescription mapInfoQuery = QueryCache.Get<MapInfo>();
         world.Query(
             in mapInfoQuery,
             (Entity entity, ref MapInfo info) =>

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using FontStashSharp;
 using Microsoft.Extensions.Logging;
 using Microsoft.Xna.Framework.Graphics;
 using MonoBallFramework.Game.Engine.Common.Logging;
@@ -27,6 +28,10 @@ public class AssetManager(
         texture => texture.Width * texture.Height * 4L, // RGBA = 4 bytes/pixel
         logger
     );
+
+    // Font cache - FontStashSharp FontSystem instances
+    private readonly Dictionary<string, FontSystem> _fontSystems = new();
+    private readonly Dictionary<string, byte[]> _fontDataCache = new();
 
     private bool _disposed;
 
@@ -112,6 +117,55 @@ public class AssetManager(
     }
 
     /// <summary>
+    ///     Loads a font from file and caches it.
+    /// </summary>
+    public void LoadFont(string id, string relativePath)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(id);
+        ArgumentException.ThrowIfNullOrEmpty(relativePath);
+
+        if (_fontSystems.ContainsKey(id))
+        {
+            _logger?.LogDebug("Font '{FontId}' already loaded", id);
+            return;
+        }
+
+        string fullPath = Path.Combine(AssetRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+        if (!File.Exists(fullPath))
+        {
+            throw new FileNotFoundException($"Font file not found: {fullPath}");
+        }
+
+        byte[] fontData = File.ReadAllBytes(fullPath);
+        _fontDataCache[id] = fontData;
+
+        var fontSystem = new FontSystem();
+        fontSystem.AddFont(fontData);
+        _fontSystems[id] = fontSystem;
+
+        _logger?.LogInformation("Font loaded and cached: {FontId} ({Size:N0} bytes)", id, fontData.Length);
+    }
+
+    /// <summary>
+    ///     Gets a cached FontSystem by ID.
+    /// </summary>
+    public FontSystem? GetFontSystem(string id)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(id);
+        return _fontSystems.TryGetValue(id, out var fontSystem) ? fontSystem : null;
+    }
+
+    /// <summary>
+    ///     Checks if a font is loaded.
+    /// </summary>
+    public bool HasFont(string id)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(id);
+        return _fontSystems.ContainsKey(id);
+    }
+
+    /// <summary>
     ///     Disposes all loaded textures.
     /// </summary>
     public void Dispose()
@@ -122,6 +176,15 @@ public class AssetManager(
         }
 
         _textures.Clear(); // LruCache.Clear() disposes all textures
+
+        // Dispose font systems
+        foreach (var fontSystem in _fontSystems.Values)
+        {
+            fontSystem.Dispose();
+        }
+        _fontSystems.Clear();
+        _fontDataCache.Clear();
+
         _disposed = true;
 
         GC.SuppressFinalize(this);

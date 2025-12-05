@@ -444,3 +444,4 @@ Pokeemerald
 
 **Status**: ✅ Automatic animations fully supported | 🟡 Trigger animations in development
 
+

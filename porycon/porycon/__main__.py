@@ -13,6 +13,8 @@ from .utils import find_map_files, find_layout_files, load_json, save_json
 from .tileset_builder import TilesetBuilder
 from .map_worker import convert_single_map
 from .logging_config import setup_logging, get_logger
+from .popup_extractor import extract_popups
+from .section_extractor import extract_sections
 
 # Set multiprocessing start method to 'spawn' for cross-platform compatibility
 # This ensures functions can be pickled correctly when running as a module
@@ -52,6 +54,16 @@ def main():
         action="store_true",
         help="Show debug information (implies verbose)"
     )
+    parser.add_argument(
+        "--extract-popups",
+        action="store_true",
+        help="Extract map popup graphics (backgrounds and outlines) from pokeemerald"
+    )
+    parser.add_argument(
+        "--extract-sections",
+        action="store_true",
+        help="Extract map section (MAPSEC) definitions and popup theme mappings from pokeemerald"
+    )
     
     args = parser.parse_args()
     
@@ -69,6 +81,21 @@ def main():
     logger.info(f"Output directory: {output_dir}")
     
     output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Handle popup extraction if requested
+    if args.extract_popups:
+        logger.info("Extracting map popup graphics...")
+        bg_count, outline_count = extract_popups(str(input_dir), str(output_dir))
+        logger.info(f"Popup extraction complete: {bg_count} backgrounds, {outline_count} outlines")
+        logger.info("Outline tile sheets converted with palette transparency")
+        return
+    
+    # Handle section extraction if requested
+    if args.extract_sections:
+        logger.info("Extracting map section definitions...")
+        section_count, theme_count = extract_sections(str(input_dir), str(output_dir))
+        logger.info(f"Section extraction complete: {section_count} sections, {theme_count} themes")
+        return
     
     logger.info("Finding maps...")
     maps = find_map_files(str(input_dir))
@@ -342,7 +369,7 @@ def main():
     # Update firstgid values in all maps based on actual tileset tilecounts
     logger.info("Updating firstgid values in maps...")
     updated_maps = 0
-    maps_dir = output_dir / "Data" / "Maps"
+    maps_dir = output_dir / "Data" / "Maps" / "Regions"
     if maps_dir.exists():
         for region_dir in maps_dir.iterdir():
             if region_dir.is_dir():
@@ -399,7 +426,7 @@ def main():
         
         # Find all map files
         map_files = []
-        maps_dir = output_dir / "Data" / "Maps"
+        maps_dir = output_dir / "Data" / "Maps" / "Regions"
         if maps_dir.exists():
             for region_dir in maps_dir.iterdir():
                 if region_dir.is_dir():

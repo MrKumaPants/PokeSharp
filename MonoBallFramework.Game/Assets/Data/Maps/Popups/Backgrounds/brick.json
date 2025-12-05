@@ -1,0 +1,10 @@
+{
+  "Id": "brick",
+  "DisplayName": "Brick",
+  "Type": "Bitmap",
+  "TexturePath": "Graphics/Maps/Popups/Backgrounds/brick.png",
+  "Width": 80,
+  "Height": 24,
+  "Description": "Background bitmap for map popup"
+}
+

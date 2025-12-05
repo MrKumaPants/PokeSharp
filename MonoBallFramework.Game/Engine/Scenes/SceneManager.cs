@@ -18,6 +18,7 @@ public class SceneManager : IInputBlocker
     private bool _isPushOperation;
     private IScene? _nextScene;
     private bool _popRequested;
+    private IScene? _sceneToRemove;
 
     /// <summary>
     ///     Initializes a new instance of the SceneManager class.
@@ -80,6 +81,70 @@ public class SceneManager : IInputBlocker
         && _sceneStack.Any(s => s.ExclusiveInput);
 
     /// <summary>
+    ///     Checks if a scene of the specified type exists on the scene stack.
+    /// </summary>
+    /// <typeparam name="T">The type of scene to check for.</typeparam>
+    /// <returns>True if a scene of type T exists on the stack, false otherwise.</returns>
+    public bool HasSceneOfType<T>() where T : IScene
+    {
+        return _sceneStack.Any(s => s is T);
+    }
+
+    /// <summary>
+    ///     Removes all scenes of the specified type from the scene stack.
+    ///     This is useful for preventing duplicate overlays (e.g., multiple popups).
+    /// </summary>
+    /// <typeparam name="T">The type of scene to remove.</typeparam>
+    /// <returns>The number of scenes removed.</returns>
+    public int RemoveScenesOfType<T>() where T : IScene
+    {
+        if (_sceneStack.Count == 0)
+        {
+            return 0;
+        }
+
+        // Find all scenes of type T
+        var scenesToRemove = _sceneStack.Where(s => s is T).ToList();
+
+        if (scenesToRemove.Count == 0)
+        {
+            return 0;
+        }
+
+        // Create new stack without the scenes to remove
+        var tempStack = new Stack<IScene>();
+        
+        // Pop all scenes into temp stack
+        while (_sceneStack.Count > 0)
+        {
+            IScene scene = _sceneStack.Pop();
+            
+            // Only keep if not in removal list
+            if (!scenesToRemove.Contains(scene))
+            {
+                tempStack.Push(scene);
+            }
+            else
+            {
+                // Dispose the removed scene
+                scene.Dispose();
+                _logger.LogInformation(
+                    "Removed and disposed scene of type {SceneType} from stack",
+                    scene.GetType().Name
+                );
+            }
+        }
+
+        // Restore stack (in reverse order to maintain original order)
+        while (tempStack.Count > 0)
+        {
+            _sceneStack.Push(tempStack.Pop());
+        }
+
+        return scenesToRemove.Count;
+    }
+
+    /// <summary>
     ///     Changes to a new scene. The transition will occur at the start of the next Update cycle.
     /// </summary>
     /// <param name="newScene">The scene to transition to.</param>
@@ -122,6 +187,79 @@ public class SceneManager : IInputBlocker
     }
 
     /// <summary>
+    ///     Removes a specific scene from the stack. The removal will occur at the start of the next Update cycle.
+    ///     This is safer than PopScene() when overlay scenes may have been pushed on top,
+    ///     as it ensures only the intended scene is removed.
+    /// </summary>
+    /// <param name="scene">The specific scene instance to remove from the stack.</param>
+    public void RemoveScene(IScene scene)
+    {
+        ArgumentNullException.ThrowIfNull(scene);
+
+        if (_sceneStack.Count == 0)
+        {
+            _logger.LogWarning("Attempted to remove scene {SceneType} from empty stack", scene.GetType().Name);
+            return;
+        }
+
+        if (!_sceneStack.Contains(scene))
+        {
+            _logger.LogWarning("Scene {SceneType} not found in stack", scene.GetType().Name);
+            return;
+        }
+
+        _logger.LogInformation("Queuing removal of specific scene: {SceneType}", scene.GetType().Name);
+        _sceneToRemove = scene;
+    }
+
+    /// <summary>
+    ///     Processes a pending specific scene removal. Called during Update.
+    /// </summary>
+    private void ProcessRemoveScene()
+    {
+        if (_sceneToRemove == null)
+        {
+            return;
+        }
+
+        IScene sceneToRemove = _sceneToRemove;
+        _sceneToRemove = null;
+
+        if (!_sceneStack.Contains(sceneToRemove))
+        {
+            _logger.LogWarning("Scene {SceneType} no longer in stack during removal", sceneToRemove.GetType().Name);
+            return;
+        }
+
+        _logger.LogInformation("Removing specific scene from stack: {SceneType}", sceneToRemove.GetType().Name);
+
+        // Create new stack without the scene to remove
+        var tempStack = new Stack<IScene>();
+
+        // Pop all scenes into temp stack (reverses order)
+        while (_sceneStack.Count > 0)
+        {
+            IScene scene = _sceneStack.Pop();
+
+            // Only keep if not the scene to remove
+            if (scene != sceneToRemove)
+            {
+                tempStack.Push(scene);
+            }
+        }
+
+        // Restore stack (re-reverses to original order, minus removed scene)
+        while (tempStack.Count > 0)
+        {
+            _sceneStack.Push(tempStack.Pop());
+        }
+
+        // Dispose the removed scene
+        sceneToRemove.Dispose();
+        _logger.LogInformation("Scene {SceneType} removed and disposed", sceneToRemove.GetType().Name);
+    }
+
+    /// <summary>
     ///     Processes a pending pop operation. Called during Update.
     /// </summary>
     private void ProcessPopScene()
@@ -156,6 +294,12 @@ public class SceneManager : IInputBlocker
         {
             _popRequested = false;
             ProcessPopScene();
+        }
+
+        // Handle specific scene removal (before push/change)
+        if (_sceneToRemove != null)
+        {
+            ProcessRemoveScene();
         }
 
         // Handle scene transition at START of update cycle (two-step pattern)

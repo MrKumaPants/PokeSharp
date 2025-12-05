@@ -151,8 +151,8 @@ Several documentation files contain placeholder links to `MonoBall Framework.dev
 - Both test code and service registration updated
 
 **Fixed Files**:
-1. `/tests/ScriptingTests/MonoBall Framework.Game.Scripting.Tests/Phase4MigrationTests.cs:656`
-2. `/MonoBall Framework.Game/Infrastructure/ServiceRegistration/ScriptingServicesExtensions.cs:57`
+1. `/tests/ScriptingTests/MonoBallFramework.Game.Scripting.Tests/Phase4MigrationTests.cs:656`
+2. `/MonoBallFramework.Game/Infrastructure/ServiceRegistration/ScriptingServicesExtensions.cs:57`
 
 **Resolution Date**: December 3, 2025
 

@@ -74,6 +74,9 @@ public class PlayerFactory(
         // Add Camera component (not in template as it's created per-instance)
         world.Add(playerEntity, camera);
 
+        // Add MainCamera tag to mark this as the primary camera
+        world.Add<MainCamera>(playerEntity);
+
         // Add MapStreaming component for seamless map transitions
         if (currentMapName != null)
         {

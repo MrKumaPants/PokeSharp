@@ -1,0 +1,9 @@
+{
+  "Id": "wood",
+  "DisplayName": "Wood",
+  "Type": "Bitmap",
+  "TexturePath": "Graphics/Maps/Popups/Backgrounds/wood.png",
+  "Width": 80,
+  "Height": 24,
+  "Description": "Background bitmap for map popup"
+}

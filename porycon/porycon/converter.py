@@ -307,7 +307,7 @@ class MapConverter:
     def save_map(self, map_id: str, tiled_map: Dict[str, Any], region: str):
         """Save converted map to output directory."""
         map_name = sanitize_filename(map_id.replace("MAP_", "").lower())
-        output_path = self.output_dir / "Data" / "Maps" / region / f"{map_name}.json"
+        output_path = self.output_dir / "Data" / "Maps" / "Regions" / region / f"{map_name}.json"
         output_path.parent.mkdir(parents=True, exist_ok=True)
         save_json(tiled_map, str(output_path))
     
@@ -1005,10 +1005,10 @@ class MapConverter:
             })
         
         # Add tileset reference
-        # Map is at: output/Data/Maps/{region}/{map_name}.json
+        # Map is at: output/Data/Maps/Regions/{region}/{map_name}.json
         # Tileset is at: output/Tilesets/{region}/{map_name}/{map_name}.json
-        # From Data/Maps/{region}/, we need to go up three levels (../../../) to reach output/, then into Tilesets/
-        tileset_path = f"../../../Tilesets/{region}/{map_name}/{map_name}.json"
+        # From Data/Maps/Regions/{region}/, we need to go up four levels (../../../../) to reach output/, then into Tilesets/
+        tileset_path = f"../../../../Tilesets/{region}/{map_name}/{map_name}.json"
         tiled_map["tilesets"] = [{
             "firstgid": 1,
             "source": tileset_path

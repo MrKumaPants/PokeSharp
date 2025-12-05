@@ -64,6 +64,7 @@ public class MonoBallFrameworkGame : Microsoft.Xna.Framework.Game, IAsyncDisposa
 
     // Async initialization state
     private IMapInitializer _mapInitializer = null!;
+    private Engine.Scenes.Services.IMapPopupOrchestrator? _mapPopupOrchestrator;
     private SceneManager? _sceneManager;
     private SpriteTextureLoader? _spriteTextureLoader;
 
@@ -261,6 +262,9 @@ public class MonoBallFrameworkGame : Microsoft.Xna.Framework.Game, IAsyncDisposa
             await tileBehaviorRegistryDisposable.DisposeAsync();
         }
 
+        // Dispose MapPopupOrchestrator (unsubscribes from events)
+        _mapPopupOrchestrator?.Dispose();
+
         _world?.Dispose();
 
         GC.SuppressFinalize(this);
@@ -293,7 +297,6 @@ public class MonoBallFrameworkGame : Microsoft.Xna.Framework.Game, IAsyncDisposa
         );
         var loadingScene = new LoadingScene(
             GraphicsDevice,
-            _services,
             loadingSceneLogger,
             _loadingProgress,
             initializationTaskAsIScene,
@@ -368,6 +371,7 @@ public class MonoBallFrameworkGame : Microsoft.Xna.Framework.Game, IAsyncDisposa
             // Extract initialized components from context
             _gameInitializer = context.GameInitializer!;
             _mapInitializer = context.MapInitializer!;
+            _mapPopupOrchestrator = context.MapPopupOrchestrator;
             _spriteTextureLoader = context.SpriteTextureLoader;
 
             logger.LogInformation("Game initialization completed successfully");
@@ -418,15 +422,18 @@ public class MonoBallFrameworkGame : Microsoft.Xna.Framework.Game, IAsyncDisposa
         pipeline.AddStep(new CreateMapInitializerStep());
         pipeline.AddStep(new InitializeBehaviorSystemsStep());
 
-        // Phase 5: Load map and create player
+        // Phase 5: Initialize map popup system (BEFORE loading initial map so it can catch the event)
+        pipeline.AddStep(new InitializeMapPopupStep());
+
+        // Phase 6: Load map and create player
         pipeline.AddStep(new LoadInitialMapStep());
         pipeline.AddStep(new CreateInitialPlayerStep());
 
-        // Phase 6: Initialize debug console
+        // Phase 7: Initialize debug console
         // Note: Console is optional and will log warnings if dependencies are missing
         pipeline.AddStep(new InitializeConsoleStep());
 
-        // Phase 7: Create and return gameplay scene
+        // Phase 8: Create and return gameplay scene
         pipeline.AddStep(new CreateGameplaySceneStep());
 
         return pipeline;

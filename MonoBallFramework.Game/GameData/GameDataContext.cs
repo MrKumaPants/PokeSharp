@@ -26,6 +26,10 @@ public class GameDataContext : DbContext
     // Map entities
     public DbSet<MapDefinition> Maps { get; set; } = null!;
 
+    // Popup entities
+    public DbSet<PopupTheme> PopupThemes { get; set; } = null!;
+    public DbSet<MapSection> MapSections { get; set; } = null!;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -33,6 +37,8 @@ public class GameDataContext : DbContext
         ConfigureNpcDefinition(modelBuilder);
         ConfigureTrainerDefinition(modelBuilder);
         ConfigureMapDefinition(modelBuilder);
+        ConfigurePopupTheme(modelBuilder);
+        ConfigureMapSection(modelBuilder);
     }
 
     /// <summary>
@@ -97,6 +103,47 @@ public class GameDataContext : DbContext
 
             // TiledDataJson stores complete Tiled map data
             // Will be deserialized on-demand by MapLoader
+        });
+    }
+
+    /// <summary>
+    ///     Configure PopupTheme entity.
+    /// </summary>
+    private void ConfigurePopupTheme(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PopupTheme>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+
+            // Indexes for common queries
+            entity.HasIndex(t => t.Name);
+            entity.HasIndex(t => t.Background);
+            entity.HasIndex(t => t.Outline);
+
+            // Configure relationship with MapSections
+            entity
+                .HasMany(t => t.MapSections)
+                .WithOne(s => s.Theme)
+                .HasForeignKey(s => s.ThemeId)
+                .OnDelete(DeleteBehavior.Restrict); // Prevent deleting themes with sections
+        });
+    }
+
+    /// <summary>
+    ///     Configure MapSection entity.
+    /// </summary>
+    private void ConfigureMapSection(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MapSection>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+
+            // Indexes for common queries
+            entity.HasIndex(s => s.Name);
+            entity.HasIndex(s => s.ThemeId);
+
+            // Composite index for region map coordinates
+            entity.HasIndex(s => new { s.X, s.Y });
         });
     }
 }

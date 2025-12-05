@@ -1,5 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MonoBallFramework.Game.Engine.Scenes;
+using MonoBallFramework.Game.GameData.Services;
 
 namespace MonoBallFramework.Game.Initialization.Pipeline.Steps;
 
@@ -38,6 +40,16 @@ public class LoadGameDataStep : InitializationStepBase
         {
             await context.DataLoader.LoadAllAsync(dataPath, cancellationToken);
             logger.LogInformation("Game data definitions loaded successfully");
+
+            // Preload all popup themes and sections into cache for O(1) runtime access
+            // This is CRITICAL - without preloading, cache misses cause database queries during gameplay
+            var mapPopupDataService = context.Services.GetService<IMapPopupDataService>();
+            if (mapPopupDataService != null)
+            {
+                await mapPopupDataService.PreloadAllAsync(cancellationToken);
+                await mapPopupDataService.LogStatisticsAsync();
+                logger.LogInformation("Popup themes and sections preloaded into cache");
+            }
         }
         catch (FileNotFoundException ex)
         {

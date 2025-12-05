@@ -8,37 +8,38 @@ namespace MonoBallFramework.Game.Engine.Scenes;
 /// <summary>
 ///     Base class for game scenes that provides common functionality.
 ///     Follows MonoGame's lifecycle pattern with proper disposal.
+///     Uses State Pattern for lifecycle management instead of boolean flags.
 /// </summary>
 public abstract class SceneBase : IScene
 {
     private readonly object _lock = new();
-    private bool _disposed;
-    private bool _isContentLoaded;
-    private bool _isInitialized;
+    private SceneState _state = SceneState.Uninitialized;
 
     /// <summary>
     ///     Initializes a new instance of the SceneBase class.
+    ///     All dependencies should be passed through the derived class constructor.
     /// </summary>
     /// <param name="graphicsDevice">The graphics device for rendering.</param>
-    /// <param name="services">The service provider for dependency injection.</param>
     /// <param name="logger">The logger for this scene.</param>
     /// <param name="contentRootDirectory">The root directory for content loading (default: "Content").</param>
     protected SceneBase(
         GraphicsDevice graphicsDevice,
-        IServiceProvider services,
         ILogger logger,
         string contentRootDirectory = "Content"
     )
     {
         ArgumentNullException.ThrowIfNull(graphicsDevice);
-        ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentException.ThrowIfNullOrEmpty(contentRootDirectory);
 
         GraphicsDevice = graphicsDevice;
-        Services = services;
         Logger = logger;
-        Content = new ContentManager(services, contentRootDirectory);
+
+        // Create a minimal service container for ContentManager
+        // ContentManager requires IServiceProvider but only uses IGraphicsDeviceService
+        var serviceContainer = new GameServiceContainer();
+        serviceContainer.AddService(typeof(IGraphicsDeviceService), new GraphicsDeviceServiceShim(graphicsDevice));
+        Content = new ContentManager(serviceContainer, contentRootDirectory);
     }
 
     /// <summary>
@@ -52,77 +53,56 @@ public abstract class SceneBase : IScene
     protected GraphicsDevice GraphicsDevice { get; }
 
     /// <summary>
-    ///     Gets the service provider for dependency injection.
-    /// </summary>
-    protected IServiceProvider Services { get; }
-
-    /// <summary>
     ///     Gets the logger for this scene.
     /// </summary>
     protected ILogger Logger { get; }
 
     /// <summary>
-    ///     Gets a value indicating whether this scene has been disposed.
+    ///     Gets the current lifecycle state of this scene.
     /// </summary>
-    public bool IsDisposed
+    public SceneState State
     {
         get
         {
             lock (_lock)
             {
-                return _disposed;
+                return _state;
             }
         }
         private set
         {
             lock (_lock)
             {
-                _disposed = value;
+                // Validate state transition
+                SceneStateTransitions.ValidateTransition(_state, value);
+                
+                SceneState oldState = _state;
+                _state = value;
+                
+                Logger.LogDebug(
+                    "Scene {SceneType} state transition: {OldState} → {NewState}",
+                    GetType().Name,
+                    oldState,
+                    value
+                );
             }
         }
     }
+
+    /// <summary>
+    ///     Gets a value indicating whether this scene has been disposed.
+    /// </summary>
+    public bool IsDisposed => State == SceneState.Disposed;
 
     /// <summary>
     ///     Gets a value indicating whether this scene has been initialized.
     /// </summary>
-    public bool IsInitialized
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _isInitialized;
-            }
-        }
-        private set
-        {
-            lock (_lock)
-            {
-                _isInitialized = value;
-            }
-        }
-    }
+    public bool IsInitialized => State >= SceneState.Initialized;
 
     /// <summary>
     ///     Gets a value indicating whether this scene's content has been loaded.
     /// </summary>
-    public bool IsContentLoaded
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _isContentLoaded;
-            }
-        }
-        private set
-        {
-            lock (_lock)
-            {
-                _isContentLoaded = value;
-            }
-        }
-    }
+    public bool IsContentLoaded => State >= SceneState.ContentLoaded;
 
     /// <summary>
     ///     Gets or sets a value indicating whether the scene below this one should be rendered.
@@ -154,18 +134,28 @@ public abstract class SceneBase : IScene
     /// </summary>
     public virtual void Initialize()
     {
-        if (IsDisposed)
+        if (!SceneStateTransitions.CanInitialize(State))
         {
-            throw new ObjectDisposedException(nameof(SceneBase));
+            throw new InvalidOperationException(
+                $"Cannot initialize scene in state {State}. Expected state: {SceneState.Uninitialized}"
+            );
         }
 
-        if (IsInitialized)
-        {
-            return;
-        }
+        State = SceneState.Initializing;
+        
+        // Perform initialization (override in derived classes)
+        OnInitialize();
+        
+        State = SceneState.Initialized;
+    }
 
-        IsInitialized = true;
-        Logger.LogDebug("Scene {SceneType} initialized", GetType().Name);
+    /// <summary>
+    ///     Override this method in derived classes to perform initialization.
+    ///     State transitions are handled automatically by the base class.
+    /// </summary>
+    protected virtual void OnInitialize()
+    {
+        // Default: No initialization needed
     }
 
     /// <summary>
@@ -173,18 +163,28 @@ public abstract class SceneBase : IScene
     /// </summary>
     public virtual void LoadContent()
     {
-        if (IsDisposed)
+        if (!SceneStateTransitions.CanLoadContent(State))
         {
-            throw new ObjectDisposedException(nameof(SceneBase));
+            throw new InvalidOperationException(
+                $"Cannot load content in state {State}. Expected state: {SceneState.Initialized}"
+            );
         }
 
-        if (IsContentLoaded)
-        {
-            return;
-        }
+        State = SceneState.LoadingContent;
+        
+        // Perform content loading (override in derived classes)
+        OnLoadContent();
+        
+        State = SceneState.ContentLoaded;
+    }
 
-        IsContentLoaded = true;
-        Logger.LogDebug("Scene {SceneType} content loaded", GetType().Name);
+    /// <summary>
+    ///     Override this method in derived classes to load content.
+    ///     State transitions are handled automatically by the base class.
+    /// </summary>
+    protected virtual void OnLoadContent()
+    {
+        // Default: No content to load
     }
 
     /// <summary>
@@ -192,10 +192,9 @@ public abstract class SceneBase : IScene
     /// </summary>
     public virtual void UnloadContent()
     {
-        if (IsContentLoaded)
+        if (State >= SceneState.ContentLoaded && State < SceneState.Disposing)
         {
             Content.Unload();
-            IsContentLoaded = false;
             Logger.LogDebug("Scene {SceneType} content unloaded", GetType().Name);
         }
     }
@@ -227,19 +226,20 @@ public abstract class SceneBase : IScene
     /// <param name="disposing">True if called from Dispose(), false if called from finalizer.</param>
     protected virtual void Dispose(bool disposing)
     {
-        if (IsDisposed)
+        if (State == SceneState.Disposed)
         {
             return;
         }
+
+        State = SceneState.Disposing;
 
         if (disposing)
         {
             UnloadContent();
             Content.Dispose();
-            Logger.LogDebug("Scene {SceneType} disposed", GetType().Name);
         }
 
-        IsDisposed = true;
+        State = SceneState.Disposed;
     }
 
     /// <summary>
@@ -249,4 +249,25 @@ public abstract class SceneBase : IScene
     {
         Dispose(false);
     }
+}
+
+/// <summary>
+/// Minimal IGraphicsDeviceService implementation for ContentManager.
+/// ContentManager only needs the GraphicsDevice property.
+/// </summary>
+internal sealed class GraphicsDeviceServiceShim : IGraphicsDeviceService
+{
+    public GraphicsDeviceServiceShim(GraphicsDevice graphicsDevice)
+    {
+        GraphicsDevice = graphicsDevice ?? throw new ArgumentNullException(nameof(graphicsDevice));
+    }
+
+    public GraphicsDevice GraphicsDevice { get; }
+
+#pragma warning disable CS0067 // Events are required by interface but never used
+    public event EventHandler<EventArgs>? DeviceCreated;
+    public event EventHandler<EventArgs>? DeviceDisposing;
+    public event EventHandler<EventArgs>? DeviceReset;
+    public event EventHandler<EventArgs>? DeviceResetting;
+#pragma warning restore CS0067
 }

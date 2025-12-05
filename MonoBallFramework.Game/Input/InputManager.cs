@@ -1,10 +1,12 @@
 using Arch.Core;
 using Microsoft.Extensions.Logging;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using MonoBallFramework.Game.Ecs.Components.Player;
 using MonoBallFramework.Game.Engine.Common.Logging;
 using MonoBallFramework.Game.Engine.Rendering.Components;
 using MonoBallFramework.Game.Engine.Rendering.Systems;
+using MonoBallFramework.Game.Engine.Systems.Management;
 
 namespace MonoBallFramework.Game.Input;
 
@@ -62,7 +64,7 @@ public class InputManager(ILogger<InputManager> logger)
     /// </summary>
     private void HandleZoomControls(World world, KeyboardState currentKeyboardState)
     {
-        QueryDescription query = new QueryDescription().WithAll<Player, Camera>();
+        QueryDescription query = QueryCache.Get<Player, Camera>();
         world.Query(
             in query,
             (Entity entity, ref Player player, ref Camera camera) =>
@@ -73,7 +75,11 @@ public class InputManager(ILogger<InputManager> logger)
                     || IsKeyPressed(currentKeyboardState, Keys.Add)
                 )
                 {
-                    camera.SetZoomSmooth(camera.TargetZoom + 0.5f);
+                    camera.TargetZoom = MathHelper.Clamp(
+                        camera.TargetZoom + 0.5f,
+                        Camera.MinZoom,
+                        Camera.MaxZoom
+                    );
                     logger.LogZoomChanged("Manual", camera.TargetZoom);
                 }
 
@@ -83,7 +89,11 @@ public class InputManager(ILogger<InputManager> logger)
                     || IsKeyPressed(currentKeyboardState, Keys.Subtract)
                 )
                 {
-                    camera.SetZoomSmooth(camera.TargetZoom - 0.5f);
+                    camera.TargetZoom = MathHelper.Clamp(
+                        camera.TargetZoom - 0.5f,
+                        Camera.MinZoom,
+                        Camera.MaxZoom
+                    );
                     logger.LogZoomChanged("Manual", camera.TargetZoom);
                 }
 
@@ -91,20 +101,20 @@ public class InputManager(ILogger<InputManager> logger)
                 if (IsKeyPressed(currentKeyboardState, Keys.D1))
                 {
                     float gbaZoom = camera.CalculateGbaZoom();
-                    camera.SetZoomSmooth(gbaZoom);
+                    camera.TargetZoom = MathHelper.Clamp(gbaZoom, Camera.MinZoom, Camera.MaxZoom);
                     logger.LogZoomChanged("GBA (240x160)", gbaZoom);
                 }
 
                 if (IsKeyPressed(currentKeyboardState, Keys.D2))
                 {
                     float ndsZoom = camera.CalculateNdsZoom();
-                    camera.SetZoomSmooth(ndsZoom);
+                    camera.TargetZoom = MathHelper.Clamp(ndsZoom, Camera.MinZoom, Camera.MaxZoom);
                     logger.LogZoomChanged("NDS (256x192)", ndsZoom);
                 }
 
                 if (IsKeyPressed(currentKeyboardState, Keys.D3))
                 {
-                    camera.SetZoomSmooth(3.0f);
+                    camera.TargetZoom = MathHelper.Clamp(3.0f, Camera.MinZoom, Camera.MaxZoom);
                     logger.LogZoomChanged("Default", 3.0f);
                 }
             }

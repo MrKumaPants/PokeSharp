@@ -4,7 +4,7 @@
 This guide provides step-by-step instructions for testing hot-reload functionality with event-driven CSX scripts in MonoBall Framework.
 
 ## Prerequisites
-- MonoBall Framework.Game running in development mode
+- MonoBallFramework.Game running in development mode
 - CSX scripting service enabled
 - Test map with ice tiles and tall grass configured
 

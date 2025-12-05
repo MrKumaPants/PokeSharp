@@ -412,7 +412,7 @@ var direction = Context.Map.GetDirectionTo(
 - [Event System Architecture](../docs/IMPLEMENTATION-ROADMAP.md)
 
 ### Example Mods
-- Check `MonoBall Framework.Game/Assets/Scripts/Behaviors/` for built-in examples:
+- Check `MonoBallFramework.Game/Assets/Scripts/Behaviors/` for built-in examples:
   - `wander_behavior.csx` - Example NPC wandering
   - `guard_behavior.csx` - Example stationary NPC
   - `patrol_behavior.csx` - Example patrol pattern

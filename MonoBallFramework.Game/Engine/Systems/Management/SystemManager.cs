@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using MonoBallFramework.Game.Engine.Common.Configuration;
 using MonoBallFramework.Game.Engine.Common.Logging;
 using MonoBallFramework.Game.Engine.Core.Systems;
+using MonoBallFramework.Game.Engine.Rendering.Context;
 using MonoBallFramework.Game.Engine.Systems.Management.Performance;
 
 namespace MonoBallFramework.Game.Engine.Systems.Management;
@@ -27,6 +28,7 @@ public class SystemManager
 
     // Cached enabled systems to avoid LINQ allocations on every frame (120x/sec)
     private readonly List<IUpdateSystem> _cachedEnabledUpdateSystems = new();
+    private readonly List<IEventDrivenSystem> _eventDrivenSystems = new();
     private readonly object _lock = new();
     private readonly ILogger<SystemManager>? _logger;
     private readonly SystemPerformanceTracker _performanceTracker;
@@ -80,7 +82,7 @@ public class SystemManager
     }
 
     /// <summary>
-    ///     Gets the total count of registered systems (update + render).
+    ///     Gets the total count of registered systems (update + render + event-driven).
     /// </summary>
     public int SystemCount
     {
@@ -88,14 +90,14 @@ public class SystemManager
         {
             lock (_lock)
             {
-                return _updateSystems.Count + _renderSystems.Count;
+                return _updateSystems.Count + _renderSystems.Count + _eventDrivenSystems.Count;
             }
         }
     }
 
     /// <summary>
     ///     Gets a specific system by type from registered systems.
-    ///     Searches both update and render systems.
+    ///     Searches update, render, and event-driven systems.
     /// </summary>
     /// <typeparam name="T">The type of system to retrieve.</typeparam>
     /// <returns>The system instance, or null if not found.</returns>
@@ -112,7 +114,14 @@ public class SystemManager
             }
 
             // Search render systems
-            return _renderSystems.OfType<T>().FirstOrDefault();
+            T? renderSystem = _renderSystems.OfType<T>().FirstOrDefault();
+            if (renderSystem != null)
+            {
+                return renderSystem;
+            }
+
+            // Search event-driven systems
+            return _eventDrivenSystems.OfType<T>().FirstOrDefault();
         }
     }
 
@@ -163,8 +172,30 @@ public class SystemManager
     }
 
     /// <summary>
+    ///     Registers a pre-created event-driven system instance.
+    ///     Event-driven systems respond to specific events rather than per-frame updates.
+    /// </summary>
+    /// <param name="system">The event-driven system instance to register.</param>
+    public virtual void RegisterEventDrivenSystem(IEventDrivenSystem system)
+    {
+        ArgumentNullException.ThrowIfNull(system);
+
+        lock (_lock)
+        {
+            _eventDrivenSystems.Add(system);
+            _eventDrivenSystems.Sort((a, b) => a.Priority.CompareTo(b.Priority));
+
+            _logger?.LogDebug(
+                "Registered event-driven system: {SystemName} (Priority: {Priority})",
+                system.GetType().Name,
+                system.Priority
+            );
+        }
+    }
+
+    /// <summary>
     ///     Initializes all registered systems with the given world.
-    ///     Initializes both update and render systems.
+    ///     Initializes update, render, and event-driven systems.
     /// </summary>
     /// <param name="world">The ECS world.</param>
     public void Initialize(World world)
@@ -176,7 +207,7 @@ public class SystemManager
             throw new InvalidOperationException("SystemManager has already been initialized.");
         }
 
-        int totalSystems = _updateSystems.Count + _renderSystems.Count;
+        int totalSystems = _updateSystems.Count + _renderSystems.Count + _eventDrivenSystems.Count;
         _logger?.LogSystemsInitializing(totalSystems);
 
         lock (_lock)
@@ -222,6 +253,25 @@ public class SystemManager
                         );
                         throw;
                     }
+                }
+            }
+
+            // Initialize event-driven systems
+            foreach (IEventDrivenSystem system in _eventDrivenSystems)
+            {
+                try
+                {
+                    _logger?.LogSystemInitializing(system.GetType().Name);
+                    system.Initialize(world);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogExceptionWithContext(
+                        ex,
+                        "Failed to initialize event-driven system: {SystemName}",
+                        system.GetType().Name
+                    );
+                    throw;
                 }
             }
         }
@@ -324,9 +374,16 @@ public class SystemManager
     ///     This should be called from the Draw() method of the game loop.
     /// </summary>
     /// <param name="world">The ECS world containing all entities to render.</param>
-    public void Render(World world)
+    /// <summary>
+    ///     Renders all enabled render systems in order using the provided render context.
+    ///     The render context contains the camera and rendering parameters from the scene.
+    /// </summary>
+    /// <param name="world">The ECS world containing entities to render.</param>
+    /// <param name="context">The render context with camera and parameters (provided by scene).</param>
+    public void Render(World world, RenderContext context)
     {
         ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(context);
 
         lock (_lock)
         {
@@ -338,7 +395,7 @@ public class SystemManager
             try
             {
                 var sw = Stopwatch.StartNew();
-                system.Render(world);
+                system.Render(world, context);  // Pass context to render system
                 sw.Stop();
 
                 TrackSystemPerformance(system.GetType().Name, sw.Elapsed.TotalMilliseconds);

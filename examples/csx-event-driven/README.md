@@ -184,7 +184,7 @@ public override void OnTick(ScriptContext ctx, float deltaTime) {
 
 ### 1. Copy to Your Project
 ```bash
-cp src/examples/csx-event-driven/*.csx MonoBall Framework.Game/Assets/Scripts/
+cp src/examples/csx-event-driven/*.csx MonoBallFramework.Game/Assets/Scripts/
 ```
 
 ### 2. Reference in Map Data

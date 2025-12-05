@@ -303,7 +303,7 @@ public class ConsoleSystem : IUpdateSystem
                     ILogger<ConsoleScene>
                 >();
 
-                _consoleScene = new ConsoleScene(_graphicsDevice, _services, consoleLogger);
+                _consoleScene = new ConsoleScene(_graphicsDevice, consoleLogger);
 
                 // Wire up event handlers
                 _consoleScene.OnCommandSubmitted += HandleConsoleCommand;
@@ -354,6 +354,8 @@ public class ConsoleSystem : IUpdateSystem
     /// </summary>
     private void HandleConsoleReady()
     {
+        _logger.LogInformation("HandleConsoleReady called - setting up console panels");
+
         // Replay buffered logs if logging is enabled
         if (_loggingEnabled)
         {

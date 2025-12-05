@@ -3,8 +3,11 @@ using Arch.Core.Extensions;
 using Arch.Relationships;
 using Microsoft.Extensions.Logging;
 using MonoBallFramework.Game.Engine.Common.Logging;
+using MonoBallFramework.Game.Engine.Core.Events;
+using MonoBallFramework.Game.Engine.Core.Events.Map;
 using MonoBallFramework.Game.Engine.Core.Types;
 using MonoBallFramework.Game.Engine.Rendering.Assets;
+using MonoBallFramework.Game.Engine.Systems.Management;
 using MonoBallFramework.Game.Engine.Systems.Pooling;
 using MonoBallFramework.Game.Components;
 using MonoBallFramework.Game.Ecs.Components;
@@ -28,6 +31,7 @@ public class MapLifecycleManager(
     IAssetProvider assetProvider,
     SpriteTextureLoader spriteTextureLoader,
     SpatialHashSystem spatialHashSystem,
+    IEventBus? eventBus = null,
     EntityPoolManager? poolManager = null,
     ILogger<MapLifecycleManager>? logger = null
 )
@@ -82,6 +86,9 @@ public class MapLifecycleManager(
             ("to", newMapId.Value)
         );
 
+        // Publish map transition event for subscribers (e.g., map popup display)
+        PublishMapTransitionEvent(oldMapId, newMapId);
+
         // Clean up old maps (keep current + previous for smooth transitions)
         var mapsToUnload = _loadedMaps
             .Keys.Where(id => id != _currentMapId && id != _previousMapId)
@@ -91,6 +98,71 @@ public class MapLifecycleManager(
         {
             UnloadMap(mapId);
         }
+    }
+
+    /// <summary>
+    ///     Publishes a MapTransitionEvent with map metadata for subscribers.
+    ///     Extracts DisplayName and RegionSection from map entities.
+    /// </summary>
+    private void PublishMapTransitionEvent(MapRuntimeId? oldMapId, MapRuntimeId newMapId)
+    {
+        if (eventBus == null)
+        {
+            return;
+        }
+
+        // Get metadata for the new map
+        string? newMapName = _loadedMaps.TryGetValue(newMapId, out MapMetadata? newMetadata)
+            ? newMetadata.Name
+            : null;
+
+        // Query the world for display name and region section
+        string? displayName = null;
+        string? regionSection = null;
+
+        QueryDescription mapInfoQuery = QueryCache.Get<MapInfo>();
+        world.Query(
+            in mapInfoQuery,
+            (Entity entity, ref MapInfo info) =>
+            {
+                if (info.MapId == newMapId)
+                {
+                    // Get DisplayName if available
+                    if (entity.Has<DisplayName>())
+                    {
+                        displayName = entity.Get<DisplayName>().Value;
+                    }
+
+                    // Get RegionSection if available
+                    if (entity.Has<RegionSection>())
+                    {
+                        regionSection = entity.Get<RegionSection>().Value;
+                    }
+                }
+            }
+        );
+
+        // Get old map name if available
+        string? oldMapName = oldMapId.HasValue && _loadedMaps.TryGetValue(oldMapId.Value, out MapMetadata? oldMetadata)
+            ? oldMetadata.Name
+            : null;
+
+        // Publish the event
+        eventBus.PublishPooled<MapTransitionEvent>(evt =>
+        {
+            evt.FromMapId = oldMapId?.Value;
+            evt.FromMapName = oldMapName;
+            evt.ToMapId = newMapId.Value;
+            evt.ToMapName = displayName ?? newMapName ?? "Unknown Map";
+            evt.RegionName = regionSection;
+        });
+
+        logger?.LogDebug(
+            "Published MapTransitionEvent: {FromMap} -> {ToMap} (Region: {Region})",
+            oldMapName ?? "None",
+            displayName ?? newMapName,
+            regionSection ?? "None"
+        );
     }
 
     /// <summary>
@@ -143,7 +215,7 @@ public class MapLifecycleManager(
 
         // 1. Find the MapInfo entity for this map
         Entity? mapInfoEntity = null;
-        QueryDescription mapInfoQuery = new QueryDescription().WithAll<MapInfo>();
+        QueryDescription mapInfoQuery = QueryCache.Get<MapInfo>();
         world.Query(
             mapInfoQuery,
             (Entity entity, ref MapInfo info) =>
@@ -423,7 +495,7 @@ public class MapLifecycleManager(
         var entitiesToDestroy = new List<Entity>();
 
         // 1. Collect ALL MapInfo entities and their children
-        QueryDescription mapInfoQuery = new QueryDescription().WithAll<MapInfo>();
+        QueryDescription mapInfoQuery = QueryCache.Get<MapInfo>();
         world.Query(
             mapInfoQuery,
             entity =>

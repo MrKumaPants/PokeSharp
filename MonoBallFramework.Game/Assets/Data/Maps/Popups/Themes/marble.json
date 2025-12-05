@@ -1,0 +1,7 @@
+{
+  "id": "marble",
+  "name": "Marble",
+  "description": "Marble frame - used for major cities",
+  "background": "marble",
+  "outline": "marble_outline"
+}

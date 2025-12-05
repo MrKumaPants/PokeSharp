@@ -1,11 +1,27 @@
 using Microsoft.Xna.Framework;
+using MonoBallFramework.Game.Engine.Rendering.Constants;
 
 namespace MonoBallFramework.Game.Engine.Rendering.Components;
 
 /// <summary>
 ///     Camera component for viewport and world-to-screen transformations.
-///     Supports smooth following, directional prediction, rotation, and coordinate conversion.
+///     This is a pure data component following ECS best practices.
+///     All camera logic (following, zooming, etc.) is handled by dedicated systems.
 /// </summary>
+/// <remarks>
+///     <para>
+///         <b>Architecture:</b>
+///         - Camera: Pure data component (this struct)
+///         - CameraUpdateSystem: Handles zoom transitions and follow target logic
+///         - CameraFollowSystem: Sets the follow target based on player position
+///         - CameraViewportSystem: Handles window resize events
+///         - MainCamera: Tag component to mark the active camera
+///     </para>
+///     <para>
+///         This component keeps readonly helper methods for transformations (GetTransformMatrix, ScreenToWorld, etc.)
+///         as these are pure computations that don't mutate state.
+///     </para>
+/// </remarks>
 public struct Camera
 {
     /// <summary>
@@ -126,14 +142,14 @@ public struct Camera
         Position = Vector2.Zero;
         Zoom = 1.0f;
         TargetZoom = 1.0f;
-        ZoomTransitionSpeed = 0.1f;
+        ZoomTransitionSpeed = CameraConstants.DefaultZoomTransitionSpeed;
         Rotation = 0f;
         Viewport = Rectangle.Empty;
         ReferenceWidth = 0;
         ReferenceHeight = 0;
         VirtualViewport = Rectangle.Empty;
-        SmoothingSpeed = 0.2f;
-        LeadDistance = 1.5f;
+        SmoothingSpeed = CameraConstants.DefaultSmoothingSpeed;
+        LeadDistance = CameraConstants.DefaultLeadDistance;
         FollowTarget = null;
         MapBounds = Rectangle.Empty;
         IsDirty = true; // Initial render requires transform calculation
@@ -143,14 +159,18 @@ public struct Camera
     ///     Initializes a new instance of the Camera struct.
     /// </summary>
     /// <param name="viewport">The viewport rectangle for rendering bounds.</param>
-    /// <param name="smoothingSpeed">Smoothing speed for lerp (default 0.2).</param>
-    /// <param name="leadDistance">Lead distance in tiles for directional prediction (default 1.5).</param>
-    public Camera(Rectangle viewport, float smoothingSpeed = 0.2f, float leadDistance = 1.5f)
+    /// <param name="smoothingSpeed">Smoothing speed for lerp.</param>
+    /// <param name="leadDistance">Lead distance in tiles for directional prediction.</param>
+    public Camera(
+        Rectangle viewport,
+        float smoothingSpeed = CameraConstants.DefaultSmoothingSpeed,
+        float leadDistance = CameraConstants.DefaultLeadDistance
+    )
     {
         Position = Vector2.Zero;
         Zoom = 1.0f;
         TargetZoom = 1.0f;
-        ZoomTransitionSpeed = 0.1f;
+        ZoomTransitionSpeed = CameraConstants.DefaultZoomTransitionSpeed;
         Rotation = 0f;
         Viewport = viewport;
         ReferenceWidth = viewport.Width;
@@ -177,6 +197,35 @@ public struct Camera
             return new RectangleF(
                 Position.X - halfWidth,
                 Position.Y - halfHeight,
+                halfWidth * 2,
+                halfHeight * 2
+            );
+        }
+    }
+
+    /// <summary>
+    ///     Gets the camera's bounding rectangle using the ROUNDED position.
+    ///     This matches the position used in GetTransformMatrix() and prevents sub-pixel jitter.
+    ///     Use this for UI positioning (popups, HUD elements) that need to stay stable.
+    /// </summary>
+    /// <remarks>
+    ///     The camera rounds its position in GetTransformMatrix() to prevent texture bleeding.
+    ///     UI elements should use the same rounded position to avoid jitter during smooth camera movement.
+    /// </remarks>
+    public RectangleF RoundedBoundingRectangle
+    {
+        get
+        {
+            // Use the same rounding logic as GetTransformMatrix()
+            float roundedX = MathF.Round(Position.X * Zoom) / Zoom;
+            float roundedY = MathF.Round(Position.Y * Zoom) / Zoom;
+
+            float halfWidth = Viewport.Width / (2f * Zoom);
+            float halfHeight = Viewport.Height / (2f * Zoom);
+
+            return new RectangleF(
+                roundedX - halfWidth,
+                roundedY - halfHeight,
                 halfWidth * 2,
                 halfHeight * 2
             );
@@ -231,55 +280,6 @@ public struct Camera
         return Vector2.Transform(worldPosition, GetTransformMatrix());
     }
 
-    /// <summary>
-    ///     Moves the camera by a relative offset in world space.
-    ///     Note: This will be overridden by CameraFollowSystem if following is active.
-    /// </summary>
-    /// <param name="offset">The offset to move by.</param>
-    public void Move(Vector2 offset)
-    {
-        Position += offset;
-    }
-
-    /// <summary>
-    ///     Sets the camera to look at a specific world position.
-    ///     Note: This will be overridden by CameraFollowSystem if following is active.
-    /// </summary>
-    /// <param name="worldPosition">The position to center the camera on.</param>
-    public void LookAt(Vector2 worldPosition)
-    {
-        Position = worldPosition;
-    }
-
-    /// <summary>
-    ///     Increases the zoom level by the specified amount.
-    ///     Automatically clamped between MinZoom and MaxZoom.
-    /// </summary>
-    /// <param name="amount">The amount to increase zoom by (default 0.1).</param>
-    public void ZoomIn(float amount = 0.1f)
-    {
-        Zoom = MathHelper.Clamp(Zoom + amount, MinZoom, MaxZoom);
-    }
-
-    /// <summary>
-    ///     Decreases the zoom level by the specified amount.
-    ///     Automatically clamped between MinZoom and MaxZoom.
-    /// </summary>
-    /// <param name="amount">The amount to decrease zoom by (default 0.1).</param>
-    public void ZoomOut(float amount = 0.1f)
-    {
-        Zoom = MathHelper.Clamp(Zoom - amount, MinZoom, MaxZoom);
-    }
-
-    /// <summary>
-    ///     Rotates the camera by the specified angle in radians.
-    ///     Positive values rotate clockwise.
-    /// </summary>
-    /// <param name="radians">The angle to rotate by in radians.</param>
-    public void Rotate(float radians)
-    {
-        Rotation += radians;
-    }
 
     /// <summary>
     ///     Gets the camera's world view bounds as an integer Rectangle.
@@ -291,60 +291,6 @@ public struct Camera
         return BoundingRectangle.ToRectangle();
     }
 
-    /// <summary>
-    ///     Updates the camera's zoom and position based on FollowTarget and TargetZoom.
-    ///     Call this each frame to enable smooth zoom transitions and camera following.
-    /// </summary>
-    /// <param name="deltaTime">Time elapsed since last frame (for frame-independent smoothing).</param>
-    public void Update(float deltaTime)
-    {
-        bool dirty = false;
-
-        // 1. Smooth zoom transition
-        if (Math.Abs(Zoom - TargetZoom) > 0.001f)
-        {
-            Zoom = MathHelper.Lerp(Zoom, TargetZoom, ZoomTransitionSpeed);
-            dirty = true;
-
-            // Snap to target when very close
-            if (Math.Abs(Zoom - TargetZoom) < 0.001f)
-            {
-                Zoom = TargetZoom;
-            }
-        }
-
-        // 2. Follow target if set
-        if (FollowTarget.HasValue)
-        {
-            Vector2 oldPosition = Position;
-            Vector2 targetPosition = FollowTarget.Value;
-
-            // Apply smoothing if enabled
-            if (SmoothingSpeed > 0)
-            {
-                Position = Vector2.Lerp(Position, targetPosition, SmoothingSpeed);
-            }
-            else
-            {
-                Position = targetPosition;
-            }
-
-            // Note: Camera clamping removed to replicate Pokemon Emerald behavior
-            // The camera can now move freely without map bounds restrictions
-
-            // Mark dirty if position changed
-            if (Position != oldPosition)
-            {
-                dirty = true;
-            }
-        }
-
-        // Mark transform as dirty if camera changed
-        if (dirty)
-        {
-            IsDirty = true;
-        }
-    }
 
     /// <summary>
     ///     Calculates the zoom level to match GBA native resolution (240x160).
@@ -374,26 +320,6 @@ public struct Camera
         return Math.Min(zoomX, zoomY); // Use smaller zoom to fit entirely
     }
 
-    /// <summary>
-    ///     Sets the target zoom level for smooth transition.
-    ///     Automatically clamped between MinZoom and MaxZoom.
-    /// </summary>
-    /// <param name="targetZoom">The desired zoom level.</param>
-    public void SetZoomSmooth(float targetZoom)
-    {
-        TargetZoom = MathHelper.Clamp(targetZoom, MinZoom, MaxZoom);
-    }
-
-    /// <summary>
-    ///     Sets the zoom level instantly without transition.
-    ///     Automatically clamped between MinZoom and MaxZoom.
-    /// </summary>
-    /// <param name="zoom">The zoom level to set.</param>
-    public void SetZoomInstant(float zoom)
-    {
-        Zoom = MathHelper.Clamp(zoom, MinZoom, MaxZoom);
-        TargetZoom = Zoom;
-    }
 
     /// <summary>
     ///     Updates the viewport to maintain aspect ratio when the window is resized.

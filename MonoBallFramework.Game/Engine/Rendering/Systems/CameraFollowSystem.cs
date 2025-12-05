@@ -6,15 +6,23 @@ using MonoBallFramework.Game.Ecs.Components.Player;
 using MonoBallFramework.Game.Engine.Core.Systems;
 using MonoBallFramework.Game.Engine.Core.Systems.Base;
 using MonoBallFramework.Game.Engine.Rendering.Components;
+using MonoBallFramework.Game.Engine.Rendering.Constants;
 using MonoBallFramework.Game.Engine.Systems.Management;
 
 namespace MonoBallFramework.Game.Engine.Rendering.Systems;
 
 /// <summary>
-///     System for camera following with smooth transitions.
-///     Sets the camera's follow target and calls camera.Update() to handle all logic.
+///     System for setting the camera's follow target based on player position.
+///     The actual camera movement is handled by CameraUpdateSystem.
 ///     Camera moves freely without bounds restrictions (Pokemon Emerald style).
 /// </summary>
+/// <remarks>
+///     <para>
+///         <b>Architecture:</b>
+///         This system only SETS the follow target. The CameraUpdateSystem (priority 826)
+///         handles the actual interpolation and movement.
+///     </para>
+/// </remarks>
 public class CameraFollowSystem(ILogger<CameraFollowSystem>? logger = null)
     : SystemBase,
         IUpdateSystem
@@ -56,13 +64,12 @@ public class CameraFollowSystem(ILogger<CameraFollowSystem>? logger = null)
             (ref Position position, ref Camera camera) =>
             {
                 // Set follow target with offset to center on player sprite
-                // Player position is tile top-left, so add half tile (8 pixels) for centering
-                const float halfTile = 8f;
+                // Player position is tile top-left, so add half tile for centering
                 camera.FollowTarget = new Vector2(
-                    position.PixelX + halfTile,
-                    position.PixelY + halfTile
+                    position.PixelX + CameraConstants.HalfTilePixels,
+                    position.PixelY + CameraConstants.HalfTilePixels
                 );
-                camera.Update(deltaTime);
+                // Note: Actual camera movement handled by CameraUpdateSystem (priority 826)
             }
         );
     }

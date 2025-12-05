@@ -1,0 +1,7 @@
+{
+  "id": "underwater",
+  "name": "Underwater",
+  "description": "Underwater frame - used for water routes",
+  "background": "underwater",
+  "outline": "underwater_outline"
+}

@@ -48,13 +48,12 @@ public class LoadingScene : SceneBase
     /// </summary>
     public LoadingScene(
         GraphicsDevice graphicsDevice,
-        IServiceProvider services,
         ILogger<LoadingScene> logger,
         LoadingProgress progress,
         Task<IScene> initializationTask,
         SceneManager sceneManager
     )
-        : base(graphicsDevice, services, logger)
+        : base(graphicsDevice, logger)
     {
         ArgumentNullException.ThrowIfNull(progress);
         ArgumentNullException.ThrowIfNull(initializationTask);

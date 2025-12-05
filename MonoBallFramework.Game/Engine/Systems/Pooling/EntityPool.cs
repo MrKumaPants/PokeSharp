@@ -2,6 +2,8 @@ using System.Diagnostics;
 using Arch.Core;
 using Arch.Core.Extensions;
 using MonoBallFramework.Game.Components;
+using MonoBallFramework.Game.Ecs.Components.Rendering;
+using MonoBallFramework.Game.Ecs.Components.Tiles;
 using MonoBallFramework.Game.Ecs.Components;
 
 namespace MonoBallFramework.Game.Engine.Systems.Pooling;
@@ -358,25 +360,45 @@ public class EntityPool
 
     private void ResetEntityToPoolState(Entity entity)
     {
-        // Arch doesn't have RemoveAll, so we need to manually remove components
-        // We keep only the Pooled component to maintain pool identity
-
-        // Get all component types (Arch API for this varies by version)
-        // For now, we'll use a heuristic: store the Pooled component, destroy and recreate
+        // CRITICAL FIX: Must remove ALL components except Pooled to prevent tile corruption
+        // Bug: Pooled tiles were keeping old component data (TileSprite, Elevation, etc.)
+        // causing visual corruption when reused for different tiles
+        
+        // Store the Pooled component data before clearing
         Pooled pooled = entity.Has<Pooled>() ? entity.Get<Pooled>() : new Pooled();
 
-        // Arch's approach: Remove all components one by one
-        // This is version-specific - adjust based on your Arch version
-        // entity.RemoveRange(...); // If available in your Arch version
-
-        // Fallback: Clear by removing common component types
-        // In production, you'd track component types per entity or use Arch's archetype system
-        // For now, we'll just ensure Pooled is re-added if it was removed
-
-        // Re-add the pooled marker
+        // Manually remove all known tile components
+        // Arch.Core doesn't have a "remove all" API, so we enumerate known component types
+        // This list should be kept in sync with components that can be added to tiles
+        
+        // Core tile components (always present on tiles)
+        if (entity.Has<TilePosition>()) entity.Remove<TilePosition>();
+        if (entity.Has<TileSprite>()) entity.Remove<TileSprite>();
+        if (entity.Has<Elevation>()) entity.Remove<Elevation>();
+        
+        // Optional tile components
+        if (entity.Has<LayerOffset>()) entity.Remove<LayerOffset>();
+        if (entity.Has<TilesetInfo>()) entity.Remove<TilesetInfo>();
+        
+        // Tile properties (added via property mappers)
+        if (entity.Has<TerrainType>()) entity.Remove<TerrainType>();
+        if (entity.Has<TileScript>()) entity.Remove<TileScript>();
+        
+        // Animation components
+        if (entity.Has<AnimatedTile>()) entity.Remove<AnimatedTile>();
+        
+        // Note: PropertyMapperRegistry can add custom components dynamically
+        // If you add new tile component types via property mappers, add them here
+        // Otherwise pooled tiles will retain old data and cause corruption
+        
+        // Re-add or update Pooled component
         if (!entity.Has<Pooled>())
         {
             entity.Add(pooled);
+        }
+        else
+        {
+            entity.Set(pooled);
         }
     }
 }

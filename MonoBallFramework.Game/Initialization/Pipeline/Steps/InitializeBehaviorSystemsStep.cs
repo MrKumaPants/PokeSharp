@@ -93,10 +93,11 @@ public class InitializeBehaviorSystemsStep : InitializationStepBase
         {
             context.GameInitializer.WarpExecutionSystem.SetServices(
                 context.MapInitializer,
-                context.GameInitializer.MapLifecycleManager
+                context.GameInitializer.MapLifecycleManager,
+                eventBus
             );
             logger.LogInformation(
-                "WarpExecutionSystem wired to MapInitializer and MapLifecycleManager"
+                "WarpExecutionSystem wired to MapInitializer, MapLifecycleManager, and EventBus"
             );
         }
         else

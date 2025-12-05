@@ -38,10 +38,9 @@ public class ConsoleScene : SceneBase
 
     public ConsoleScene(
         GraphicsDevice graphicsDevice,
-        IServiceProvider services,
         ILogger<ConsoleScene> logger
     )
-        : base(graphicsDevice, services, logger)
+        : base(graphicsDevice, logger)
     {
         // Console should block input to scenes below
         ExclusiveInput = true;
@@ -493,7 +492,9 @@ public class ConsoleScene : SceneBase
             _consolePanel.Show();
 
             // Fire OnReady event - LogsPanel now exists and can receive buffered logs
+            Logger.LogInformation("ConsoleScene LoadContent completed - firing OnReady event");
             OnReady?.Invoke();
+            Logger.LogInformation("OnReady event fired - subscribers: {Count}", OnReady?.GetInvocationList().Length ?? 0);
         }
         catch (Exception ex)
         {
@@ -601,11 +602,15 @@ public class ConsoleScene : SceneBase
             // Don't clear - let the game render behind us
             // The console panel has a semi-transparent background
 
-            // Update screen size in case window was resized
-            _uiContext.UpdateScreenSize(
-                GraphicsDevice.Viewport.Width,
-                GraphicsDevice.Viewport.Height
-            );
+            // CRITICAL: Reset viewport to full screen
+            // Game scenes may set a smaller virtual viewport (e.g., GBA-scaled viewport)
+            // Console UI needs to render at full screen resolution
+            int fullWidth = GraphicsDevice.PresentationParameters.BackBufferWidth;
+            int fullHeight = GraphicsDevice.PresentationParameters.BackBufferHeight;
+            GraphicsDevice.Viewport = new Viewport(0, 0, fullWidth, fullHeight);
+
+            // Update screen size using actual back buffer dimensions
+            _uiContext.UpdateScreenSize(fullWidth, fullHeight);
 
             // Begin frame and update input state
             _uiContext.BeginFrame(_inputState);

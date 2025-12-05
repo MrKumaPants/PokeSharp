@@ -8,6 +8,8 @@ using MonoBallFramework.Game.Engine.Common.Logging;
 using MonoBallFramework.Game.Engine.Core.Systems;
 using MonoBallFramework.Game.Engine.Rendering.Assets;
 using MonoBallFramework.Game.Engine.Rendering.Components;
+using MonoBallFramework.Game.Engine.Rendering.Constants;
+using MonoBallFramework.Game.Engine.Rendering.Context;
 using MonoBallFramework.Game.Engine.Systems.Management;
 using MonoBallFramework.Game.Components;
 using MonoBallFramework.Game.Ecs.Components;
@@ -47,26 +49,13 @@ public class ElevationRenderSystem(
 {
     private const float MapHeight = RenderingConstants.MaxRenderDistance;
 
-    /// <summary>
-    ///     Margin in tiles around the camera viewport for culling calculations.
-    ///     Extra tiles are rendered beyond the visible area to prevent pop-in during scrolling.
-    /// </summary>
-    private const int CameraViewportMarginTiles = 2;
-
-    /// <summary>
-    ///     Margin in tiles around the camera bounds for border rendering.
-    ///     Extends border rendering area for smooth scrolling near map edges.
-    /// </summary>
-    private const int BorderRenderMarginTiles = 2;
-
     // Cache border data for the current frame (avoids repeated queries)
     private readonly List<MapBorderInfo> _cachedMapBorders = new(5);
 
     // Cache ALL map bounds for border exclusion (includes maps without borders)
     private readonly List<MapBoundsInfo> _cachedMapBounds = new(10);
 
-    // Cache query descriptions to avoid allocation every frame
-    private readonly QueryDescription _cameraQuery = QueryCache.Get<Player, Camera>();
+    // Camera is now passed via RenderContext (scenes own cameras)
 
     private readonly GraphicsDevice _graphicsDevice =
         graphicsDevice ?? throw new ArgumentNullException(nameof(graphicsDevice));
@@ -198,7 +187,11 @@ public class ElevationRenderSystem(
     }
 
     /// <inheritdoc />
-    public void Render(World world)
+    /// <summary>
+    ///     Renders all entities using the camera provided by the scene via RenderContext.
+    ///     The scene owns and manages the camera, ensuring proper isolation.
+    /// </summary>
+    public void Render(World world, RenderContext context)
     {
         try
         {
@@ -208,17 +201,17 @@ public class ElevationRenderSystem(
             // Only run detailed profiling when explicitly enabled (adds overhead)
             if (_enableDetailedProfiling)
             {
-                RenderWithProfiling(world);
+                RenderWithProfiling(world, context.Camera);
                 return;
             }
 
             // Fast path - no profiling overhead
-            UpdateCameraCache(world);
+            UpdateCameraCache(world, context.Camera);
             UpdateMapWorldOriginsCache(world);
             UpdateMapBordersCache(world);
 
             // Get camera virtual viewport for letterboxing/pillarboxing
-            Rectangle virtualViewport = GetCameraVirtualViewport(world);
+            Rectangle virtualViewport = GetCameraVirtualViewport(context.Camera);
             Viewport originalViewport = graphicsDevice.Viewport;
 
             // Clear full screen with black (for borders)
@@ -348,17 +341,17 @@ public class ElevationRenderSystem(
     /// <summary>
     ///     Render with detailed profiling enabled (slower, for diagnostics only).
     /// </summary>
-    private void RenderWithProfiling(World world)
+    private void RenderWithProfiling(World world, Camera camera)
     {
         var swSetup = Stopwatch.StartNew();
-        UpdateCameraCache(world);
+        UpdateCameraCache(world, camera);
         UpdateMapWorldOriginsCache(world);
         UpdateMapBordersCache(world);
         swSetup.Stop();
         _setupTime = swSetup.Elapsed.TotalMilliseconds;
 
         // Get camera virtual viewport for letterboxing/pillarboxing
-        Rectangle virtualViewport = GetCameraVirtualViewport(world);
+        Rectangle virtualViewport = GetCameraVirtualViewport(camera);
         Viewport originalViewport = graphicsDevice.Viewport;
 
         // Clear full screen with black (for borders)
@@ -506,43 +499,39 @@ public class ElevationRenderSystem(
 
     /// <summary>
     ///     Updates the cached camera transform and bounds once per frame.
+    ///     Uses the camera provided by the scene via RenderContext.
     /// </summary>
-    private void UpdateCameraCache(World world)
+    /// <remarks>
+    ///     The camera is now owned by the scene and passed explicitly.
+    ///     This ensures proper scene-camera ownership and isolation.
+    /// </remarks>
+    private void UpdateCameraCache(World world, Camera camera)
     {
-        world.Query(
-            in _cameraQuery,
-            (ref Camera camera) =>
-            {
-                // Only recalculate if camera changed (dirty flag optimization)
-                if (!camera.IsDirty && _cachedCameraTransform != Matrix.Identity)
-                {
-                    return;
-                }
+        // Only recalculate if camera changed (dirty flag optimization)
+        if (!camera.IsDirty && _cachedCameraTransform != Matrix.Identity)
+        {
+            return;
+        }
 
-                _cachedCameraTransform = camera.GetTransformMatrix();
+        _cachedCameraTransform = camera.GetTransformMatrix();
 
-                // Calculate camera bounds for culling
-                int left =
-                    (int)(camera.Position.X / TileSize)
-                    - (camera.Viewport.Width / 2 / TileSize / (int)camera.Zoom)
-                    - CameraViewportMarginTiles;
-                int top =
-                    (int)(camera.Position.Y / TileSize)
-                    - (camera.Viewport.Height / 2 / TileSize / (int)camera.Zoom)
-                    - CameraViewportMarginTiles;
-                int width =
-                    (camera.Viewport.Width / TileSize / (int)camera.Zoom)
-                    + (CameraViewportMarginTiles * 2);
-                int height =
-                    (camera.Viewport.Height / TileSize / (int)camera.Zoom)
-                    + (CameraViewportMarginTiles * 2);
+        // Calculate camera bounds for culling
+        int left =
+            (int)(camera.Position.X / TileSize)
+            - (camera.Viewport.Width / 2 / TileSize / (int)camera.Zoom)
+            - CameraConstants.ViewportMarginTiles;
+        int top =
+            (int)(camera.Position.Y / TileSize)
+            - (camera.Viewport.Height / 2 / TileSize / (int)camera.Zoom)
+            - CameraConstants.ViewportMarginTiles;
+        int width =
+            (camera.Viewport.Width / TileSize / (int)camera.Zoom)
+            + (CameraConstants.ViewportMarginTiles * 2);
+        int height =
+            (camera.Viewport.Height / TileSize / (int)camera.Zoom)
+            + (CameraConstants.ViewportMarginTiles * 2);
 
-                _cachedCameraBounds = new Rectangle(left, top, width, height);
-
-                // Reset dirty flag after recalculation
-                camera.IsDirty = false;
-            }
-        );
+        _cachedCameraBounds = new Rectangle(left, top, width, height);
 
         // Cache the player's current map ID for border rendering
         world.Query(
@@ -556,24 +545,16 @@ public class ElevationRenderSystem(
 
     /// <summary>
     ///     Gets the camera's virtual viewport for letterboxing/pillarboxing.
-    ///     Returns the full viewport if no camera exists or VirtualViewport is empty.
+    ///     Returns the full viewport if VirtualViewport is empty.
     /// </summary>
-    private Rectangle GetCameraVirtualViewport(World world)
+    private Rectangle GetCameraVirtualViewport(Camera camera)
     {
-        Rectangle virtualViewport = graphicsDevice.Viewport.Bounds;
+        if (camera.VirtualViewport != Rectangle.Empty)
+        {
+            return camera.VirtualViewport;
+        }
 
-        world.Query(
-            in _cameraQuery,
-            (ref Camera camera) =>
-            {
-                if (camera.VirtualViewport != Rectangle.Empty)
-                {
-                    virtualViewport = camera.VirtualViewport;
-                }
-            }
-        );
-
-        return virtualViewport;
+        return graphicsDevice.Viewport.Bounds;
     }
 
     /// <summary>
@@ -1210,10 +1191,10 @@ public class ElevationRenderSystem(
 
         // Render border tiles in the visible camera area
         // Extend render area slightly beyond camera for smooth scrolling
-        int renderLeft = cameraBounds.Left - BorderRenderMarginTiles;
-        int renderRight = cameraBounds.Right + BorderRenderMarginTiles;
-        int renderTop = cameraBounds.Top - BorderRenderMarginTiles;
-        int renderBottom = cameraBounds.Bottom + BorderRenderMarginTiles;
+        int renderLeft = cameraBounds.Left - CameraConstants.BorderRenderMarginTiles;
+        int renderRight = cameraBounds.Right + CameraConstants.BorderRenderMarginTiles;
+        int renderTop = cameraBounds.Top - CameraConstants.BorderRenderMarginTiles;
+        int renderBottom = cameraBounds.Bottom + CameraConstants.BorderRenderMarginTiles;
 
         // Get texture for border tiles
         if (!AssetManager.HasTexture(border.TilesetId))

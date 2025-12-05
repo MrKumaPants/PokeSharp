@@ -86,7 +86,7 @@ All mod scripts must:
 ### Example Script Template
 
 ```csharp
-using MonoBall Framework.Game.Scripting.Runtime;
+using MonoBallFramework.Game.Scripting.Runtime;
 using MonoBall Framework.Engine.Core.Events;
 
 public class MyModScript : ScriptBase

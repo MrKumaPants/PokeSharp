@@ -13,16 +13,16 @@ Comprehensive test suite for validating the SQLite database migration.
 ## Test Suites
 
 ### 1. Unit Tests
-**Location**: `MonoBall Framework.Game.Data.Tests/`
+**Location**: `MonoBallFramework.Game.Data.Tests/`
 **Tests**: 20 comprehensive unit tests
 **Focus**: Database creation, data loading, EF queries, memory management
 
 ```bash
-cd MonoBall Framework.Game.Data.Tests
+cd MonoBallFramework.Game.Data.Tests
 dotnet test
 ```
 
-[Read More →](MonoBall Framework.Game.Data.Tests/README.md)
+[Read More →](MonoBallFramework.Game.Data.Tests/README.md)
 
 ### 2. Integration Tests
 **Location**: `Integration/`

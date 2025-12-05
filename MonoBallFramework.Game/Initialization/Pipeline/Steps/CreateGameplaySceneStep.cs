@@ -1,5 +1,8 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MonoBallFramework.Game.Engine.Core.Events;
 using MonoBallFramework.Game.Engine.Scenes;
+using MonoBallFramework.Game.Engine.Systems.Pooling;
 using MonoBallFramework.Game.Scenes;
 
 namespace MonoBallFramework.Game.Initialization.Pipeline.Steps;
@@ -45,10 +48,8 @@ public class CreateGameplaySceneStep : InitializationStepBase
         ILogger<GameplayScene> gameplaySceneLogger =
             context.LoggerFactory.CreateLogger<GameplayScene>();
 
-        var gameplayScene = new GameplayScene(
-            context.GraphicsDevice,
-            context.Services,
-            gameplaySceneLogger,
+        // Create context facade to group dependencies (reduces constructor params from 11 to 4)
+        var sceneContext = new GameplaySceneContext(
             context.World,
             context.SystemManager,
             context.GameInitializer,
@@ -59,8 +60,20 @@ public class CreateGameplaySceneStep : InitializationStepBase
             context.SceneManager
         );
 
+        // Get optional services for overlays
+        EntityPoolManager? poolManager = context.Services.GetService<EntityPoolManager>();
+        IEventBus? eventBus = context.Services.GetService<IEventBus>();
+
+        var gameplayScene = new GameplayScene(
+            context.GraphicsDevice,
+            gameplaySceneLogger,
+            sceneContext,
+            poolManager,
+            eventBus
+        );
+
         context.GameplayScene = gameplayScene;
-        logger.LogInformation("Gameplay scene created successfully");
+        logger.LogInformation("Gameplay scene created with context facade");
         return Task.CompletedTask;
     }
 }

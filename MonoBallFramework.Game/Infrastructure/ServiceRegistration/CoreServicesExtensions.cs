@@ -134,6 +134,7 @@ public static class CoreServicesExtensions
         services.AddSingleton<GameDataLoader>();
         services.AddSingleton<NpcDefinitionService>();
         services.AddSingleton<MapDefinitionService>();
+        services.AddSingleton<IMapPopupDataService, MapPopupDataService>();
 
         // NPC Sprite Loader - for loading sprites extracted from Pokemon Emerald
         services.AddSingleton<SpriteLoader>();

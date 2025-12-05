@@ -1,7 +1,10 @@
+using Arch.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MonoBallFramework.Game.Engine.Core.Events;
 using MonoBallFramework.Game.Engine.Core.Services;
+using MonoBallFramework.Game.Engine.Rendering.Services;
+using MonoBallFramework.Game.Engine.Scenes.Factories;
 using MonoBallFramework.Game.Engine.Systems.Management;
 using MonoBallFramework.Game.Engine.Systems.Pooling;
 using MonoBallFramework.Game.GameData.Factories;
@@ -61,6 +64,25 @@ public static class GameServicesExtensions
         services.AddSingleton<GameTimeService>();
         services.AddSingleton<IGameTimeService>(sp => sp.GetRequiredService<GameTimeService>());
         services.AddSingleton<ITimeControl>(sp => sp.GetRequiredService<GameTimeService>());
+
+        // Camera Service - provides centralized camera operations and queries
+        services.AddSingleton<ICameraService>(sp =>
+        {
+            World world = sp.GetRequiredService<World>();
+            return new CameraService(world);
+        });
+
+        // Camera Provider - provides ECS camera access with caching for scenes
+        // Used by scenes to get camera without directly querying ECS
+        services.AddSingleton<ICameraProvider>(sp =>
+        {
+            World world = sp.GetRequiredService<World>();
+            return new EcsCameraProvider(world);
+        });
+
+        // Note: IRenderingService requires GraphicsDevice which is not available during DI setup.
+        // It is registered after GraphicsDevice is available in MonoBallFrameworkGame.Initialize()
+        // or in the initialization pipeline.
 
         // Collision Service - provides on-demand collision checking (not a system)
         services.AddSingleton<ICollisionService>(sp =>
